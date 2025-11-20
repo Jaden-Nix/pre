@@ -436,8 +436,11 @@ async function autoResolveMarkets() {
         const marketId = doc.id;
 
         try {
-            // Logic condensed for brevity - exact same as previous version
-            const systemPrompt = `As of ${today}, verify the outcome of: "${market.title}". Respond ONLY 'YES', 'NO', 'AMBIGUOUS'.`;
+            const systemPrompt = `As of ${today}, verify the outcome of: "${market.title}". First, search for credible sources. Then respond in this format:
+OUTCOME: YES or NO or AMBIGUOUS
+RATIONALE: Brief explanation of why this outcome is correct
+SOURCE: URL of the most credible source you found (if available)`;
+            
             const payload = {
                 systemInstruction: { parts: [{ text: systemPrompt }] },
                 contents: [{ parts: [{ text: `Market: "${market.title}"` }] }],
@@ -445,12 +448,39 @@ async function autoResolveMarkets() {
             };
 
             const response = await callGoogleApi(payload);
-            const outcome = response.candidates[0].content.parts[0].text.trim().toUpperCase();
+            const responseText = response.candidates[0].content.parts[0].text.trim();
+            
+            const outcomeMatch = responseText.match(/OUTCOME:\s*(YES|NO|AMBIGUOUS)/i);
+            const rationaleMatch = responseText.match(/RATIONALE:\s*(.+?)(?=SOURCE:|$)/is);
+            const sourceMatch = responseText.match(/SOURCE:\s*(https?:\/\/[^\s]+)/i);
+            
+            const outcome = outcomeMatch ? outcomeMatch[1].toUpperCase() : null;
+            const rationale = rationaleMatch ? rationaleMatch[1].trim() : `Market "${market.title}" was resolved by AI Oracle.`;
+            const source = sourceMatch ? sourceMatch[1].trim() : null;
+            
+            const groundingMetadata = response.candidates[0].groundingMetadata;
+            let verifiedSource = source;
+            
+            if (!verifiedSource && groundingMetadata && groundingMetadata.webSearchQueries && groundingMetadata.webSearchQueries.length > 0) {
+                const searchQuery = groundingMetadata.webSearchQueries[0];
+                verifiedSource = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+            }
 
             if (outcome === 'YES' || outcome === 'NO') {
-                // ... (Payout logic )
-                 await doc.ref.update({ isResolved: true, winningOutcome: outcome });
-                 console.log(`ORACLE: Resolved ${market.title} as ${outcome}`);
+                const updateData = { 
+                    isResolved: true, 
+                    winningOutcome: outcome,
+                    resolutionRationale: rationale,
+                    resolvedAt: new Date().toISOString()
+                };
+                
+                if (verifiedSource) {
+                    updateData.resolutionSource = verifiedSource;
+                }
+                
+                await doc.ref.update(updateData);
+                console.log(`ORACLE: Resolved ${market.title} as ${outcome}`);
+                if (verifiedSource) console.log(`ORACLE: Source: ${verifiedSource}`);
             }
         } catch (e) {
             console.error(`ORACLE: Failed market ${marketId}:`, e.message);

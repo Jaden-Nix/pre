@@ -1444,9 +1444,26 @@
             <main class="max-w-md md:max-w-xl lg:max-w-7xl mx-auto relative p-4">
 
             <div id="login-screen" class="screen screen-active space-y-6 max-w-md mx-auto lg:max-w-lg lg:space-y-8">
-                <div class="text-center space-y-2">
-                    <h1 class="text-3xl lg:text-4xl font-bold gradient-text">Welcome to Predora</h1>
-                    <p class="text-gray-300 lg:text-lg">Choose how you'd like to sign in</p>
+                <!-- Theme Toggle (Login Screen) -->
+                <div class="flex justify-end">
+                    <button onclick="toggleTheme()" class="w-12 h-12 rounded-full flex items-center justify-center text-gray-400 hover:text-sky-400 transition-all duration-300 hover:scale-110 active:scale-95 bg-gray-800/30 hover:bg-gray-700/50" title="Toggle theme">
+                        <svg id="theme-icon-sun-login" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                        <svg id="theme-icon-moon-login" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="text-center space-y-3">
+                    <div class="inline-block p-4 rounded-2xl bg-gradient-to-br from-sky-500/20 to-indigo-500/20 backdrop-blur-sm mb-2">
+                        <svg class="w-16 h-16 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <h1 class="text-4xl lg:text-5xl font-bold gradient-text">Welcome to Predora</h1>
+                    <p class="text-gray-300 lg:text-lg">Where opinions have liquidity</p>
                 </div>
 
                 <!-- Web3 Wallet Login -->
@@ -3870,6 +3887,8 @@
             const moonIcon = document.getElementById('theme-icon-moon');
             const profileSunIcon = document.getElementById('profile-theme-icon-sun');
             const profileMoonIcon = document.getElementById('profile-theme-icon-moon');
+            const loginSunIcon = document.getElementById('theme-icon-sun-login');
+            const loginMoonIcon = document.getElementById('theme-icon-moon-login');
 
             html.classList.toggle('light-mode');
             body.classList.toggle('light-mode');
@@ -3897,6 +3916,17 @@
                 }
             }
 
+            // Toggle login screen icons
+            if (loginSunIcon && loginMoonIcon) {
+                if (isLightMode) {
+                    loginSunIcon.classList.remove('hidden');
+                    loginMoonIcon.classList.add('hidden');
+                } else {
+                    loginSunIcon.classList.add('hidden');
+                    loginMoonIcon.classList.remove('hidden');
+                }
+            }
+
             // Save preference
             localStorage.setItem('theme', isLightMode ? 'light' : 'dark');
         }
@@ -3909,6 +3939,8 @@
             const moonIcon = document.getElementById('theme-icon-moon');
             const profileSunIcon = document.getElementById('profile-theme-icon-sun');
             const profileMoonIcon = document.getElementById('profile-theme-icon-moon');
+            const loginSunIcon = document.getElementById('theme-icon-sun-login');
+            const loginMoonIcon = document.getElementById('theme-icon-moon-login');
 
             // Sync body class with html class (set by inline script)
             if (html.classList.contains('light-mode')) {
@@ -3934,6 +3966,17 @@
                 } else {
                     profileSunIcon.classList.add('hidden');
                     profileMoonIcon.classList.remove('hidden');
+                }
+            }
+
+            // Sync login screen icons
+            if (loginSunIcon && loginMoonIcon) {
+                if (savedTheme === 'light') {
+                    loginSunIcon.classList.remove('hidden');
+                    loginMoonIcon.classList.add('hidden');
+                } else {
+                    loginSunIcon.classList.add('hidden');
+                    loginMoonIcon.classList.remove('hidden');
                 }
             }
         }
