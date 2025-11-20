@@ -1,0 +1,39 @@
+Concept: "The Smart Tag"
+Think of this feature exactly like tagging a location on Instagram or a product on TikTok Shop. When a user writes a post, they aren't just typing text; they are attaching a digital link to a specific betting market in your database.
+Step 1: The "Create Post" Experience
+When a user goes to write a post (like "Alice" in your screenshot), the interface needs a small upgrade.
+• The "Attach Bet" Button: Next to the photo/GIF upload icons, add a new button (maybe an icon of a ticket or a graph).
+• The Search Popup: When clicked, this button opens a search bar.
+• Alice types "ETH".
+• The app shows a list of active ETH markets (e.g., "ETH to hit $5k", "ETH vs SOL").
+• The Selection: Alice clicks the specific market she is talking about.
+• The Prediction: The app asks her one final question: "Are you betting YES or NO?"
+• The Result: The post now visually shows a small "attachment" bubble before she even hits publish, confirming she has linked that specific market.
+Step 2: What Happens Behind the Scenes (Data)
+When Alice hits "Post," your system saves her text like normal, but it also "staples" three pieces of information to that post:
+1. The Market ID: A unique tracking number so the app knows exactly which betting pool to open.
+2. Her Stance: Whether she thinks it will happen (YES) or won't happen (NO).
+3. The Current Odds: (Optional but smart) What the price was when she posted it. This lets people see if she "called it early" when the odds were better.
+Step 3: The "Feed" Experience (What Users See)
+Now, when Bob is scrolling through the feed, he sees Alice's post.
+• The Visual Card: Inside Alice's post, below her text, there is a distinct, colorful box. It looks like a "mini-ticket."
+• The Information: It displays the market title (e.g., "ETH > $5k") and a badge showing Alice's prediction (e.g., "Alice is betting 🟢 YES").
+• The Magic Button: Inside that box is a prominent button that says "Bet with Alice" or "Place Bet".
+• Trust Factor: Because the button is inside the app's official UI (not just a text link), Bob trusts that it goes to the real market.
+Step 4: The Interaction (The "One-Click" Bet)
+This is the most critical part for making money. You want to reduce friction.
+• Don't Redirect (If possible): If Bob clicks the button, do not take him to a different page. That breaks his scrolling flow.
+• Use a Pop-up (Modal): Instead, a small window should slide up from the bottom of the screen over the feed.
+• It confirms the market: "Betting YES on ETH."
+• It asks for the amount: "How much?"
+• He clicks "Confirm."
+• The Feedback: The pop-up closes, a "Success!" confetti animation plays, and Bob is instantly back on the feed, ready to scroll to the next post.
+Step 5: The Viral Loop (The "Social Multiplier")
+This is how you turn this feature into a growth engine.
+• The "Copier" Bonus: You can gamify this. If Bob places a bet using Alice's button, Alice's profile gets a stat boost (e.g., "Influenced Volume").
+• Referral Fees: You could eventually give Alice a tiny percentage (0.1%) of the trading fees generated from her button. This turns every user into a marketer for your platform because they want people to bet on their posts.
+Summary of the Flow
+1. User writes post -> Searches Market -> Attaches Market.
+2. Feed displays post with a "Mini-Market Card" attached.
+3. Viewer clicks button -> Pop-up appears -> Bet placed instantly.
+4. User keeps scrolling, having spent money without leaving the social conversation.
