@@ -5,11 +5,7 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 33635
-externalPort = 3001
-
-[[ports]]
-localPort = 34733
+localPort = 46179
 externalPort = 3000
 
 [agent]
@@ -29,15 +25,15 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Start Predora Client"
+args = "Start Predora Server"
 
 [[workflows.workflow]]
-name = "Start Predora Client"
+name = "Start Predora Server"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd client && npm run dev"
+args = "cd server && node index.js"
 waitForPort = 5000
 
 [workflows.workflow.metadata]
