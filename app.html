@@ -10815,13 +10815,13 @@ ${historyText}`;
             try {
                 const { collection, addDoc, serverTimestamp } = window.firebase.firestore;
                 
-                const userDoc = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId));
-                const userProfile = userDoc.data();
+                let displayName = userProfile?.displayName || '@User';
+                let avatarUrl = userProfile?.avatarUrl || LOGO_URL;
 
                 const postData = {
                     userId: currentUserId,
-                    displayName: userProfile.displayName,
-                    avatarUrl: userProfile.avatarUrl || LOGO_URL,
+                    displayName: displayName,
+                    avatarUrl: avatarUrl,
                     content: content,
                     reactions: {
                         like: [],
@@ -10838,9 +10838,15 @@ ${historyText}`;
                     postData.attachedMarket = attachedMarket;
                 }
 
-                // Add attached image if present
+                // Add attached image if present - compress before saving
                 if (attachedImage) {
-                    postData.imageUrl = attachedImage;
+                    try {
+                        const compressedImage = await compressImage(attachedImage);
+                        postData.imageUrl = compressedImage;
+                    } catch (e) {
+                        console.warn('Could not compress image, using original', e);
+                        postData.imageUrl = attachedImage;
+                    }
                 }
 
                 await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION), postData);
