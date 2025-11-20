@@ -1,9 +1,11 @@
+'use client';
+
 import Link from 'next/link';
 import { AnimatedBackground } from '@/components/AnimatedBackground';
 import { Navbar } from '@/components/Navbar';
 import { FeatureCard } from '@/components/FeatureCard';
 import { PhoneMockup } from '@/components/PhoneMockup';
-import { ArrowRight, MousePointerClick, Bot, ShieldCheck, PlayCircle, Cpu, Zap } from 'lucide-react';
+import { MousePointerClick, Bot, ShieldCheck, PlayCircle, Cpu, Zap } from 'lucide-react';
 
 export default function Home() {
   return (
