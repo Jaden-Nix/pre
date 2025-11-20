@@ -9219,7 +9219,7 @@ ${historyText}`;
             
             options.forEach((option, index) => {
                 const color = colors[index % colors.length];
-                const percent = option.percent || 0;
+                const percent = option.odds || option.percent || 0;
                 html += `
                     <div class="flex items-center justify-between p-2 rounded-lg bg-white/5">
                         <span class="text-sm ${color} font-semibold">${option.label || `Option ${index + 1}`}</span>
