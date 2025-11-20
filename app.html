@@ -2136,12 +2136,200 @@
                 </div>
             </div>
 
+            <!-- Admin Panel Landing Page -->
             <div id="admin-panel-screen" class="screen screen-inactive space-y-6">
-                <h1 class="text-2xl font-bold gradient-text">Admin Panel</h1>
+                <button onclick="goBack()" class="flex items-center text-sky-400 font-medium transition-colors hover:text-sky-300">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    Back
+                </button>
+                
+                <div class="text-center">
+                    <h1 class="text-3xl font-bold gradient-text mb-2">🛡️ Admin Control Panel</h1>
+                    <p class="text-gray-400 text-sm">Manage markets, AI systems, and platform features</p>
+                </div>
 
+                <!-- Navigation Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Market Resolution -->
+                    <button onclick="showScreen('admin-markets-screen')" class="ui-panel p-6 hover:scale-105 transition-transform cursor-pointer text-left">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
+                                <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-white">Market Resolution</h3>
+                                <p class="text-sm text-gray-400">Resolve standard markets manually</p>
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Quick Play Resolution -->
+                    <button onclick="showScreen('admin-quickplay-screen')" class="ui-panel p-6 hover:scale-105 transition-transform cursor-pointer text-left">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-sky-500/20 flex items-center justify-center border border-sky-500/30">
+                                <svg class="w-6 h-6 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-white">Quick Play</h3>
+                                <p class="text-sm text-gray-400">Manage Quick Play markets</p>
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Quick Poll Resolution -->
+                    <button onclick="showScreen('admin-quickpoll-screen')" class="ui-panel p-6 hover:scale-105 transition-transform cursor-pointer text-left">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
+                                <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-white">Quick Poll</h3>
+                                <p class="text-sm text-gray-400">Manage Quick Poll markets</p>
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Jury Dashboard -->
+                    <button onclick="showScreen('admin-jury-screen')" class="ui-panel p-6 hover:scale-105 transition-transform cursor-pointer text-left">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center border border-yellow-500/30">
+                                <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-white">Jury System</h3>
+                                <p class="text-sm text-gray-400">Manage disputes and jury votes</p>
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- AI Guardrails -->
+                    <button onclick="showScreen('admin-guardrails-screen')" class="ui-panel p-6 hover:scale-105 transition-transform cursor-pointer text-left">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center border border-red-500/30">
+                                <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-white">AI Guardrails</h3>
+                                <p class="text-sm text-gray-400">Quality, duplicates & Sybil detection</p>
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Account Abstraction -->
+                    <button onclick="showScreen('admin-aa-screen')" class="ui-panel p-6 hover:scale-105 transition-transform cursor-pointer text-left">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center border border-green-500/30">
+                                <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-white">Account Abstraction</h3>
+                                <p class="text-sm text-gray-400">Social login & gas sponsorship</p>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- System Actions -->
+                <div class="ui-panel p-4 space-y-3">
+                    <h2 class="text-lg font-semibold text-yellow-400">⚙️ System Actions</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <button id="run-oracle-btn" class="btn btn-secondary">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            Run Oracle Jobs
+                        </button>
+                        <button onclick="clearAllDemoData()" class="btn" style="background-color: #991b1b; color: white;">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                            Clear All Demo Data
+                        </button>
+                    </div>
+                </div>
+
+                <button id="admin-logout-btn" class="btn btn-secondary w-full">Log Out of Admin</button>
+            </div>
+
+
+            <div id="admin-password-screen" class="screen screen-inactive space-y-4">
+                <h1 class="text-2xl font-bold gradient-text">Admin Access</h1>
+                <div class="space-y-2">
+                    <label for="admin-password-input" class="text-sm font-medium text-gray-300">Enter Password</label>
+                    <input type="password" id="admin-password-input" class="ui-input">
+                </div>
+                <button id="admin-login-btn" class="btn btn-primary w-full">Login</button>
+                <button onclick="showScreen('login-screen')" class="btn btn-secondary w-full">Cancel</button>
+            </div>
+
+            <!-- Admin Markets Resolution Screen -->
+            <div id="admin-markets-screen" class="screen screen-inactive space-y-6">
+                <button onclick="showScreen('admin-panel-screen')" class="flex items-center text-sky-400 font-medium transition-colors hover:text-sky-300">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    Back to Admin Panel
+                </button>
+                
+                <div class="text-center">
+                    <h1 class="text-3xl font-bold gradient-text mb-2">📊 Market Resolution</h1>
+                    <p class="text-gray-400 text-sm">Manually resolve standard prediction markets</p>
+                </div>
+
+                <!-- Search Box -->
+                <div class="ui-panel p-4">
+                    <div class="relative">
+                        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        <input type="text" id="market-search-input" class="ui-input pl-10" placeholder="Search markets by title...">
+                    </div>
+                </div>
+
+                <!-- Markets List -->
                 <div class="ui-panel p-4 space-y-4">
-                    <h2 class="text-lg font-semibold text-white">Quick Play Publisher</h2>
-                    <p class="text-sm text-gray-400">Use the AI to pre-fill, or create manually.</p>
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-semibold text-white">Active Markets</h2>
+                        <span id="markets-count" class="text-sm text-gray-400">Loading...</span>
+                    </div>
+                    <div id="resolution-list" class="space-y-4">
+                        <p class="text-gray-400 text-center py-8">Loading markets...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Quick Play Screen -->
+            <div id="admin-quickplay-screen" class="screen screen-inactive space-y-6">
+                <button onclick="showScreen('admin-panel-screen')" class="flex items-center text-sky-400 font-medium transition-colors hover:text-sky-300">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    Back to Admin Panel
+                </button>
+                
+                <div class="text-center">
+                    <h1 class="text-3xl font-bold gradient-text mb-2">⚡ Quick Play Management</h1>
+                    <p class="text-gray-400 text-sm">Create and resolve Quick Play markets</p>
+                </div>
+
+                <!-- Quick Play Publisher -->
+                <div class="ui-panel p-4 space-y-4">
+                    <h2 class="text-lg font-semibold text-white">Create Quick Play</h2>
+                    <p class="text-sm text-gray-400">Use AI to pre-fill, or create manually</p>
 
                     <div class="space-y-2">
                         <label for="admin-ai-prompt" class="text-sm font-medium text-gray-300">AI Prompt (Optional)</label>
@@ -2172,50 +2360,305 @@
                     <button id="admin-publish-btn" class="btn btn-primary w-full">Publish Quick Play</button>
                 </div>
 
-                <div class="ui-panel p-4 space-y-4">
-                    <h2 class="text-lg font-semibold text-white">Resolve Active Markets</h2>
-                    <p class="text-sm text-gray-400 mb-4">Select the outcome to finalize the market and pay winners.</p>
-                    <div id="resolution-list" class="space-y-4">
-                        <p class="text-gray-400 text-center">Loading markets...</p>
+                <!-- Search Box -->
+                <div class="ui-panel p-4">
+                    <div class="relative">
+                        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        <input type="text" id="quickplay-search-input" class="ui-input pl-10" placeholder="Search Quick Plays...">
                     </div>
                 </div>
 
+                <!-- Quick Play Resolution -->
                 <div class="ui-panel p-4 space-y-4">
-                    <h2 class="text-lg font-semibold text-white">Resolve Active Quick Plays</h2>
-                    <p class="text-sm text-gray-400 mb-4">Finalize Quick Play markets and pay winners.</p>
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-semibold text-white">Active Quick Plays</h2>
+                        <span id="quickplay-count" class="text-sm text-gray-400">Loading...</span>
+                    </div>
                     <div id="quick-play-resolution-list" class="space-y-4">
-                        <p class="text-gray-400 text-center">Loading quick plays...</p>
+                        <p class="text-gray-400 text-center py-8">Loading quick plays...</p>
                     </div>
                 </div>
-                <button id="admin-logout-btn" class="btn btn-secondary w-full">Log Out of Admin</button>
-
-                <div class="ui-panel p-4 space-y-3">
-                    <h2 class="text-lg font-semibold text-red-400">🚨 Submission Prep: Clear Data</h2>
-                    <p class="text-sm text-gray-400">This action deletes ALL demo markets and ALL pledges/scores.</p>
-                    <button onclick="clearAllDemoData()" class="btn" style="background-color: #991b1b; color: white;">
-                        WIPE ALL DEMO DATA (Admin Only)
-                    </button>
-                </div>
-
-                <div class="ui-panel p-4 space-y-3">
-                    <h2 class="text-lg font-semibold text-yellow-400">🚨 Admin Test: Run Oracle</h2>
-                    <p class="text-sm text-gray-400">This manually runs the auto-resolve and daily-create jobs. Make sure you've set your CRON_SECRET in Replit.</p>
-                    <button id="run-oracle-btn" class="btn" style="background-color: #ca8a04; color: white;">
-                        Run Oracle Jobs
-                    </button>
-                </div>
-
             </div>
 
-
-            <div id="admin-password-screen" class="screen screen-inactive space-y-4">
-                <h1 class="text-2xl font-bold gradient-text">Admin Access</h1>
-                <div class="space-y-2">
-                    <label for="admin-password-input" class="text-sm font-medium text-gray-300">Enter Password</label>
-                    <input type="password" id="admin-password-input" class="ui-input">
+            <!-- Admin Quick Poll Screen -->
+            <div id="admin-quickpoll-screen" class="screen screen-inactive space-y-6">
+                <button onclick="showScreen('admin-panel-screen')" class="flex items-center text-sky-400 font-medium transition-colors hover:text-sky-300">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    Back to Admin Panel
+                </button>
+                
+                <div class="text-center">
+                    <h1 class="text-3xl font-bold gradient-text mb-2">📋 Quick Poll Management</h1>
+                    <p class="text-gray-400 text-sm">Create and manage Quick Poll markets</p>
                 </div>
-                <button id="admin-login-btn" class="btn btn-primary w-full">Login</button>
-                <button onclick="showScreen('login-screen')" class="btn btn-secondary w-full">Cancel</button>
+
+                <!-- Search Box -->
+                <div class="ui-panel p-4">
+                    <div class="relative">
+                        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        <input type="text" id="quickpoll-search-input" class="ui-input pl-10" placeholder="Search Quick Polls...">
+                    </div>
+                </div>
+
+                <!-- Quick Poll List -->
+                <div class="ui-panel p-4 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-semibold text-white">Quick Polls</h2>
+                        <span id="quickpoll-count" class="text-sm text-gray-400">0 polls</span>
+                    </div>
+                    <div id="quickpoll-list" class="space-y-4">
+                        <p class="text-gray-400 text-center py-8">No quick polls yet</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Jury Dashboard Screen (Moved from Profile) -->
+            <div id="admin-jury-screen" class="screen screen-inactive space-y-6">
+                <button onclick="showScreen('admin-panel-screen')" class="flex items-center text-sky-400 font-medium transition-colors hover:text-sky-300">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    Back to Admin Panel
+                </button>
+                
+                <div class="text-center">
+                    <h1 class="text-3xl font-bold gradient-text mb-2">⚖️ Jury Dashboard</h1>
+                    <p class="text-gray-400 text-sm">Manage disputed markets and jury votes</p>
+                </div>
+
+                <!-- Stats Overview -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="ui-panel text-center">
+                        <div class="text-3xl font-bold text-purple-400" id="admin-total-markets">-</div>
+                        <div class="text-xs text-gray-400 mt-1">Total Markets</div>
+                    </div>
+                    <div class="ui-panel text-center">
+                        <div class="text-3xl font-bold text-red-400" id="admin-disputed-markets">-</div>
+                        <div class="text-xs text-gray-400 mt-1">Disputed</div>
+                    </div>
+                    <div class="ui-panel text-center">
+                        <div class="text-3xl font-bold text-yellow-400" id="admin-active-jury-codes">-</div>
+                        <div class="text-xs text-gray-400 mt-1">Active Jury Codes</div>
+                    </div>
+                    <div class="ui-panel text-center">
+                        <div class="text-3xl font-bold text-green-400" id="admin-total-votes">-</div>
+                        <div class="text-xs text-gray-400 mt-1">Total Jury Votes</div>
+                    </div>
+                </div>
+
+                <!-- Refresh Button -->
+                <button id="admin-refresh-btn" class="btn btn-secondary w-full">🔄 Refresh Data</button>
+
+                <!-- Disputed Markets List -->
+                <div class="ui-panel">
+                    <h3 class="text-lg font-semibold text-purple-400 mb-4">Disputed Markets</h3>
+                    <div id="admin-disputed-markets-list" class="space-y-4">
+                        <p class="text-gray-400 text-center py-4">No disputed markets</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin AI Guardrails Screen -->
+            <div id="admin-guardrails-screen" class="screen screen-inactive space-y-6">
+                <button onclick="showScreen('admin-panel-screen')" class="flex items-center text-sky-400 font-medium transition-colors hover:text-sky-300">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    Back to Admin Panel
+                </button>
+                
+                <div class="text-center">
+                    <h1 class="text-3xl font-bold gradient-text mb-2">🛡️ AI Market Guardrails</h1>
+                    <p class="text-gray-400 text-sm">Quality control, duplicate detection & Sybil prevention</p>
+                </div>
+
+                <!-- Guardrail Stats -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="ui-panel text-center">
+                        <div class="text-2xl font-bold text-yellow-400" id="duplicate-count">-</div>
+                        <div class="text-xs text-gray-400 mt-1">Duplicates Blocked</div>
+                    </div>
+                    <div class="ui-panel text-center">
+                        <div class="text-2xl font-bold text-red-400" id="lowquality-count">-</div>
+                        <div class="text-xs text-gray-400 mt-1">Low Quality Blocked</div>
+                    </div>
+                    <div class="ui-panel text-center">
+                        <div class="text-2xl font-bold text-purple-400" id="sybil-count">-</div>
+                        <div class="text-xs text-gray-400 mt-1">Sybil Detected</div>
+                    </div>
+                </div>
+
+                <!-- Test Guardrails -->
+                <div class="ui-panel p-4 space-y-4">
+                    <h3 class="text-lg font-semibold text-white">Test Guardrails</h3>
+                    <p class="text-sm text-gray-400">Test market title for quality, duplicates, and suspicious patterns</p>
+                    
+                    <textarea id="test-market-title" class="ui-input" rows="2" placeholder="Enter market title to test..."></textarea>
+                    <button id="test-guardrails-btn" class="btn btn-primary w-full">Run Guardrail Check</button>
+                    
+                    <div id="guardrail-results" class="hidden mt-4 space-y-3">
+                        <div class="p-3 bg-black/20 rounded-lg">
+                            <h4 class="text-sm font-semibold text-sky-300 mb-2">Duplicate Check</h4>
+                            <p id="duplicate-result" class="text-sm text-gray-300">-</p>
+                        </div>
+                        <div class="p-3 bg-black/20 rounded-lg">
+                            <h4 class="text-sm font-semibold text-sky-300 mb-2">Quality Check</h4>
+                            <p id="quality-result" class="text-sm text-gray-300">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Flagged Items -->
+                <div class="ui-panel p-4 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-white">Flagged Items</h3>
+                        <button id="refresh-flagged-btn" class="btn btn-secondary text-sm py-1 px-3">Refresh</button>
+                    </div>
+                    <div id="flagged-items-list" class="space-y-3">
+                        <p class="text-gray-400 text-center py-4">No flagged items</p>
+                    </div>
+                </div>
+
+                <!-- Guardrail Settings -->
+                <div class="ui-panel p-4 space-y-4">
+                    <h3 class="text-lg font-semibold text-white">Guardrail Settings</h3>
+                    <div class="space-y-3">
+                        <label class="flex items-center justify-between">
+                            <span class="text-sm text-gray-300">Enable Duplicate Detection</span>
+                            <input type="checkbox" id="enable-duplicate-check" checked class="w-5 h-5">
+                        </label>
+                        <label class="flex items-center justify-between">
+                            <span class="text-sm text-gray-300">Enable Quality Filter</span>
+                            <input type="checkbox" id="enable-quality-check" checked class="w-5 h-5">
+                        </label>
+                        <label class="flex items-center justify-between">
+                            <span class="text-sm text-gray-300">Enable Sybil Detection</span>
+                            <input type="checkbox" id="enable-sybil-check" checked class="w-5 h-5">
+                        </label>
+                    </div>
+                    <button id="save-guardrail-settings-btn" class="btn btn-secondary w-full">Save Settings</button>
+                </div>
+            </div>
+
+            <!-- Admin Account Abstraction Screen -->
+            <div id="admin-aa-screen" class="screen screen-inactive space-y-6">
+                <button onclick="showScreen('admin-panel-screen')" class="flex items-center text-sky-400 font-medium transition-colors hover:text-sky-300">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    Back to Admin Panel
+                </button>
+                
+                <div class="text-center">
+                    <h1 class="text-3xl font-bold gradient-text mb-2">🔐 Account Abstraction Setup</h1>
+                    <p class="text-gray-400 text-sm">Configure social login and gas sponsorship</p>
+                </div>
+
+                <!-- AA Status -->
+                <div class="ui-panel p-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-white">Integration Status</h3>
+                        <span id="aa-status-badge" class="px-3 py-1 bg-yellow-500/20 text-yellow-400 text-xs font-bold rounded-full">
+                            Not Configured
+                        </span>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-3 bg-black/20 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/>
+                                </svg>
+                                <span class="text-sm text-gray-300">Google Login</span>
+                            </div>
+                            <span id="google-status" class="text-xs text-gray-400">Not configured</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-black/20 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                                </svg>
+                                <span class="text-sm text-gray-300">Apple Login</span>
+                            </div>
+                            <span id="apple-status" class="text-xs text-gray-400">Not configured</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-black/20 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                </svg>
+                                <span class="text-sm text-gray-300">Email/Password</span>
+                            </div>
+                            <span id="email-status" class="text-xs text-gray-400">Not configured</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Replit Auth Integration -->
+                <div class="ui-panel p-4 space-y-4">
+                    <h3 class="text-lg font-semibold text-white">🚀 Quick Setup with Replit Auth</h3>
+                    <p class="text-sm text-gray-400">
+                        Replit Auth provides built-in Google, Apple, GitHub, and email authentication with zero configuration.
+                    </p>
+                    <button id="setup-replit-auth-btn" class="btn btn-primary w-full">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Set Up Replit Auth Integration
+                    </button>
+                </div>
+
+                <!-- Smart Account Status -->
+                <div class="ui-panel p-4 space-y-4">
+                    <h3 class="text-lg font-semibold text-white">Smart Account Status</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Total Smart Accounts</span>
+                            <span id="smart-accounts-count" class="text-white font-semibold">0</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Active Smart Accounts</span>
+                            <span id="active-smart-accounts" class="text-green-400 font-semibold">0</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Gas Sponsored Txns</span>
+                            <span id="sponsored-txns-count" class="text-purple-400 font-semibold">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gas Sponsorship -->
+                <div class="ui-panel p-4 space-y-4">
+                    <h3 class="text-lg font-semibold text-white">⛽ Gas Sponsorship</h3>
+                    <p class="text-sm text-gray-400">
+                        Configure Biconomy paymaster for gasless transactions
+                    </p>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-sm text-gray-300 mb-1 block">Biconomy API Key</label>
+                            <input type="password" id="biconomy-api-key" class="ui-input" placeholder="Enter Biconomy API key...">
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-300 mb-1 block">Paymaster URL</label>
+                            <input type="text" id="paymaster-url" class="ui-input" placeholder="https://paymaster.biconomy.io/...">
+                        </div>
+                        <button id="save-biconomy-config-btn" class="btn btn-primary w-full">Save Configuration</button>
+                    </div>
+                </div>
+
+                <!-- Test AA -->
+                <div class="ui-panel p-4 space-y-4">
+                    <h3 class="text-lg font-semibold text-white">Test Account Abstraction</h3>
+                    <button id="test-aa-btn" class="btn btn-secondary w-full">
+                        Test Smart Account Creation
+                    </button>
+                    <div id="aa-test-results" class="hidden mt-3 p-3 bg-black/20 rounded-lg text-sm text-gray-300"></div>
+                </div>
             </div>
 
             <!-- ADD NEW SCREEN  -->
