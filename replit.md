@@ -64,11 +64,11 @@ Predora is an AI-native prediction market application built on BNB Chain with Ge
   - Real-time BNB balance display
   - Smart account address display
 
-**2. Account Abstraction (Framework Ready)**
-- `initializeSmartAccount()` - Generates deterministic smart account addresses
-- Saves smart account to Firestore user profile
-- UI displays smart account address in Assets tab
-- **Status**: Framework ready, needs full Biconomy SDK integration (see Next Steps)
+**2. Account Abstraction (NOT IMPLEMENTED)**
+- `initializeSmartAccount()` - Placeholder function with TODO comments
+- UI shows "Not configured (needs Biconomy SDK)" status
+- **Status**: Not implemented - requires full Biconomy SDK integration from scratch (see Next Steps)
+- **Note**: Previously had fake address generation which was removed to avoid misleading users
 
 **3. Jury Voting System (Fully Functional)**
 - `submitJuryVote(marketId, vote)` - Submit jury votes for disputed markets

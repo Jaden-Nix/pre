@@ -2915,7 +2915,14 @@
 
         /**
          * Initializes Biconomy Smart Account for Account Abstraction
-         * Note: This is a simplified version - full implementation needs Biconomy SDK
+         * TODO: This function needs full Biconomy SDK integration
+         * 
+         * Required Steps:
+         * 1. Add Biconomy SDK via npm or CDN
+         * 2. Initialize with Biconomy API key
+         * 3. Create smart account from factory
+         * 4. Configure paymaster for gasless transactions
+         * 5. Return actual smart account address from SDK
          */
         async function initializeSmartAccount() {
             if (!userWalletAddress || !ethersProvider) {
@@ -2923,24 +2930,17 @@
                 return;
             }
 
-            try {
-                // TODO: Integrate Biconomy SDK here
-                // For now, we'll use a deterministic smart account address
-                const accountHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(userWalletAddress));
-                smartAccountAddress = '0xSA' + accountHash.slice(4, 42); // Simplified for demo
-                
-                console.log('🔐 Smart Account Address:', smartAccountAddress);
-                showToast('Smart Account ready for gasless transactions', 'success');
-
-                // Save to Firestore
-                if (currentUserId && db) {
-                    const { doc, updateDoc } = window.firebase.firestore;
-                    const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
-                    await updateDoc(profileRef, { smartAccountAddress });
-                }
-            } catch (error) {
-                console.error('Smart Account initialization failed:', error);
-            }
+            console.warn('⚠️ Account Abstraction not yet implemented');
+            console.info('ℹ️ Requires Biconomy SDK integration with API keys');
+            
+            // TODO: Replace this comment block with actual Biconomy SDK initialization
+            // Example (requires Biconomy SDK and API keys):
+            // const biconomy = new Biconomy(ethersProvider, { apiKey: BICONOMY_API_KEY });
+            // await biconomy.init();
+            // const smartAccount = biconomy.getSmartAccountAPI();
+            // smartAccountAddress = await smartAccount.getAccountAddress();
+            
+            smartAccountAddress = null; // Will be set when SDK is integrated
         }
 
         /**
@@ -3072,10 +3072,16 @@
                 }
 
                 // Update smart account display
-                if (smartAccountAddress) {
-                    const smartAccountDisplay = document.getElementById('smart-account-display');
-                    if (smartAccountDisplay) {
+                const smartAccountDisplay = document.getElementById('smart-account-display');
+                if (smartAccountDisplay) {
+                    if (smartAccountAddress) {
                         smartAccountDisplay.textContent = `${smartAccountAddress.slice(0, 8)}...${smartAccountAddress.slice(-6)}`;
+                        smartAccountDisplay.classList.remove('text-gray-400');
+                        smartAccountDisplay.classList.add('text-green-400');
+                    } else {
+                        smartAccountDisplay.textContent = 'Not configured (needs Biconomy SDK)';
+                        smartAccountDisplay.classList.remove('text-green-400');
+                        smartAccountDisplay.classList.add('text-gray-400');
                     }
                 }
 
