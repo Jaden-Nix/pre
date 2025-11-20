@@ -927,6 +927,21 @@
             border-bottom-color: #38BDF8;
         }
 
+        /* --- Social Feed Reaction Buttons --- */
+        .reaction-btn {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+        }
+        .reaction-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: scale(1.1);
+        }
+
         /* --- Bottom Nav (5 icons) --- */
         .nav-button {
             flex-grow: 1;
@@ -2181,13 +2196,6 @@
             <button onclick="logout()" class="btn btn-secondary w-full lg:w-auto lg:px-8" style="border-color: #EF4444; color: #F87171;">
                 Log Out
             </button>
-            
-            <!-- Hidden Admin Access Link -->
-            <div class="text-center mt-4">
-                <button onclick="showScreen('admin-password-screen')" class="text-[10px] text-gray-600 hover:text-gray-400 transition-colors opacity-30 hover:opacity-100">
-                    ⚙️
-                </button>
-            </div>
         </div>
                     </div>
                 </div>
@@ -2208,6 +2216,31 @@
                     <button onclick="handleQuickPlay('no')" class="quick-play-btn quick-play-btn-no">NO</button>
                     <button onclick="handleQuickPlay('skip')" class="quick-play-btn quick-play-btn-skip">SKIP</button>
                     <button onclick="handleQuickPlay('yes')" class="quick-play-btn quick-play-btn-yes">YES</button>
+                </div>
+            </div>
+
+            <!-- Social Feed Screen -->
+            <div id="social-feed-screen" class="screen screen-inactive space-y-6 max-w-2xl mx-auto">
+                <div class="flex items-center justify-between">
+                    <h1 class="text-2xl lg:text-3xl font-bold gradient-text">Social Feed</h1>
+                    <button onclick="openCreatePost()" class="btn btn-primary">
+                        <svg class="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Create Post
+                    </button>
+                </div>
+
+                <!-- Filter Tabs -->
+                <div class="flex space-x-2 overflow-x-auto pb-2">
+                    <button onclick="filterSocialFeed('all')" id="feed-filter-all" class="filter-pill active">All Posts</button>
+                    <button onclick="filterSocialFeed('following')" id="feed-filter-following" class="filter-pill">Following</button>
+                    <button onclick="filterSocialFeed('trending')" id="feed-filter-trending" class="filter-pill">Trending</button>
+                </div>
+
+                <!-- Posts Feed -->
+                <div id="social-feed-container" class="space-y-4">
+                    <p class="text-gray-400 text-center py-8">Loading feed...</p>
                 </div>
             </div>
 
@@ -2914,9 +2947,9 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6-4v4m0-4h4"></path></svg>
                 <span class="text-xs mt-1">Home</span>
             </button>
-            <button onclick="showScreen('leaderboard-screen')" class="nav-button flex flex-col items-center text-gray-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-                <span class="text-xs mt-1">Leaders</span>
+            <button onclick="showScreen('social-feed-screen'); loadSocialFeed();" class="nav-button flex flex-col items-center text-gray-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                <span class="text-xs mt-1">Social</span>
             </button>
             <button onclick="showScreen('create-market-screen')" class="nav-button flex flex-col items-center text-gray-400 -mt-2 bg-gradient-to-br from-indigo-600 to-blue-600 p-3 rounded-full shadow-lg shadow-blue-500/30 border-2 border-sky-400">
                 <svg class="w-5 h-5" fill="none" stroke="white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
@@ -2984,6 +3017,46 @@
                 </div>
             </div>
         </div>
+
+    <!-- Create Post Modal -->
+    <div id="create-post-modal" class="hidden fixed inset-0 z-[995] bg-black/70 backdrop-blur-sm flex justify-center items-center p-4">
+        <div class="ui-panel w-full max-w-lg">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold gradient-text">Create Post</h2>
+                <button onclick="closeCreatePost()" class="text-gray-400 hover:text-white text-3xl">&times;</button>
+            </div>
+            
+            <textarea id="post-content-input" class="ui-input w-full h-32 resize-none" placeholder="What's on your mind? Share your predictions, insights, or market analysis..."></textarea>
+            
+            <div class="flex items-center justify-between mt-4">
+                <div class="text-xs text-gray-400">
+                    <span id="post-char-count">0</span>/500 characters
+                </div>
+                <button onclick="submitPost()" id="submit-post-btn" class="btn btn-primary">Post</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Post Comments Modal -->
+    <div id="post-comments-modal" class="hidden fixed inset-0 z-[995] bg-black/70 backdrop-blur-sm flex justify-center items-center p-4">
+        <div class="ui-panel w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center pb-3 border-b border-gray-700">
+                <h2 class="text-xl font-bold gradient-text">Comments</h2>
+                <button onclick="closeCommentsModal()" class="text-gray-400 hover:text-white text-3xl">&times;</button>
+            </div>
+            
+            <div id="comments-feed-content" class="flex-grow py-4 overflow-y-auto space-y-4">
+                <p class="text-gray-400 text-center">Loading comments...</p>
+            </div>
+            
+            <div class="border-t border-gray-700 pt-4">
+                <div class="flex space-x-2">
+                    <input type="text" id="comment-input" class="ui-input flex-grow" placeholder="Add a comment...">
+                    <button onclick="submitComment()" id="submit-comment-btn" class="btn btn-primary w-24">Comment</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     </div>
 
@@ -3328,6 +3401,9 @@
         const PLEDGES_COLLECTION = 'pledges'; 
         const STAKE_LOGS_COLLECTION = 'stake_logs';
         const MARKET_COMMENTS_COLLECTION = 'market_comments';
+        const SOCIAL_POSTS_COLLECTION = 'social_posts';
+        const POST_REACTIONS_COLLECTION = 'reactions';
+        const POST_COMMENTS_COLLECTION = 'comments';
 
         // --- Local State ---
         let currentMarket = null; 
@@ -3341,6 +3417,9 @@
         let marketChart = null; 
         let tickerUnsubscribe = null;
         let toastTimer;
+        let socialFeedUnsubscribe = null;
+        let currentPostId = null;
+        let currentFeedFilter = 'all';
 
         // --- Mock Data ---
         const MOCK_ETH_MARKET = {
@@ -4897,6 +4976,13 @@
         window.showScreen = (screenId) => {
             if (!screenId) return;
             console.log(`Navigating to: ${screenId}`);
+
+            // SECURITY: Require admin authentication for admin panel
+            if (screenId === 'admin-panel-screen' && !adminSecret) {
+                showToast('Admin authentication required', 'error');
+                window.showScreen('admin-password-screen');
+                return;
+            }
 
             // Special case: Hide nav bars on full-screen game modes and auth screens
             if (dom.topNav && dom.bottomNav) {
@@ -9230,6 +9316,16 @@ ${historyText}`;
         }
 
         /**
+         * Sanitize user input to prevent XSS
+         */
+        function sanitizeHTML(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        /**
          * Helper to format timestamps as "time ago"
          */
         function getTimeAgo(dateOrSeconds) {
@@ -9298,6 +9394,14 @@ ${historyText}`;
         window.postComment = async () => {
             const commentText = dom.tickerCommentInput.value.trim();
             if (commentText.length < 1) return;
+
+            // CHECK STAKE REQUIREMENT - User must have active stake to comment
+            const hasActiveStake = await checkUserHasActiveStake();
+            if (!hasActiveStake) {
+                showToast('You need an active stake in this market to chat.', 'error');
+                dom.tickerPostBtn.disabled = false;
+                return;
+            }
 
             dom.tickerPostBtn.disabled = true;
             try {
@@ -9377,6 +9481,387 @@ ${historyText}`;
                 showToast("Error posting comment.");
             } finally {
                 dom.tickerPostBtn.disabled = false;
+            }
+        }
+
+        // =====================================================================
+        // --- SOCIAL FEED FUNCTIONS ---
+        // =====================================================================
+
+        /**
+         * Load and display social feed posts
+         */
+        window.loadSocialFeed = async () => {
+            if (!currentUserId) return;
+
+            const container = document.getElementById('social-feed-container');
+            
+            // Clean up old listener
+            if (socialFeedUnsubscribe) socialFeedUnsubscribe();
+
+            const { collection, query, orderBy, limit, onSnapshot, getDocs, doc: firestoreDoc, getDoc } = window.firebase.firestore;
+
+            let q = query(
+                collection(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION),
+                orderBy('timestamp', 'desc'),
+                limit(50)
+            );
+
+            socialFeedUnsubscribe = onSnapshot(q, async (snapshot) => {
+                let posts = [];
+                snapshot.forEach(doc => {
+                    posts.push({
+                        ...doc.data(),
+                        postId: doc.id
+                    });
+                });
+
+                // Filter based on current filter
+                if (currentFeedFilter === 'following') {
+                    const userDoc = await getDoc(firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId));
+                    const following = userDoc.data()?.following || [];
+                    posts = posts.filter(post => following.includes(post.userId));
+                } else if (currentFeedFilter === 'trending') {
+                    posts.sort((a, b) => {
+                        const aScore = (a.reactions?.length || 0) + (a.commentCount || 0);
+                        const bScore = (b.reactions?.length || 0) + (b.commentCount || 0);
+                        return bScore - aScore;
+                    });
+                }
+
+                if (posts.length === 0) {
+                    container.innerHTML = '<p class="text-gray-400 text-center py-8">No posts yet. Be the first to share!</p>';
+                    return;
+                }
+
+                let html = '';
+                for (const post of posts) {
+                    const reactions = post.reactions || {};
+                    const reactionCounts = {
+                        like: (reactions.like || []).length,
+                        heart: (reactions.heart || []).length,
+                        fire: (reactions.fire || []).length,
+                        rocket: (reactions.rocket || []).length
+                    };
+                    const totalReactions = Object.values(reactionCounts).reduce((a, b) => a + b, 0);
+                    const userLiked = reactions.like?.includes(currentUserId);
+                    const userHearted = reactions.heart?.includes(currentUserId);
+                    const userFired = reactions.fire?.includes(currentUserId);
+                    const userRocketed = reactions.rocket?.includes(currentUserId);
+
+                    const timeAgo = post.timestamp ? getTimeAgo(post.timestamp.seconds) : 'just now';
+                    const avatarUrl = post.avatarUrl || LOGO_URL;
+                    const safeDisplayName = sanitizeHTML(post.displayName);
+                    const safeContent = sanitizeHTML(post.content);
+
+                    html += `
+                        <div class="ui-panel p-4 space-y-3">
+                            <div class="flex items-start space-x-3">
+                                <img src="${avatarUrl}" class="w-12 h-12 rounded-full" alt="Avatar">
+                                <div class="flex-grow">
+                                    <div class="flex items-center space-x-2">
+                                        ${post.userId === currentUserId ? `
+                                            <span class="font-semibold text-white">${safeDisplayName}</span>
+                                        ` : `
+                                            <button onclick="viewUserProfile('${post.userId}')" class="font-semibold text-white hover:text-sky-400 transition-colors">${safeDisplayName}</button>
+                                        `}
+                                        <span class="text-sm text-gray-400">${timeAgo}</span>
+                                    </div>
+                                    <p class="text-gray-300 mt-2 whitespace-pre-wrap">${safeContent}</p>
+                                </div>
+                            </div>
+
+                            <!-- Reactions & Actions -->
+                            <div class="flex items-center justify-between border-t border-white/10 pt-3">
+                                <div class="flex space-x-2">
+                                    <button onclick="toggleReaction('${post.postId}', 'like')" class="reaction-btn ${userLiked ? 'text-sky-400' : 'text-gray-400'} hover:text-sky-400">
+                                        👍 ${reactionCounts.like > 0 ? reactionCounts.like : ''}
+                                    </button>
+                                    <button onclick="toggleReaction('${post.postId}', 'heart')" class="reaction-btn ${userHearted ? 'text-pink-400' : 'text-gray-400'} hover:text-pink-400">
+                                        ❤️ ${reactionCounts.heart > 0 ? reactionCounts.heart : ''}
+                                    </button>
+                                    <button onclick="toggleReaction('${post.postId}', 'fire')" class="reaction-btn ${userFired ? 'text-orange-400' : 'text-gray-400'} hover:text-orange-400">
+                                        🔥 ${reactionCounts.fire > 0 ? reactionCounts.fire : ''}
+                                    </button>
+                                    <button onclick="toggleReaction('${post.postId}', 'rocket')" class="reaction-btn ${userRocketed ? 'text-green-400' : 'text-gray-400'} hover:text-green-400">
+                                        🚀 ${reactionCounts.rocket > 0 ? reactionCounts.rocket : ''}
+                                    </button>
+                                </div>
+                                <div class="flex space-x-3 text-sm">
+                                    <button onclick="openCommentsModal('${post.postId}')" class="text-gray-400 hover:text-sky-400 transition-colors">
+                                        <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                                        </svg>
+                                        ${post.commentCount || 0}
+                                    </button>
+                                    <button onclick="sharePostToX('${post.postId}')" class="text-gray-400 hover:text-sky-400 transition-colors">
+                                        <svg class="w-5 h-5 inline-block" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                container.innerHTML = html;
+            });
+        }
+
+        /**
+         * Filter social feed
+         */
+        window.filterSocialFeed = (filter) => {
+            currentFeedFilter = filter;
+            
+            // Update button states
+            document.querySelectorAll('[id^="feed-filter-"]').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`feed-filter-${filter}`).classList.add('active');
+            
+            loadSocialFeed();
+        }
+
+        /**
+         * Open create post modal
+         */
+        window.openCreatePost = () => {
+            const modal = document.getElementById('create-post-modal');
+            const input = document.getElementById('post-content-input');
+            const charCount = document.getElementById('post-char-count');
+            
+            modal.classList.remove('hidden');
+            input.value = '';
+            charCount.textContent = '0';
+            
+            // Add character counter
+            input.oninput = () => {
+                const length = input.value.length;
+                charCount.textContent = length;
+                if (length > 500) {
+                    input.value = input.value.substring(0, 500);
+                    charCount.textContent = '500';
+                }
+            };
+        }
+
+        /**
+         * Close create post modal
+         */
+        window.closeCreatePost = () => {
+            document.getElementById('create-post-modal').classList.add('hidden');
+        }
+
+        /**
+         * Submit a new post
+         */
+        window.submitPost = async () => {
+            const content = document.getElementById('post-content-input').value.trim();
+            if (content.length < 1) {
+                showToast('Please write something to post.', 'error');
+                return;
+            }
+
+            const submitBtn = document.getElementById('submit-post-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Posting...';
+
+            try {
+                const { collection, addDoc, serverTimestamp } = window.firebase.firestore;
+                
+                const userDoc = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId));
+                const userProfile = userDoc.data();
+
+                await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION), {
+                    userId: currentUserId,
+                    displayName: userProfile.displayName,
+                    avatarUrl: userProfile.avatarUrl || LOGO_URL,
+                    content: content,
+                    reactions: {
+                        like: [],
+                        heart: [],
+                        fire: [],
+                        rocket: []
+                    },
+                    commentCount: 0,
+                    timestamp: serverTimestamp()
+                });
+
+                showToast('Post created successfully!', 'success');
+                closeCreatePost();
+                loadSocialFeed();
+            } catch (error) {
+                console.error('Error creating post:', error);
+                showToast('Failed to create post. Please try again.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Post';
+            }
+        }
+
+        /**
+         * Toggle reaction on a post
+         */
+        window.toggleReaction = async (postId, reactionType) => {
+            if (!currentUserId) return;
+
+            try {
+                const { doc: firestoreDoc, getDoc, updateDoc, arrayUnion, arrayRemove } = window.firebase.firestore;
+                
+                const postRef = firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION, postId);
+                const postDoc = await getDoc(postRef);
+                const postData = postDoc.data();
+                
+                const reactions = postData.reactions || {};
+                const reactionArray = reactions[reactionType] || [];
+                const hasReacted = reactionArray.includes(currentUserId);
+
+                if (hasReacted) {
+                    // Remove reaction
+                    await updateDoc(postRef, {
+                        [`reactions.${reactionType}`]: arrayRemove(currentUserId)
+                    });
+                } else {
+                    // Add reaction
+                    await updateDoc(postRef, {
+                        [`reactions.${reactionType}`]: arrayUnion(currentUserId)
+                    });
+                }
+            } catch (error) {
+                console.error('Error toggling reaction:', error);
+            }
+        }
+
+        /**
+         * Open comments modal for a post
+         */
+        window.openCommentsModal = async (postId) => {
+            currentPostId = postId;
+            const modal = document.getElementById('post-comments-modal');
+            const feedContent = document.getElementById('comments-feed-content');
+            
+            modal.classList.remove('hidden');
+            feedContent.innerHTML = '<p class="text-gray-400 text-center">Loading comments...</p>';
+
+            try {
+                const { collection, query, orderBy, getDocs } = window.firebase.firestore;
+                
+                const commentsRef = collection(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION, postId, POST_COMMENTS_COLLECTION);
+                const q = query(commentsRef, orderBy('timestamp', 'asc'));
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    feedContent.innerHTML = '<p class="text-gray-400 text-center">No comments yet. Be the first!</p>';
+                    return;
+                }
+
+                let html = '';
+                snapshot.forEach(doc => {
+                    const comment = doc.data();
+                    const timeAgo = comment.timestamp ? getTimeAgo(comment.timestamp.seconds) : 'just now';
+                    const safeDisplayName = sanitizeHTML(comment.displayName);
+                    const safeContent = sanitizeHTML(comment.content);
+                    
+                    html += `
+                        <div class="flex space-x-3 pb-3 border-b border-white/5">
+                            <img src="${comment.avatarUrl || LOGO_URL}" class="w-10 h-10 rounded-full" alt="Avatar">
+                            <div class="flex-grow">
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-semibold text-white">${safeDisplayName}</span>
+                                    <span class="text-xs text-gray-400">${timeAgo}</span>
+                                </div>
+                                <p class="text-gray-300 text-sm mt-1">${safeContent}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                feedContent.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading comments:', error);
+                feedContent.innerHTML = '<p class="text-red-400 text-center">Failed to load comments</p>';
+            }
+        }
+
+        /**
+         * Close comments modal
+         */
+        window.closeCommentsModal = () => {
+            document.getElementById('post-comments-modal').classList.add('hidden');
+            currentPostId = null;
+        }
+
+        /**
+         * Submit a comment on a post
+         */
+        window.submitComment = async () => {
+            if (!currentPostId) return;
+
+            const content = document.getElementById('comment-input').value.trim();
+            if (content.length < 1) return;
+
+            const submitBtn = document.getElementById('submit-comment-btn');
+            submitBtn.disabled = true;
+
+            try {
+                const { collection, addDoc, serverTimestamp, doc: firestoreDoc, updateDoc, increment, getDoc } = window.firebase.firestore;
+                
+                const userDoc = await getDoc(firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId));
+                const userProfile = userDoc.data();
+
+                const commentsRef = collection(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION, currentPostId, POST_COMMENTS_COLLECTION);
+                
+                await addDoc(commentsRef, {
+                    userId: currentUserId,
+                    displayName: userProfile.displayName,
+                    avatarUrl: userProfile.avatarUrl || LOGO_URL,
+                    content: content,
+                    timestamp: serverTimestamp()
+                });
+
+                // Increment comment count on post
+                const postRef = firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION, currentPostId);
+                await updateDoc(postRef, {
+                    commentCount: increment(1)
+                });
+
+                document.getElementById('comment-input').value = '';
+                showToast('Comment added!', 'success');
+                
+                // Reload comments
+                openCommentsModal(currentPostId);
+            } catch (error) {
+                console.error('Error submitting comment:', error);
+                showToast('Failed to add comment', 'error');
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+        /**
+         * Share post to X (Twitter)
+         */
+        window.sharePostToX = async (postId) => {
+            try {
+                const { doc: firestoreDoc, getDoc } = window.firebase.firestore;
+                const postRef = firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION, postId);
+                const postDoc = await getDoc(postRef);
+                
+                if (!postDoc.exists()) {
+                    showToast('Post not found', 'error');
+                    return;
+                }
+                
+                const post = postDoc.data();
+                const safeContent = sanitizeHTML(post.content);
+                const safeDisplayName = sanitizeHTML(post.displayName);
+                
+                const text = `"${safeContent.substring(0, 200)}${safeContent.length > 200 ? '...' : ''}" - ${safeDisplayName} on Predora`;
+                const url = `${window.location.origin}/app.html?post=${postId}`;
+                const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+                window.open(twitterUrl, '_blank', 'width=550,height=420');
+            } catch (error) {
+                console.error('Error sharing post:', error);
+                showToast('Failed to share post', 'error');
             }
         }
 
