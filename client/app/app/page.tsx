@@ -6,8 +6,16 @@ import { QuickPlay } from '@/components/QuickPlay';
 import { MarketsList } from '@/components/MarketsList';
 import { UserProfile } from '@/components/UserProfile';
 import { CreateMarket } from '@/components/CreateMarket';
+import { FirebaseConfigError } from '@/components/FirebaseConfigError';
+import { getFirebaseErrorMessage } from '@/lib/firebase';
 
 export default function AppPage() {
+  const firebaseError = getFirebaseErrorMessage();
+  
+  if (firebaseError) {
+    return <FirebaseConfigError message={firebaseError} />;
+  }
+  
   const [activeTab, setActiveTab] = useState<'home' | 'markets' | 'create' | 'quick' | 'profile'>('home');
 
   return (

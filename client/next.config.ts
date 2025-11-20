@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
   },
   experimental: {
-    optimizePackageImports: ['lucide-react', 'framer-motion', '@rainbow-me/rainbowkit'],
+    optimizePackageImports: ['lucide-react', 'framer-motion'],
   },
   webpack: (config, { isServer }) => {
     config.resolve.fallback = {
