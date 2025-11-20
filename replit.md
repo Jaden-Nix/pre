@@ -6,6 +6,7 @@ Predora is an AI-native prediction market platform built on BNB Chain, featuring
 ## Recent Changes (November 20, 2025)
 - **Email OTP Authentication**: Implemented real email-based OTP login system using SendGrid integration, replacing mock authentication.
 - **User ID Security Fix**: Changed user ID generation from email prefix to SHA-256 hash of email to prevent account collisions and enhance security.
+- **Demo Account Login**: Added "Try Demo" button on login screen for quick guest access without email verification. Demo accounts persist across sessions.
 - **Onboarding Flow**: Added onboarding screen with display name picker and emoji avatar selection that appears after successful login.
 - **Edit Profile**: Implemented edit profile functionality allowing users to update their display name and avatar.
 - **UI Cleanup**: Removed admin dashboard button from profile page for regular users.
