@@ -1583,6 +1583,327 @@ app.get('/api/data/stats', async (req, res) => {
     }
 });
 
+// =====================================================================
+// --- MARKET DATA INDEXER API ---
+// =====================================================================
+
+/**
+ * GET /api/indexer/markets
+ * Query all markets with advanced filtering
+ * Query params: category, status, isResolved, createdBy, limit, offset, sortBy, search
+ */
+app.get('/api/indexer/markets', async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase not initialized' });
+    }
+    
+    try {
+        const { 
+            category, 
+            status, 
+            isResolved, 
+            createdBy, 
+            limit = 50, 
+            startAfter,
+            sortBy = 'createdAt',
+            sortOrder = 'desc',
+            search 
+        } = req.query;
+        
+        let query = db.collection(`artifacts/${APP_ID}/public/data/standard_markets`);
+        
+        // Apply ONE filter to avoid composite index requirements
+        // Priority: category > status > isResolved > createdBy
+        if (category) {
+            query = query.where('category', '==', category);
+        } else if (status) {
+            query = query.where('status', '==', status);
+        } else if (isResolved !== undefined) {
+            query = query.where('isResolved', '==', isResolved === 'true');
+        } else if (createdBy) {
+            query = query.where('createdBy', '==', createdBy);
+        }
+        
+        // Apply sorting (only if compatible with filter)
+        const sortField = sortBy === 'createdAt' ? 'createdAt' : 'createdAt';
+        query = query.orderBy(sortField, sortOrder === 'asc' ? 'asc' : 'desc');
+        
+        // Apply cursor-based pagination instead of offset
+        if (startAfter) {
+            const startDoc = await db.collection(`artifacts/${APP_ID}/public/data/standard_markets`).doc(startAfter).get();
+            if (startDoc.exists) {
+                query = query.startAfter(startDoc);
+            }
+        }
+        
+        // Apply limit
+        query = query.limit(parseInt(limit) + 1); // +1 to check if there are more
+        
+        const snapshot = await query.get();
+        let markets = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        // Check if there are more results
+        const hasMore = markets.length > parseInt(limit);
+        if (hasMore) {
+            markets = markets.slice(0, parseInt(limit));
+        }
+        
+        // Apply additional client-side filters
+        if (search) {
+            const searchLower = search.toLowerCase();
+            markets = markets.filter(m => 
+                m.title?.toLowerCase().includes(searchLower) ||
+                m.description?.toLowerCase().includes(searchLower)
+            );
+        }
+        
+        const nextCursor = hasMore && markets.length > 0 ? markets[markets.length - 1].id : null;
+        
+        res.status(200).json({
+            markets,
+            total: markets.length,
+            limit: parseInt(limit),
+            nextCursor,
+            hasMore
+        });
+    } catch (error) {
+        console.error('Error querying markets:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/indexer/markets/:marketId/history
+ * Get historical odds changes for a market
+ */
+app.get('/api/indexer/markets/:marketId/history', async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase not initialized' });
+    }
+    
+    const { marketId } = req.params;
+    
+    try {
+        // Get market basic info
+        const marketRef = db.collection(`artifacts/${APP_ID}/public/data/standard_markets`).doc(marketId);
+        const marketDoc = await marketRef.get();
+        
+        if (!marketDoc.exists) {
+            return res.status(404).json({ error: 'Market not found' });
+        }
+        
+        // Get odds history (if exists)
+        const historyRef = db.collection(`artifacts/${APP_ID}/public/data/market_history`).doc(marketId).collection('odds');
+        const historySnapshot = await historyRef.orderBy('timestamp', 'asc').get();
+        
+        const oddsHistory = historySnapshot.docs.map(doc => ({
+            timestamp: doc.data().timestamp,
+            yesPercent: doc.data().yesPercent,
+            noPercent: doc.data().noPercent
+        }));
+        
+        res.status(200).json({
+            marketId,
+            market: { id: marketDoc.id, ...marketDoc.data() },
+            oddsHistory,
+            currentOdds: {
+                yesPercent: marketDoc.data().yesPercent,
+                noPercent: marketDoc.data().noPercent
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching market history:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/indexer/markets/:marketId/volume
+ * Get volume and activity metrics for a market
+ */
+app.get('/api/indexer/markets/:marketId/volume', async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase not initialized' });
+    }
+    
+    const { marketId } = req.params;
+    
+    try {
+        // Get all pledges for this market
+        const pledgesRef = db.collection(`artifacts/${APP_ID}/public/data/pledges`);
+        const pledgesSnapshot = await pledgesRef.where('marketId', '==', marketId).get();
+        
+        let totalVolume = 0;
+        let yesVolume = 0;
+        let noVolume = 0;
+        let uniqueUsers = new Set();
+        let volumeOverTime = [];
+        
+        pledgesSnapshot.docs.forEach(doc => {
+            const pledge = doc.data();
+            const amount = pledge.amountUsd || pledge.amount || 0;
+            
+            totalVolume += amount;
+            if (pledge.pick === 'YES') yesVolume += amount;
+            if (pledge.pick === 'NO') noVolume += amount;
+            
+            uniqueUsers.add(pledge.userId);
+            
+            volumeOverTime.push({
+                timestamp: pledge.timestamp,
+                amount,
+                pick: pledge.pick
+            });
+        });
+        
+        // Sort by timestamp
+        volumeOverTime.sort((a, b) => a.timestamp - b.timestamp);
+        
+        res.status(200).json({
+            marketId,
+            volume: {
+                total: totalVolume,
+                yes: yesVolume,
+                no: noVolume
+            },
+            participants: uniqueUsers.size,
+            totalPledges: pledgesSnapshot.size,
+            volumeOverTime
+        });
+    } catch (error) {
+        console.error('Error fetching market volume:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/indexer/user/:userId/complete-activity
+ * Get comprehensive user activity including all markets, pledges, and performance
+ */
+app.get('/api/indexer/user/:userId/complete-activity', async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase not initialized' });
+    }
+    
+    const { userId } = req.params;
+    const { limit = 100 } = req.query;
+    
+    try {
+        // Get user profile
+        const profileRef = db.collection(`artifacts/${APP_ID}/public/data/profile`).doc(userId);
+        const profileDoc = await profileRef.get();
+        
+        if (!profileDoc.exists) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Get all pledges
+        const pledgesRef = db.collection(`artifacts/${APP_ID}/public/data/pledges`);
+        const pledgesSnapshot = await pledgesRef
+            .where('userId', '==', userId)
+            .orderBy('timestamp', 'desc')
+            .limit(parseInt(limit))
+            .get();
+        
+        const pledges = pledgesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        // Get markets created by user
+        const marketsRef = db.collection(`artifacts/${APP_ID}/public/data/standard_markets`);
+        const marketsSnapshot = await marketsRef.where('createdBy', '==', userId).get();
+        const marketsCreated = marketsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        // Calculate stats
+        const activePledges = pledges.filter(p => !p.isResolved);
+        const resolvedPledges = pledges.filter(p => p.isResolved);
+        const wins = resolvedPledges.filter(p => p.isWinner).length;
+        const losses = resolvedPledges.filter(p => !p.isWinner).length;
+        const totalStaked = pledges.reduce((sum, p) => sum + (p.amountUsd || p.amount || 0), 0);
+        const totalEarnings = resolvedPledges.reduce((sum, p) => sum + (p.payout || 0), 0);
+        const netProfit = totalEarnings - totalStaked;
+        
+        res.status(200).json({
+            userId,
+            profile: { id: profileDoc.id, ...profileDoc.data() },
+            activity: {
+                pledges,
+                marketsCreated,
+                stats: {
+                    totalPledges: pledges.length,
+                    activePledges: activePledges.length,
+                    resolvedPledges: resolvedPledges.length,
+                    wins,
+                    losses,
+                    winRate: resolvedPledges.length > 0 ? (wins / resolvedPledges.length * 100).toFixed(2) : 0,
+                    totalStaked,
+                    totalEarnings,
+                    netProfit,
+                    marketsCreated: marketsCreated.length
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching complete user activity:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/indexer/markets/:marketId/odds-snapshot
+ * Record a snapshot of current odds (for historical tracking)
+ * Requires admin authentication
+ */
+app.post('/api/indexer/markets/:marketId/odds-snapshot', requireAdmin, async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase not initialized' });
+    }
+    
+    const { marketId } = req.params;
+    
+    try {
+        // Get current market state
+        const marketRef = db.collection(`artifacts/${APP_ID}/public/data/standard_markets`).doc(marketId);
+        const marketDoc = await marketRef.get();
+        
+        if (!marketDoc.exists) {
+            return res.status(404).json({ error: 'Market not found' });
+        }
+        
+        const marketData = marketDoc.data();
+        
+        // Save odds snapshot
+        const historyRef = db.collection(`artifacts/${APP_ID}/public/data/market_history`).doc(marketId).collection('odds');
+        await historyRef.add({
+            timestamp: new Date().toISOString(),
+            yesPercent: marketData.yesPercent,
+            noPercent: marketData.noPercent,
+            recordedBy: 'admin',
+            recordedAt: new Date().toISOString()
+        });
+        
+        res.status(200).json({ 
+            success: true,
+            message: 'Odds snapshot recorded',
+            marketId,
+            odds: {
+                yesPercent: marketData.yesPercent,
+                noPercent: marketData.noPercent
+            }
+        });
+    } catch (error) {
+        console.error('Error recording odds snapshot:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Predora Backend Server is live on port ${PORT}`);
     console.log(`🌐 Landing page: http://localhost:${PORT}/`);

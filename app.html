@@ -5332,7 +5332,10 @@
                 dom.profileWalletAddress.innerText = truncateAddress(profile.walletAddress) || "No wallet connected";
                 dom.profileXpBadge.innerText = `${profile.xp.toLocaleString()} XP`;
                 dom.mockBalance.innerText = `$${profile.balance.toFixed(2)}`;
-                dom.profileRankBadge.innerText = `Rank: #${profile.xp > 1000 ? '1' : '12'}`; 
+                // Fetch actual rank from leaderboard
+                fetchUserRank(currentUserId).then(rank => {
+                    dom.profileRankBadge.innerText = `Rank: #${rank || 'N/A'}`;
+                }); 
                 dom.profileAccuracyBadge.innerText = `${profile.xp > 0 ? '82' : '0'}% Accuracy`; 
 
                 if (dom.userStreakText) {
@@ -5601,8 +5604,10 @@
                     const pledge = doc.data();
                     userHistoryData.push({ ...pledge, docId: doc.id }); // Add to local cache with doc ID
                     const isWinner = pledge.isWinner === true;
-                    const result = isWinner ? 'WON' : 'LOST';
-                    const resultClass = isWinner ? 'text-green-400' : 'text-red-400';
+                    // Check if market is disputed
+                    const isDisputed = pledge.marketStatus === 'disputed';
+                    const result = isDisputed ? 'FROZEN' : (isWinner ? 'WON' : 'LOST');
+                    const resultClass = isDisputed ? 'text-orange-400' : (isWinner ? 'text-green-400' : 'text-red-400');
                     const payout = pledge.payout;
                     // Calculate P&L (Payout - Original Stake)
                     const pnl = isWinner ? (payout - pledge.amountUsd) : -pledge.amountUsd;
@@ -5663,6 +5668,37 @@
         // =====================================================================
         // --- LEADERBOARD ---
         // =====================================================================
+
+        /**
+         * Fetches the user's current rank from the leaderboard
+         */
+        async function fetchUserRank(userId) {
+            try {
+                const { collection, query, getDocs } = window.firebase.firestore;
+                const q = query(collection(db, 'artifacts', APP_ID, 'public', 'data', PUBLIC_LEADERBOARD_COLLECTION));
+                const snapshot = await getDocs(q);
+                
+                let profiles = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    profiles.push({
+                        docId: doc.id, // Document ID
+                        userId: data.userId || doc.id, // Use userId field or fall back to doc ID
+                        ...data
+                    });
+                });
+                
+                // Sort by XP, descending
+                profiles.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+                
+                // Find user's rank - match by userId or document ID
+                const rank = profiles.findIndex(p => p.userId === userId || p.docId === userId) + 1;
+                return rank > 0 ? rank : null;
+            } catch (error) {
+                console.error('Error fetching user rank:', error);
+                return null;
+            }
+        }
 
         /**
          * Renders the leaderboard screen with ranked users.
@@ -7718,14 +7754,37 @@ ${historyText}`;
             document.getElementById('app-title').addEventListener('click', handleAdminTap);
             document.getElementById('mobile-app-title').addEventListener('click', handleAdminTap);
 
-            // Admin password check
-            document.getElementById('admin-login-btn').addEventListener('click', () => {
+            // Admin password check - now uses backend verification
+            document.getElementById('admin-login-btn').addEventListener('click', async () => {
                 const pass = document.getElementById('admin-password-input').value;
-                if (pass === ADMIN_PASSWORD) {
-                    showScreen('admin-panel-screen');
-                } else {
-                    showToast("Incorrect password.");
+                if (!pass) {
+                    showToast("Please enter a password.");
+                    return;
                 }
+                
+                try {
+                    const response = await fetch('/api/admin/verify', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-admin-secret': pass
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok && data.valid) {
+                        // Store admin secret in session for future admin requests
+                        sessionStorage.setItem('admin_secret', pass);
+                        showScreen('admin-panel-screen');
+                    } else {
+                        showToast("Incorrect password.");
+                    }
+                } catch (error) {
+                    console.error('Admin login error:', error);
+                    showToast("Login failed. Please try again.");
+                }
+                
                 document.getElementById('admin-password-input').value = '';
             });
 
