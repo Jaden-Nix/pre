@@ -8,6 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import admin from 'firebase-admin';
 import OpenAI from 'openai';
+import sgMail from '@sendgrid/mail';
 
 // --- Constants ---
 const __filename = fileURLToPath(import.meta.url);
@@ -47,6 +48,62 @@ try {
 } catch (e) {
     console.error("❌ Firebase Admin initialization failed:", e.message);
 }
+
+// --- SendGrid Initialization ---
+let sendGridClient = null;
+let fromEmail = null;
+
+async function getSendGridClient() {
+    if (sendGridClient && fromEmail) {
+        return { client: sendGridClient, fromEmail };
+    }
+
+    const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+    const xReplitToken = process.env.REPL_IDENTITY 
+        ? 'repl ' + process.env.REPL_IDENTITY 
+        : process.env.WEB_REPL_RENEWAL 
+        ? 'depl ' + process.env.WEB_REPL_RENEWAL 
+        : null;
+
+    if (!hostname || !xReplitToken) {
+        console.warn("⚠️  SendGrid not initialized (missing Replit environment variables).");
+        return null;
+    }
+
+    try {
+        const response = await fetch(
+            'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=sendgrid',
+            {
+                headers: {
+                    'Accept': 'application/json',
+                    'X_REPLIT_TOKEN': xReplitToken
+                }
+            }
+        );
+
+        const data = await response.json();
+        const connectionSettings = data.items?.[0];
+
+        if (!connectionSettings || !connectionSettings.settings.api_key || !connectionSettings.settings.from_email) {
+            console.warn("⚠️  SendGrid not connected.");
+            return null;
+        }
+
+        sgMail.setApiKey(connectionSettings.settings.api_key);
+        sendGridClient = sgMail;
+        fromEmail = connectionSettings.settings.from_email;
+
+        console.log("✅ SendGrid initialized successfully.");
+        return { client: sendGridClient, fromEmail };
+    } catch (error) {
+        console.error("❌ SendGrid initialization failed:", error.message);
+        return null;
+    }
+}
+
+// OTP storage (in-memory for simplicity, could use Redis or Firebase)
+const otpStore = new Map();
+
 const app = express();
 
 app.use(express.json());
@@ -189,6 +246,89 @@ app.get('/pitch-deck', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'pitch-deck', 'index.html'));
 });
 
+// --- EMAIL OTP AUTHENTICATION ENDPOINTS ---
+app.post('/api/send-otp', async (req, res) => {
+    const { email } = req.body;
+    
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: 'Valid email address is required' });
+    }
+    
+    const sendGrid = await getSendGridClient();
+    if (!sendGrid) {
+        return res.status(503).json({ error: 'Email service not available' });
+    }
+    
+    try {
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        otpStore.set(email, {
+            code: otp,
+            expiresAt: Date.now() + 10 * 60 * 1000
+        });
+        
+        const msg = {
+            to: email,
+            from: sendGrid.fromEmail,
+            subject: 'Your Predora Login Code',
+            text: `Your verification code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this code, please ignore this email.`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #38BDF8;">Welcome to Predora!</h2>
+                    <p style="font-size: 16px; color: #333;">Your verification code is:</p>
+                    <div style="background: linear-gradient(to right, #38BDF8, #6366F1); color: white; font-size: 32px; font-weight: bold; text-align: center; padding: 20px; border-radius: 10px; letter-spacing: 8px; margin: 20px 0;">
+                        ${otp}
+                    </div>
+                    <p style="font-size: 14px; color: #666;">This code will expire in 10 minutes.</p>
+                    <p style="font-size: 14px; color: #666;">If you didn't request this code, please ignore this email.</p>
+                </div>
+            `
+        };
+        
+        await sendGrid.client.send(msg);
+        
+        console.log(`✉️ OTP sent to ${email}`);
+        res.status(200).json({ success: true, message: 'OTP sent successfully' });
+        
+    } catch (error) {
+        console.error('Error sending OTP:', error);
+        res.status(500).json({ error: 'Failed to send OTP email' });
+    }
+});
+
+app.post('/api/verify-otp', async (req, res) => {
+    const { email, otp } = req.body;
+    
+    if (!email || !otp) {
+        return res.status(400).json({ error: 'Email and OTP are required' });
+    }
+    
+    const storedData = otpStore.get(email);
+    
+    if (!storedData) {
+        return res.status(400).json({ error: 'No OTP found for this email' });
+    }
+    
+    if (Date.now() > storedData.expiresAt) {
+        otpStore.delete(email);
+        return res.status(400).json({ error: 'OTP has expired' });
+    }
+    
+    if (storedData.code !== otp) {
+        return res.status(400).json({ error: 'Invalid OTP' });
+    }
+    
+    otpStore.delete(email);
+    
+    const crypto = await import('crypto');
+    const userId = crypto.createHash('sha256').update(email.toLowerCase()).digest('hex').substring(0, 16);
+    
+    res.status(200).json({ 
+        success: true, 
+        userId: userId,
+        email: email
+    });
+});
 
 // --- NEW HELPER: Retry Logic for 503 Errors ---
 async function fetchWithRetry(url, options, retries = 3, backoff = 2000) {

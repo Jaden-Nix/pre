@@ -1270,19 +1270,11 @@
 
             <div id="login-screen" class="screen screen-active space-y-6 max-w-md mx-auto lg:max-w-lg lg:space-y-8">
                 <h1 class="text-3xl lg:text-4xl font-bold gradient-text text-center">Welcome to Predora</h1>
-                <p class="text-center text-gray-300 lg:text-lg">Select a demo account to get started.</p>
-
-                <div class="space-y-3 lg:space-y-4">
-                    <button onclick="mockLogin('judge-123', 'Judge')" class="btn btn-primary lg:text-lg">Sign in as Judge</button>
-                    <button onclick="mockLogin('alice-456', 'Alice')" class="btn btn-secondary lg:text-lg">Sign in as Alice</button>
-                    <button onclick="mockLogin('bob-789', 'Bob')" class="btn btn-secondary lg:text-lg">Sign in as Bob</button>
-                </div>
+                <p class="text-center text-gray-300 lg:text-lg">Sign in with your email</p>
 
                 <div class="ui-panel space-y-4 lg:space-y-5">
-                    <p class="text-center text-gray-400 text-sm lg:text-base">Or, test the (mock) OTP flow:</p>
-                    <input id="mock-email-input" type="email" class="ui-input lg:text-lg" placeholder="your-email@gmail.com">
-                    <button onclick="validateAndShowOtp()" class="btn btn-secondary w-full lg:text-lg">Sign in with Email</button>
-
+                    <input id="email-input" type="email" class="ui-input lg:text-lg" placeholder="your-email@gmail.com">
+                    <button id="send-otp-btn" onclick="sendOTPEmail()" class="btn btn-primary w-full lg:text-lg">Send Login Code</button>
                 </div>
             </div>
 
@@ -1292,9 +1284,79 @@
                     Back
                 </button>
                 <h1 class="text-2xl lg:text-3xl font-bold gradient-text">Enter OTP</h1>
-                <p class="text-gray-300 lg:text-lg">A (mock) code was sent. <br> Hint: It's `123456`</p>
-                <input id="mock-otp-input" type="text" class="ui-input text-center text-2xl lg:text-3xl tracking-[1em]" placeholder="123456" maxlength="6">
-                <button onclick="mockOtpLogin()" class="btn btn-primary w-full lg:text-lg">Verify & Sign In</button>
+                <p id="otp-message" class="text-gray-300 lg:text-lg">We sent a code to your email</p>
+                <input id="otp-input" type="text" class="ui-input text-center text-2xl lg:text-3xl tracking-[1em]" placeholder="123456" maxlength="6">
+                <button id="verify-otp-btn" onclick="verifyOTPLogin()" class="btn btn-primary w-full lg:text-lg">Verify & Sign In</button>
+                <button onclick="sendOTPEmail()" class="btn btn-secondary w-full lg:text-lg">Resend Code</button>
+            </div>
+
+            <div id="onboarding-screen" class="screen screen-inactive max-w-md mx-auto lg:max-w-lg">
+                <div class="space-y-6 lg:space-y-8">
+                    <div class="text-center">
+                        <h1 class="text-3xl lg:text-4xl font-bold gradient-text mb-2">Welcome to Predora!</h1>
+                        <p class="text-gray-300 lg:text-lg">Let's set up your profile</p>
+                    </div>
+
+                    <div class="ui-panel space-y-5">
+                        <div>
+                            <label class="text-sm font-medium text-gray-300 mb-2 block">Choose your display name</label>
+                            <input id="onboarding-displayname" type="text" class="ui-input lg:text-lg" placeholder="Enter your name" maxlength="20">
+                            <p class="text-xs text-gray-400 mt-1">You can change this later</p>
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-medium text-gray-300 mb-2 block">Choose your avatar</label>
+                            <div class="grid grid-cols-4 gap-3">
+                                <button onclick="selectOnboardingAvatar('😀')" class="onboarding-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">😀</button>
+                                <button onclick="selectOnboardingAvatar('😎')" class="onboarding-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">😎</button>
+                                <button onclick="selectOnboardingAvatar('🚀')" class="onboarding-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">🚀</button>
+                                <button onclick="selectOnboardingAvatar('🎯')" class="onboarding-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">🎯</button>
+                                <button onclick="selectOnboardingAvatar('⚡')" class="onboarding-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">⚡</button>
+                                <button onclick="selectOnboardingAvatar('🔥')" class="onboarding-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">🔥</button>
+                                <button onclick="selectOnboardingAvatar('💎')" class="onboarding-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">💎</button>
+                                <button onclick="selectOnboardingAvatar('🌟')" class="onboarding-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">🌟</button>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 pt-4">
+                            <button onclick="completeOnboarding()" class="btn btn-primary flex-1 lg:text-lg">Get Started</button>
+                            <button onclick="skipOnboarding()" class="btn btn-secondary flex-shrink-0 lg:text-lg">Skip</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="edit-profile-screen" class="screen screen-inactive space-y-6 max-w-md mx-auto lg:max-w-lg">
+                <button onclick="showScreen('profile-screen')" class="flex items-center text-sky-400 font-medium lg:text-lg">
+                    <svg class="w-5 h-5 mr-1 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    Back to Profile
+                </button>
+
+                <h1 class="text-2xl lg:text-3xl font-bold gradient-text">Edit Profile</h1>
+
+                <div class="ui-panel space-y-5">
+                    <div>
+                        <label class="text-sm font-medium text-gray-300 mb-2 block">Display Name</label>
+                        <input id="edit-displayname" type="text" class="ui-input lg:text-lg" placeholder="Your name" maxlength="20">
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-300 mb-2 block">Avatar</label>
+                        <div class="grid grid-cols-4 gap-3">
+                            <button onclick="selectEditAvatar('😀')" class="edit-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">😀</button>
+                            <button onclick="selectEditAvatar('😎')" class="edit-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">😎</button>
+                            <button onclick="selectEditAvatar('🚀')" class="edit-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">🚀</button>
+                            <button onclick="selectEditAvatar('🎯')" class="edit-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">🎯</button>
+                            <button onclick="selectEditAvatar('⚡')" class="edit-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">⚡</button>
+                            <button onclick="selectEditAvatar('🔥')" class="edit-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">🔥</button>
+                            <button onclick="selectEditAvatar('💎')" class="edit-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">💎</button>
+                            <button onclick="selectEditAvatar('🌟')" class="edit-avatar-btn p-3 text-3xl rounded-lg border-2 border-gray-700 hover:border-sky-400 transition-all">🌟</button>
+                        </div>
+                        <p id="selected-avatar-display" class="text-center text-5xl mt-4">😀</p>
+                    </div>
+
+                    <button onclick="saveProfileChanges()" class="btn btn-primary w-full lg:text-lg">Save Changes</button>
+                </div>
             </div>
 
                 <div id="home-screen" class="screen screen-inactive space-y-5">
@@ -1923,8 +1985,15 @@
                                 </svg>
                             </button>
 
-                            <div class="w-20 h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-4xl lg:text-5xl shadow-lg mb-4">
-                                P
+                            <!-- Edit Profile Button -->
+                            <button onclick="showScreen('edit-profile-screen')" class="absolute top-4 left-4 p-2 rounded-full hover:bg-white/10 transition-all duration-200" title="Edit Profile">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
+
+                            <div id="profile-avatar" class="w-20 h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-4xl lg:text-5xl shadow-lg mb-4">
+                                😀
                             </div>
                             <h1 id="profile-display-name" class="text-2xl lg:text-3xl font-bold text-white">...</h1>
                             <p id="profile-wallet-address" class="text-sm lg:text-base text-gray-400 mt-2">Connecting wallet...</p>
@@ -4090,68 +4159,215 @@
         }
 
         // =====================================================================
-        // --- MOCK AUTHENTICATION ---
+        // --- EMAIL OTP AUTHENTICATION ---
         // =====================================================================
 
+        let currentEmail = '';
+
         /**
-         * Checks if an email is entered before showing the OTP screen.
+         * Sends OTP to user's email
          */
-        function validateAndShowOtp() {
-            const email = document.getElementById('mock-email-input').value;
+        window.sendOTPEmail = async () => {
+            const email = document.getElementById('email-input').value;
 
             if (!email || email.trim() === '' || !email.includes('@')) {
-                showToast("Please enter a valid email address.", "warning");
-            } else {
-                showScreen('otp-screen');
+                showToast("Please enter a valid email address.", "error");
+                return;
             }
-        }
-        // ---- END OF NEW FUNCTION --
 
+            currentEmail = email;
+            const btn = document.getElementById('send-otp-btn');
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
 
-        /**
-         * Logs in as a demo user. Cleans up old listeners, sets localStorage,
-         * and initializes the user's profile in Firebase.
-         */
-        window.mockLogin = (userId, displayName) => {
-            cleanupFirestoreListeners(); 
-
-            console.log(`Mock login as: ${displayName}`);
-            localStorage.setItem('demoUserId', userId);
-            localStorage.setItem('demoDisplayName', displayName);
-            currentUserId = userId;
-            userProfile.displayName = displayName;
-
-            showLoadingOverlay(true, `Logging in as ${displayName}...`);
-
-            const { signInAnonymously } = window.firebase.auth;
-
-            signInAnonymously(auth)
-                .then((userCredential) => {
-                    console.log("Firebase Auth UID (Anonymous):", userCredential.user.uid);
-                    // initializeUserProfile will now handle all navigation
-                    return initializeUserProfile(); 
-                })
-                .catch(err => {
-                    console.error("Firebase auth for demo failed:", err);
-                    showLoadingOverlay(false);
-                    alert(`Error: ${err.message}`); 
+            try {
+                const response = await fetch('/api/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
                 });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast("Code sent to your email!", "success");
+                    document.getElementById('otp-message').textContent = `We sent a code to ${email}`;
+                    showScreen('otp-screen');
+                } else {
+                    showToast(data.error || "Failed to send code", "error");
+                }
+            } catch (error) {
+                console.error('Error sending OTP:', error);
+                showToast("Failed to send code. Please try again.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Send Login Code';
+            }
         }
 
         /**
-         * Handles the mock OTP login flow.
+         * Verifies OTP and logs in the user
          */
-        window.mockOtpLogin = () => {
-            const otp = document.getElementById('mock-otp-input').value;
-            if (otp === '123456') {
-                const email = document.getElementById('mock-email-input').value || 'demo-user@predora.io';
-                const userId = email.split('@')[0];
-                const displayName = userId; // No @ symbol in stored username
-                mockLogin(userId, displayName);
-            } else {
-                showToast("Invalid OTP. Hint: 123456", "error");
+        window.verifyOTPLogin = async () => {
+            const otp = document.getElementById('otp-input').value;
+
+            if (!otp || otp.length !== 6) {
+                showToast("Please enter the 6-digit code", "error");
+                return;
+            }
+
+            const btn = document.getElementById('verify-otp-btn');
+            btn.disabled = true;
+            btn.textContent = 'Verifying...';
+
+            try {
+                const response = await fetch('/api/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentEmail, otp })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    cleanupFirestoreListeners();
+
+                    const userId = data.userId;
+                    const displayName = userId;
+
+                    localStorage.setItem('demoUserId', userId);
+                    localStorage.setItem('demoDisplayName', displayName);
+                    localStorage.setItem('userEmail', currentEmail);
+                    currentUserId = userId;
+                    userProfile.displayName = displayName;
+
+                    showLoadingOverlay(true, `Logging in...`);
+
+                    const { signInAnonymously } = window.firebase.auth;
+
+                    signInAnonymously(auth)
+                        .then((userCredential) => {
+                            console.log("Firebase Auth UID (Anonymous):", userCredential.user.uid);
+                            return initializeUserProfile();
+                        })
+                        .then(() => {
+                            showScreen('onboarding-screen');
+                        })
+                        .catch(err => {
+                            console.error("Firebase auth failed:", err);
+                            showLoadingOverlay(false);
+                            showToast(`Error: ${err.message}`, "error");
+                        });
+                } else {
+                    showToast(data.error || "Invalid code", "error");
+                }
+            } catch (error) {
+                console.error('Error verifying OTP:', error);
+                showToast("Verification failed. Please try again.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Verify & Sign In';
             }
         }
+
+        // =====================================================================
+        // --- ONBOARDING AND PROFILE EDITING ---
+        // =====================================================================
+
+        let selectedAvatar = '😀';
+        let selectedEditAvatar = '😀';
+
+        window.selectOnboardingAvatar = (emoji) => {
+            selectedAvatar = emoji;
+            document.querySelectorAll('.onboarding-avatar-btn').forEach(btn => {
+                btn.classList.remove('border-sky-400');
+                btn.classList.add('border-gray-700');
+            });
+            event.target.closest('button').classList.remove('border-gray-700');
+            event.target.closest('button').classList.add('border-sky-400');
+        }
+
+        window.completeOnboarding = async () => {
+            const displayName = document.getElementById('onboarding-displayname').value.trim();
+
+            if (!displayName) {
+                showToast("Please enter a display name", "error");
+                return;
+            }
+
+            userProfile.displayName = displayName;
+            userProfile.avatar = selectedAvatar;
+            localStorage.setItem('demoDisplayName', displayName);
+            localStorage.setItem('userAvatar', selectedAvatar);
+
+            try {
+                const { updateDoc, doc } = window.firebase.firestore;
+                const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
+                await updateDoc(profileRef, { 
+                    displayName: displayName,
+                    avatar: selectedAvatar 
+                });
+
+                document.getElementById('profile-display-name').textContent = displayName;
+                document.getElementById('profile-avatar').textContent = selectedAvatar;
+
+                showToast("Profile updated!", "success");
+                showScreen('home-screen');
+            } catch (error) {
+                console.error('Error updating profile:', error);
+                showToast("Profile updated locally!", "success");
+                showScreen('home-screen');
+            }
+        }
+
+        window.skipOnboarding = () => {
+            showScreen('home-screen');
+        }
+
+        window.selectEditAvatar = (emoji) => {
+            selectedEditAvatar = emoji;
+            document.getElementById('selected-avatar-display').textContent = emoji;
+            document.querySelectorAll('.edit-avatar-btn').forEach(btn => {
+                btn.classList.remove('border-sky-400');
+                btn.classList.add('border-gray-700');
+            });
+            event.target.closest('button').classList.remove('border-gray-700');
+            event.target.closest('button').classList.add('border-sky-400');
+        }
+
+        window.saveProfileChanges = async () => {
+            const displayName = document.getElementById('edit-displayname').value.trim();
+
+            if (!displayName) {
+                showToast("Please enter a display name", "error");
+                return;
+            }
+
+            userProfile.displayName = displayName;
+            userProfile.avatar = selectedEditAvatar;
+            localStorage.setItem('demoDisplayName', displayName);
+            localStorage.setItem('userAvatar', selectedEditAvatar);
+
+            try {
+                const { updateDoc, doc } = window.firebase.firestore;
+                const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
+                await updateDoc(profileRef, { 
+                    displayName: displayName,
+                    avatar: selectedEditAvatar 
+                });
+
+                document.getElementById('profile-display-name').textContent = displayName;
+                document.getElementById('profile-avatar').textContent = selectedEditAvatar;
+
+                showToast("Profile updated!", "success");
+                showScreen('profile-screen');
+            } catch (error) {
+                console.error('Error updating profile:', error);
+                showToast("Profile updated locally!", "success");
+                showScreen('profile-screen');
+            }
+        }
+
         /**
          * Logs the current demo user out.
          */
@@ -4617,7 +4833,8 @@
                     'quick-play-screen', 
                     'admin-password-screen',
                     'login-screen',
-                    'otp-screen'
+                    'otp-screen',
+                    'onboarding-screen'
                 ];
 
                 const shouldHideNavs = noNavScreens.includes(screenId);
