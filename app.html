@@ -2551,11 +2551,11 @@
                     </button>
 
                     <!-- Feed / Leaderboard Toggle -->
-                    <div class="flex justify-start items-center border-b-2 border-white/10 relative">
-                        <button onclick="switchSocialTab('feed')" id="social-tab-feed" class="social-tab-btn pb-4 px-4 font-bold text-lg border-b-4 border-sky-400 text-sky-400 transition-all relative">
+                    <div class="flex justify-between items-center border-b-2 border-white/10 relative">
+                        <button onclick="switchSocialTab('feed')" id="social-tab-feed" class="social-tab-btn pb-4 px-6 font-bold text-lg border-b-4 border-sky-400 text-sky-400 transition-all relative">
                             <span class="relative z-10">Feed</span>
                         </button>
-                        <button onclick="switchSocialTab('leaderboard')" id="social-tab-leaderboard" class="social-tab-btn pb-4 px-4 ml-auto font-bold text-lg border-b-4 border-transparent text-gray-400 hover:text-white hover:border-gray-600 transition-all relative">
+                        <button onclick="switchSocialTab('leaderboard')" id="social-tab-leaderboard" class="social-tab-btn pb-4 px-6 font-bold text-lg border-b-4 border-transparent text-gray-400 hover:text-white hover:border-gray-600 transition-all relative">
                             <span class="relative z-10">Leaderboard</span>
                         </button>
                     </div>
@@ -2585,10 +2585,10 @@
                     <!-- Leaderboard Section -->
                     <div id="social-leaderboard-section" class="hidden space-y-6">
                         <!-- Leaderboard Tabs -->
-                        <div class="flex justify-start items-center border-b-2 border-white/10">
-                            <button class="leaderboard-tab-social pb-4 px-3 font-bold text-base border-b-4 border-sky-400 text-sky-400" data-timeframe="all" onclick="switchLeaderboardTimeframeSocial('all')">All-Time</button>
-                            <button class="leaderboard-tab-social pb-4 px-3 font-bold text-base border-b-4 border-transparent text-gray-400 hover:text-white hover:border-gray-600" data-timeframe="weekly" onclick="switchLeaderboardTimeframeSocial('weekly')">Weekly</button>
-                            <button class="leaderboard-tab-social pb-4 px-3 ml-auto font-bold text-base border-b-4 border-transparent text-gray-400 hover:text-white hover:border-gray-600" data-timeframe="daily" onclick="switchLeaderboardTimeframeSocial('daily')">Daily</button>
+                        <div class="flex items-center border-b-2 border-white/10">
+                            <button class="leaderboard-tab-social flex-1 pb-4 font-bold text-base border-b-4 border-sky-400 text-sky-400 text-left" data-timeframe="all" onclick="switchLeaderboardTimeframeSocial('all')">All-Time</button>
+                            <button class="leaderboard-tab-social flex-1 pb-4 font-bold text-base border-b-4 border-transparent text-gray-400 hover:text-white hover:border-gray-600 text-center" data-timeframe="weekly" onclick="switchLeaderboardTimeframeSocial('weekly')">Weekly</button>
+                            <button class="leaderboard-tab-social flex-1 pb-4 font-bold text-base border-b-4 border-transparent text-gray-400 hover:text-white hover:border-gray-600 text-right" data-timeframe="daily" onclick="switchLeaderboardTimeframeSocial('daily')">Daily</button>
                         </div>
                         <div id="social-user-rank-panel" class="leaderboard-card-clean p-8 shadow-xl">
                             <div class="inline-block p-4 rounded-full bg-sky-500/10 mb-4">
