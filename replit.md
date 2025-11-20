@@ -26,7 +26,7 @@ Predora is an AI-native prediction market platform built on BNB Chain, featuring
 - **API Documentation**: Created comprehensive API documentation in `API_DOCUMENTATION.md` with examples and use cases.
 - **Code Quality**: All changes passed architect review with proper error handling, Firestore guards, and React best practices.
 
-### Session 3: Critical Bug Fixes & BSC Testnet Integration
+### Session 3: Critical Bug Fixes & BSC Testnet Integration (Part 1)
 - **Admin Panel Security**: Verified secure backend authentication using ADMIN_SECRET environment variable. Admin access properly validates against server-side secret with fail-closed behavior when not configured.
 - **User Ranking Fix**: Implemented `fetchUserRank()` function that queries actual leaderboard data and calculates real rank position based on XP sorting. Replaced hardcoded rank logic.
 - **Dispute UI Enhancement**: Updated history stakes display to show "FROZEN" status in orange for disputed markets instead of WON/LOST, providing clear visual feedback during jury review.
@@ -43,6 +43,16 @@ Predora is an AI-native prediction market platform built on BNB Chain, featuring
   - Comprehensive deployment documentation and instructions
   - Contract features: On-chain markets, real BNB betting, automated odds calculation, 1% platform fee, dispute mechanism, admin controls
 - **Code Quality**: All implementations use Firestore-safe queries (cursor pagination, single filters), proper authentication, and fail-safe error handling. Architect-reviewed and approved.
+
+### Session 4: Admin Panel & Dispute Fixes
+- **Admin Panel Access Fixed**: Removed conflicting onclick handler from desktop logo that prevented 5-tap gesture from working. Single tap now navigates home, 5 rapid taps opens admin login.
+- **Better Admin Access Methods**: Added three secure ways to access admin panel:
+  - URL Parameter: `?admin=1` or `#admin` (recommended, most secure)
+  - Hidden Footer Link: ⚙️ gear icon at bottom of profile screen
+  - Improved 5-Tap Gesture: Works on both desktop and mobile logos with toast feedback
+- **Dispute Functionality Fixed**: Added Firebase initialization check, comprehensive error logging, and better user error messages to prevent silent failures.
+- **Security Enhancements**: All admin access methods use same backend verification with ADMIN_SECRET, fail-closed behavior, and session-based password storage.
+- **Documentation**: Created `ADMIN_ACCESS_GUIDE.md` with complete admin access instructions and `FIXES_SUMMARY.md` with detailed fix documentation.
 
 ## User Preferences
 - Vanilla HTML/CSS/JS architecture (original design, not Next.js)

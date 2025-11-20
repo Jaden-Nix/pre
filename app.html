@@ -1206,7 +1206,7 @@
                 <div class="flex justify-between items-center gap-8">
                     <!-- Logo -->
                     <div>
-                        <h1 id="app-title" class="text-2xl md:text-3xl font-extrabold gradient-text tracking-tight cursor-pointer" onclick="showScreen('home-screen')">Predora</h1>
+                        <h1 id="app-title" class="text-2xl md:text-3xl font-extrabold gradient-text tracking-tight cursor-pointer">Predora</h1>
                     </div>
 
                     <!-- Desktop Navigation - Centered Pill Style -->
@@ -2181,6 +2181,13 @@
             <button onclick="logout()" class="btn btn-secondary w-full lg:w-auto lg:px-8" style="border-color: #EF4444; color: #F87171;">
                 Log Out
             </button>
+            
+            <!-- Hidden Admin Access Link -->
+            <div class="text-center mt-4">
+                <button onclick="showScreen('admin-password-screen')" class="text-[10px] text-gray-600 hover:text-gray-400 transition-colors opacity-30 hover:opacity-100">
+                    ⚙️
+                </button>
+            </div>
         </div>
                     </div>
                 </div>
@@ -7740,14 +7747,41 @@ ${historyText}`;
          * Wires up all listeners for the Admin Panel.
          */
         function setupAdminFeatures() {
+            // Check URL parameter for admin access (?admin=1 or #admin)
+            const urlParams = new URLSearchParams(window.location.search);
+            const hashParams = window.location.hash;
+            
+            if (urlParams.get('admin') === '1' || hashParams === '#admin') {
+                showScreen('admin-password-screen');
+                return;
+            }
+
             // Secret 5-tap gesture on the app title (both desktop and mobile)
-            const handleAdminTap = () => {
+            // Now with single-click to go home
+            let lastTapTime = 0;
+            
+            const handleAdminTap = (e) => {
+                const now = Date.now();
+                const timeSinceLastTap = now - lastTapTime;
+                
+                // If more than 2 seconds since last tap, reset counter and go home
+                if (timeSinceLastTap > 2000) {
+                    adminTapCount = 0;
+                    showScreen('home-screen');
+                }
+                
                 adminTapCount++;
+                lastTapTime = now;
+                
                 clearTimeout(adminTapTimer);
-                adminTapTimer = setTimeout(() => { adminTapCount = 0; }, 2000);
+                adminTapTimer = setTimeout(() => { 
+                    adminTapCount = 0; 
+                }, 2000);
+                
                 if (adminTapCount >= 5) {
                     adminTapCount = 0;
                     showScreen('admin-password-screen');
+                    showToast("Admin access unlocked! Enter password.", "info");
                 }
             };
 
@@ -8429,6 +8463,13 @@ ${historyText}`;
                 return;
             }
 
+            // Check if Firebase is initialized
+            if (!window.firebase || !window.firebase.firestore || !db) {
+                showToast("Firebase not initialized. Please refresh the page.", "error");
+                console.error("Firebase not initialized:", { firebase: !!window.firebase, firestore: !!window.firebase?.firestore, db: !!db });
+                return;
+            }
+
             const { doc, getDoc, updateDoc, arrayUnion, increment, runTransaction } = window.firebase.firestore;
             const DISPUTE_COST = 10; // 10 BUSD
 
@@ -8523,8 +8564,16 @@ ${historyText}`;
 
             } catch (error) {
                 console.error("Dispute failed:", error);
+                console.error("Error details:", {
+                    message: error.message,
+                    code: error.code,
+                    stack: error.stack,
+                    currentMarketId,
+                    currentUserId,
+                    userProfileExists: !!userProfile
+                });
                 showLoadingOverlay(false);
-                showToast(`Dispute failed: ${error.message}`, "error");
+                showToast(`Dispute failed: ${error.message || 'Unknown error occurred'}`, "error");
             }
         }
         // ---- END OF NEW FUNCTIONS ----
