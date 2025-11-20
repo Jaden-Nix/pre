@@ -5,12 +5,18 @@ Predora is an AI-native prediction market application built on BNB Chain with Ge
 
 ## Current Architecture
 
-### Frontend
-- **Type**: Single-page vanilla HTML/CSS/JavaScript application
-- **Main File**: `app.html` (~9,800 lines)
-- **Framework**: No framework - pure vanilla JS with Firebase client SDK
-- **Styling**: Tailwind CSS (CDN)
-- **Web3**: Ethers.js v5 (CDN) for wallet connection and blockchain interaction
+### Frontend (Next.js + React)
+- **Type**: Next.js 15 application with React 19
+- **Location**: `/client` directory
+- **Framework**: Next.js with TypeScript
+- **Port**: 5000 (webview)
+- **Styling**: Tailwind CSS
+- **Key Libraries**:
+  - Firebase Client SDK for authentication and data
+  - Framer Motion for animations
+  - Chart.js + react-chartjs-2 for visualizations
+  - TanStack React Query for data fetching
+  - Lucide React for icons
 - **Key Features**:
   - TikTok-style swipe interface for Quick Play
   - Real-time Firebase data sync
@@ -18,10 +24,10 @@ Predora is an AI-native prediction market application built on BNB Chain with Ge
   - Responsive mobile-first design
   - Dark/light theme toggle
 
-### Backend (Express.js)
+### Backend (Express.js API)
 - **Location**: `/server` directory
-- **Framework**: Express.js with CommonJS
-- **Port**: 5000 (serves both static files and API)
+- **Framework**: Express.js with ES Modules
+- **Port**: 3001 (console output)
 - **Key Features**:
   - AI proxy endpoint for Gemini API calls
   - Oracle system for automatic market resolution
@@ -29,24 +35,30 @@ Predora is an AI-native prediction market application built on BNB Chain with Ge
   - Quick Play generation
   - Firebase Admin SDK integration (optional)
   - CRON-protected endpoints
+  - OpenAI integration for source link generation (optional)
 
 ## Technology Stack
 
 ### Frontend
-- Vanilla JavaScript (ES6+)
-- HTML5 & CSS3
-- Tailwind CSS (CDN)
-- Firebase Client SDK v9
-- Ethers.js v5 (CDN)
-- Chart.js for data visualization
-- Lucide Icons
+- Next.js 15.1.4 (with Turbopack)
+- React 19.0.0
+- TypeScript 5
+- Tailwind CSS 3.4.1
+- Firebase Client SDK v12.5.0
+- TanStack React Query v5.62.11
+- Framer Motion v11.15.0
+- Chart.js v4.4.7 + react-chartjs-2 v5.3.0
+- Lucide React v0.469.0
 
 ### Backend
-- Node.js
-- Express.js
-- Firebase Admin SDK (optional)
+- Node.js 20
+- Express.js 4.19.2
+- Firebase Admin SDK v13.6.0 (optional)
+- Firebase Client v12.5.0
+- OpenAI API v6.9.1 (optional)
 - Google Gemini AI API
 - CORS enabled
+- node-fetch v3.3.2
 
 ## Features Implemented
 
@@ -123,22 +135,21 @@ Predora is an AI-native prediction market application built on BNB Chain with Ge
 ## Running the Project
 
 ### Development Mode
-The server runs on port 5000 and serves both the app and API endpoints.
+The project runs with two separate workflows:
 
-**Start Command:**
-```bash
-cd server && node index.js
-```
-
-**URLs:**
-- Landing: `http://localhost:5000/`
-- App: `http://localhost:5000/app.html`
-
-### Workflow Configuration
-- **Workflow Name**: "Start Predora Server"
-- **Command**: `cd server && node index.js`
+**Client (Frontend):**
+- **Workflow Name**: "Start Predora Client"
+- **Command**: `cd client && npm run dev`
 - **Output Type**: `webview`
 - **Port**: 5000
+- **URL**: `http://localhost:5000` (or Replit webview)
+
+**Server (Backend API):**
+- **Workflow Name**: "Start Predora Server"
+- **Command**: `cd server && node index.js`
+- **Output Type**: `console`
+- **Port**: 3001
+- **Note**: The backend API is accessible at port 3001 for API requests
 
 ## Environment Variables
 
@@ -155,10 +166,12 @@ VITE_FIREBASE_APP_ID=<your-app-id>
 ### Backend (Replit Secrets)
 **Currently Missing (User will provide):**
 - `GEMINI_API_KEY` - Google Gemini AI API key for market generation and resolution
+- `OPENAI_API_KEY` - OpenAI API key for source link generation (optional)
 - `CRON_SECRET` - Secret for protecting Oracle job endpoints
 - `GOOGLE_APPLICATION_CREDENTIALS` (Optional) - Firebase Admin SDK credentials
+- `ADMIN_SECRET` (Optional) - Secret for admin dashboard access
 
-**Note**: App works with client-side Firebase only. Backend AI features require `GEMINI_API_KEY`.
+**Note**: App works with client-side Firebase only. Backend AI features require `GEMINI_API_KEY`. Server will start without these keys but with limited functionality.
 
 ## Web3 Network Configuration
 
@@ -223,7 +236,20 @@ Once API keys are provided by user:
 
 ## Recent Changes (Nov 20, 2025)
 
-### Admin Dashboard Implementation (Latest)
+### Project Import to Replit (Latest)
+- ✅ Successfully imported Predora project to Replit environment
+- ✅ Installed all dependencies for both client and server
+- ✅ Configured dual-workflow architecture:
+  - Client (Next.js) running on port 5000 (webview)
+  - Server (Express API) running on port 3001 (console)
+- ✅ Fixed OpenAI initialization to be optional (warns if API key missing)
+- ✅ Backend server now gracefully handles missing API keys
+- ✅ Both workflows running successfully
+- ✅ Updated replit.md with current architecture
+
+### Previous Implementation History
+
+**Admin Dashboard Implementation**
 - ✅ Created secure admin dashboard with ADMIN_SECRET authentication
 - ✅ Added 3 protected backend API endpoints for admin operations
 - ✅ Built admin panel UI with disputed markets monitoring
@@ -233,10 +259,8 @@ Once API keys are provided by user:
 - ✅ Integrated admin stats (total markets, disputed, resolved counts)
 - ✅ Architect-verified security implementation
 
-### Migration Complete
-- ✅ Switched from Next.js client back to original vanilla HTML/JS app (app.html)
+**Core Features**
 - ✅ Resolved Firebase configuration issues - app connects successfully
-- ✅ Added Ethers.js library and Web3 constants for BSC testnet and opBNB testnet
 - ✅ Fixed multiple options market display to show all 3-6 options with percentages
 - ✅ Implemented Web3 wallet connection with MetaMask integration
 - ✅ Added network switching (BSC testnet ⟷ opBNB testnet)

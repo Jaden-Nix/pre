@@ -12,7 +12,7 @@ import OpenAI from 'openai';
 // --- Constants ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3001;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const CRON_SECRET = process.env.CRON_SECRET;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -20,7 +20,14 @@ const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemi
 const APP_ID = 'predora-app';
 
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+let openai = null;
+if (OPENAI_API_KEY) {
+    openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+    console.log("✅ OpenAI initialized successfully.");
+} else {
+    console.warn("⚠️  OpenAI not initialized (missing OPENAI_API_KEY).");
+    console.log("   Some features may be limited.");
+}
 
 // --- Firebase Admin SDK Initialization ---
 let db = null;
