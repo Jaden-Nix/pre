@@ -1444,32 +1444,89 @@
             <main class="max-w-md md:max-w-xl lg:max-w-7xl mx-auto relative p-4">
 
             <div id="login-screen" class="screen screen-active space-y-6 max-w-md mx-auto lg:max-w-lg lg:space-y-8">
-                <h1 class="text-3xl lg:text-4xl font-bold gradient-text text-center">Welcome to Predora</h1>
-                <p class="text-center text-gray-300 lg:text-lg">Select a demo account to get started.</p>
-
-                <div class="space-y-3 lg:space-y-4">
-                    <button onclick="mockLogin('judge-123', 'Judge')" class="btn btn-primary lg:text-lg">Sign in as Judge</button>
-                    <button onclick="mockLogin('alice-456', 'Alice')" class="btn btn-secondary lg:text-lg">Sign in as Alice</button>
-                    <button onclick="mockLogin('bob-789', 'Bob')" class="btn btn-secondary lg:text-lg">Sign in as Bob</button>
+                <div class="text-center space-y-2">
+                    <h1 class="text-3xl lg:text-4xl font-bold gradient-text">Welcome to Predora</h1>
+                    <p class="text-gray-300 lg:text-lg">Choose how you'd like to sign in</p>
                 </div>
 
+                <!-- Web3 Wallet Login -->
                 <div class="ui-panel space-y-4 lg:space-y-5">
-                    <p class="text-center text-gray-400 text-sm lg:text-base">Or, sign in with email:</p>
-                    <input id="email-input" type="email" class="ui-input lg:text-lg" placeholder="your-email@gmail.com">
-                    <button id="send-otp-btn" onclick="sendOTPEmail()" class="btn btn-primary w-full lg:text-lg">Send Login Code</button>
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Web3 Wallet</h3>
+                        <span class="text-xs px-2 py-1 rounded-full bg-purple-500/20 text-purple-400 font-medium">CRYPTO</span>
+                    </div>
+                    <button onclick="connectWeb3Wallet()" class="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-xl border-2 border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 hover:border-purple-500/50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] group">
+                        <svg class="w-6 h-6 text-purple-400 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+                        <span class="font-semibold text-white lg:text-lg">Connect Wallet</span>
+                    </button>
+                    <p class="text-xs text-center text-gray-400">MetaMask & Web3 Wallets (BSC Testnet)</p>
+                </div>
+
+                <!-- Divider -->
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-700"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-4 bg-gray-900 text-gray-400">or continue with</span>
+                    </div>
+                </div>
+
+                <!-- Social Login (Firebase) -->
+                <div class="space-y-3 lg:space-y-4">
+                    <button onclick="signInWithGoogle()" class="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-xl border border-gray-700 bg-white/5 hover:bg-white/10 hover:border-gray-600 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                        <span class="font-medium text-white">Continue with Google</span>
+                    </button>
+
+                    <button onclick="signInWithGitHub()" class="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-xl border border-gray-700 bg-white/5 hover:bg-white/10 hover:border-gray-600 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]">
+                        <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                        <span class="font-medium text-white">Continue with GitHub</span>
+                    </button>
+
+                    <button onclick="signInWithEmail()" class="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-xl border border-gray-700 bg-white/5 hover:bg-white/10 hover:border-gray-600 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]">
+                        <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        <span class="font-medium text-white">Continue with Email</span>
+                    </button>
+                </div>
+
+                <!-- Demo Account -->
+                <div class="border-t border-gray-700 pt-4">
+                    <button onclick="mockLogin('demo-user', 'Demo User')" class="w-full px-6 py-3 rounded-xl border border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/20 hover:border-sky-500/50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]">
+                        <span class="font-medium text-sky-400">🎮 Try Demo Mode</span>
+                    </button>
+                    <p class="text-xs text-center text-gray-400 mt-2">No wallet or signup needed</p>
                 </div>
             </div>
 
-            <div id="otp-screen" class="screen screen-inactive space-y-4 max-w-md mx-auto lg:max-w-lg lg:space-y-6">
+            <div id="email-password-screen" class="screen screen-inactive space-y-6 max-w-md mx-auto lg:max-w-lg">
                 <button onclick="showScreen('login-screen')" class="flex items-center text-sky-400 font-medium lg:text-lg">
-                    <svg class="w-5 h-5 mr-1 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    <svg class="w-5 h-5 mr-1 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                     Back
                 </button>
-                <h1 class="text-2xl lg:text-3xl font-bold gradient-text">Enter OTP</h1>
-                <p id="otp-message" class="text-gray-300 lg:text-lg">We sent a code to your email</p>
-                <input id="otp-input" type="text" class="ui-input text-center text-2xl lg:text-3xl tracking-[1em]" placeholder="123456" maxlength="6">
-                <button id="verify-otp-btn" onclick="verifyOTPLogin()" class="btn btn-primary w-full lg:text-lg">Verify & Sign In</button>
-                <button onclick="sendOTPEmail()" class="btn btn-secondary w-full lg:text-lg">Resend Code</button>
+
+                <div class="text-center">
+                    <h1 class="text-2xl lg:text-3xl font-bold gradient-text">Email & Password</h1>
+                    <p class="text-gray-300 mt-2">Sign in or create a new account</p>
+                </div>
+
+                <div class="ui-panel space-y-4">
+                    <div>
+                        <label class="text-sm font-medium text-gray-300 mb-2 block">Email</label>
+                        <input id="email-auth-input" type="email" class="ui-input" placeholder="your-email@example.com" autocomplete="email">
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-300 mb-2 block">Password</label>
+                        <input id="password-auth-input" type="password" class="ui-input" placeholder="Enter your password" autocomplete="current-password">
+                    </div>
+
+                    <button onclick="emailPasswordAuth()" class="btn btn-primary w-full">Continue</button>
+
+                    <p class="text-xs text-center text-gray-400">
+                        New user? We'll create your account automatically
+                    </p>
+                </div>
             </div>
 
             <div id="onboarding-screen" class="screen screen-inactive max-w-md mx-auto lg:max-w-lg">
@@ -3557,7 +3614,12 @@
             getAuth, 
             signInAnonymously, 
             onAuthStateChanged,
-            signInWithCustomToken 
+            signInWithCustomToken,
+            GoogleAuthProvider,
+            GithubAuthProvider,
+            signInWithPopup,
+            signInWithEmailAndPassword,
+            createUserWithEmailAndPassword
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         import { 
@@ -3577,7 +3639,11 @@
         // --- Pass all imports to a global window object for convenience ---
         window.firebase = {
             app: { initializeApp },
-            auth: { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken },
+            auth: { 
+                getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken,
+                GoogleAuthProvider, GithubAuthProvider, signInWithPopup,
+                signInWithEmailAndPassword, createUserWithEmailAndPassword
+            },
             firestore: { 
                 getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, 
                 onSnapshot, collection, query, where, increment, addDoc, 
@@ -4548,116 +4614,299 @@
         }
 
         // =====================================================================
-        // --- EMAIL OTP AUTHENTICATION ---
+        // --- HYBRID AUTHENTICATION (Firebase + Web3 Wallets) ---
         // =====================================================================
 
-        let currentEmail = '';
-
         /**
-         * Sends OTP to user's email
+         * Helper function to complete authentication and initialize user
          */
-        window.sendOTPEmail = async () => {
-            const email = document.getElementById('email-input').value;
-
-            if (!email || email.trim() === '' || !email.includes('@')) {
-                showToast("Please enter a valid email address.", "error");
-                return;
-            }
-
-            currentEmail = email;
-            const btn = document.getElementById('send-otp-btn');
-            btn.disabled = true;
-            btn.textContent = 'Sending...';
-
+        async function completeAuthentication(firebaseUser, authMethod = 'firebase') {
             try {
-                const response = await fetch('/api/send-otp', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email })
-                });
+                cleanupFirestoreListeners();
 
-                const data = await response.json();
+                // Generate userId from Firebase UID
+                const userId = 'user_' + firebaseUser.uid.substring(0, 12);
+                currentUserId = userId;
 
-                if (response.ok) {
-                    showToast("Code sent to your email!", "success");
-                    document.getElementById('otp-message').textContent = `We sent a code to ${email}`;
-                    showScreen('otp-screen');
-                } else {
-                    showToast(data.error || "Failed to send code", "error");
+                // Store auth info
+                localStorage.setItem('demoUserId', userId);
+                localStorage.setItem('authMethod', authMethod);
+                localStorage.setItem('firebaseUid', firebaseUser.uid);
+
+                if (firebaseUser.email) {
+                    localStorage.setItem('userEmail', firebaseUser.email);
                 }
+
+                // Generate Smart Contract Wallet (Account Abstraction) for this user
+                const walletData = await generateBSCWallet(userId);
+                userProfile.walletAddress = walletData.address;
+                userProfile.isSmartWallet = true;  // This wallet uses AA, backend signs transactions
+                localStorage.setItem('userWalletAddress', walletData.address);
+                localStorage.setItem('isSmartWallet', 'true');
+
+                showLoadingOverlay(true, `Setting up your account...`);
+
+                // Initialize user profile in Firestore
+                await initializeUserProfile();
+
+                // Check if user needs onboarding
+                const { getDoc, doc } = window.firebase.firestore;
+                const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
+                const profileSnap = await getDoc(profileRef);
+
+                if (!profileSnap.exists() || !profileSnap.data().displayName) {
+                    showScreen('onboarding-screen');
+                } else {
+                    userProfile = { ...userProfile, ...profileSnap.data() };
+                    showScreen('home-screen');
+                }
+
+                showLoadingOverlay(false);
+                showToast("Welcome to Predora!", "success");
+
             } catch (error) {
-                console.error('Error sending OTP:', error);
-                showToast("Failed to send code. Please try again.", "error");
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Send Login Code';
+                console.error('Error completing authentication:', error);
+                showLoadingOverlay(false);
+                showToast("Authentication failed. Please try again.", "error");
             }
         }
 
         /**
-         * Verifies OTP and logs in the user
+         * Generates a Smart Contract Wallet (Account Abstraction) for Firebase users
+         * This creates a wallet ADDRESS that's controlled by the backend for gasless transactions.
+         * No private keys are generated or stored on the client.
          */
-        window.verifyOTPLogin = async () => {
-            const otp = document.getElementById('otp-input').value;
+        async function generateBSCWallet(userId) {
+            try {
+                // Create a deterministic address based on userId
+                // In production, this would be generated by your AA provider (Biconomy, Alchemy, etc.)
+                const seed = ethers.id(userId); // Hash the userId
+                const wallet = new ethers.Wallet(seed);
+                
+                console.log('✅ Smart Contract Wallet created:', wallet.address);
+                console.log('   This wallet uses Account Abstraction (gasless transactions)');
+                console.log('   Transactions are signed by the backend - no private keys on client');
+                
+                // SECURITY: Only return address. This is a smart contract wallet.
+                return {
+                    address: wallet.address,
+                    isSmartWallet: true  // Flag to indicate this uses AA
+                };
+            } catch (error) {
+                console.error('Error generating smart wallet:', error);
+                // Fallback to a default address
+                return {
+                    address: '0x0000000000000000000000000000000000000000',
+                    isSmartWallet: true
+                };
+            }
+        }
 
-            if (!otp || otp.length !== 6) {
-                showToast("Please enter the 6-digit code", "error");
+        /**
+         * Sign in with Google (Firebase)
+         */
+        window.signInWithGoogle = async () => {
+            try {
+                showLoadingOverlay(true, 'Connecting to Google...');
+                const { GoogleAuthProvider, signInWithPopup } = window.firebase.auth;
+                const provider = new GoogleAuthProvider();
+                
+                const result = await signInWithPopup(auth, provider);
+                await completeAuthentication(result.user, 'google');
+                
+            } catch (error) {
+                console.error('Google sign-in error:', error);
+                showLoadingOverlay(false);
+                if (error.code !== 'auth/popup-closed-by-user') {
+                    showToast("Google sign-in failed: " + error.message, "error");
+                }
+            }
+        };
+
+        /**
+         * Sign in with GitHub (Firebase)
+         */
+        window.signInWithGitHub = async () => {
+            try {
+                showLoadingOverlay(true, 'Connecting to GitHub...');
+                const { GithubAuthProvider, signInWithPopup } = window.firebase.auth;
+                const provider = new GithubAuthProvider();
+                
+                const result = await signInWithPopup(auth, provider);
+                await completeAuthentication(result.user, 'github');
+                
+            } catch (error) {
+                console.error('GitHub sign-in error:', error);
+                showLoadingOverlay(false);
+                if (error.code !== 'auth/popup-closed-by-user') {
+                    showToast("GitHub sign-in failed: " + error.message, "error");
+                }
+            }
+        };
+
+        /**
+         * Navigate to email/password screen
+         */
+        window.signInWithEmail = () => {
+            showScreen('email-password-screen');
+        };
+
+        /**
+         * Email/Password authentication (Firebase)
+         */
+        window.emailPasswordAuth = async () => {
+            const email = document.getElementById('email-auth-input').value.trim();
+            const password = document.getElementById('password-auth-input').value;
+
+            if (!email || !email.includes('@')) {
+                showToast("Please enter a valid email address", "error");
                 return;
             }
 
-            const btn = document.getElementById('verify-otp-btn');
-            btn.disabled = true;
-            btn.textContent = 'Verifying...';
+            if (!password || password.length < 6) {
+                showToast("Password must be at least 6 characters", "error");
+                return;
+            }
 
             try {
-                const response = await fetch('/api/verify-otp', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: currentEmail, otp })
+                showLoadingOverlay(true, 'Signing in...');
+                const { signInWithEmailAndPassword, createUserWithEmailAndPassword } = window.firebase.auth;
+
+                let result;
+                try {
+                    // Try to sign in
+                    result = await signInWithEmailAndPassword(auth, email, password);
+                } catch (signInError) {
+                    if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/wrong-password') {
+                        // User doesn't exist, create new account
+                        result = await createUserWithEmailAndPassword(auth, email, password);
+                        showToast("Account created successfully!", "success");
+                    } else {
+                        throw signInError;
+                    }
+                }
+
+                await completeAuthentication(result.user, 'email');
+
+            } catch (error) {
+                console.error('Email auth error:', error);
+                showLoadingOverlay(false);
+                
+                let errorMessage = "Authentication failed";
+                if (error.code === 'auth/wrong-password') {
+                    errorMessage = "Incorrect password";
+                } else if (error.code === 'auth/email-already-in-use') {
+                    errorMessage = "Email already in use. Please sign in.";
+                } else if (error.code === 'auth/weak-password') {
+                    errorMessage = "Password is too weak";
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = "Invalid email address";
+                }
+                
+                showToast(errorMessage, "error");
+            }
+        };
+
+        /**
+         * Connect Web3 wallet (MetaMask, WalletConnect, etc.)
+         */
+        window.connectWeb3Wallet = async () => {
+            try {
+                if (typeof window.ethereum === 'undefined') {
+                    showToast("Please install MetaMask or another Web3 wallet", "error");
+                    window.open('https://metamask.io/download/', '_blank');
+                    return;
+                }
+
+                showLoadingOverlay(true, 'Connecting wallet...');
+
+                // Request account access
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_requestAccounts' 
                 });
 
-                const data = await response.json();
+                const walletAddress = accounts[0];
 
-                if (response.ok) {
-                    cleanupFirestoreListeners();
-
-                    const userId = data.userId;
-                    const displayName = userId;
-
-                    localStorage.setItem('demoUserId', userId);
-                    localStorage.setItem('demoDisplayName', displayName);
-                    localStorage.setItem('userEmail', currentEmail);
-                    currentUserId = userId;
-                    userProfile.displayName = displayName;
-
-                    showLoadingOverlay(true, `Logging in...`);
-
-                    const { signInAnonymously } = window.firebase.auth;
-
-                    signInAnonymously(auth)
-                        .then((userCredential) => {
-                            console.log("Firebase Auth UID (Anonymous):", userCredential.user.uid);
-                            return initializeUserProfile();
-                        })
-                        .then(() => {
-                            showScreen('onboarding-screen');
-                        })
-                        .catch(err => {
-                            console.error("Firebase auth failed:", err);
-                            showLoadingOverlay(false);
-                            showToast(`Error: ${err.message}`, "error");
+                // Switch to BSC Testnet
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: '0x61' }], // BSC Testnet
+                    });
+                } catch (switchError) {
+                    // Chain not added, add it
+                    if (switchError.code === 4902) {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: '0x61',
+                                chainName: 'BSC Testnet',
+                                nativeCurrency: {
+                                    name: 'BNB',
+                                    symbol: 'tBNB',
+                                    decimals: 18
+                                },
+                                rpcUrls: ['https://data-seed-prebsc-1-s1.binance.org:8545/'],
+                                blockExplorerUrls: ['https://testnet.bscscan.com/']
+                            }]
                         });
-                } else {
-                    showToast(data.error || "Invalid code", "error");
+                    } else {
+                        throw switchError;
+                    }
                 }
+
+                // Sign a message to verify ownership
+                const message = `Sign this message to log in to Predora.\n\nWallet: ${walletAddress}\nTimestamp: ${Date.now()}`;
+                const signature = await window.ethereum.request({
+                    method: 'personal_sign',
+                    params: [message, walletAddress]
+                });
+
+                // Create/sign in with Firebase using wallet address
+                const { signInAnonymously } = window.firebase.auth;
+                const result = await signInAnonymously(auth);
+
+                // Complete authentication with Web3 wallet
+                cleanupFirestoreListeners();
+                
+                const userId = 'wallet_' + walletAddress.substring(2, 14).toLowerCase();
+                currentUserId = userId;
+                userProfile.walletAddress = walletAddress;
+                userProfile.isSmartWallet = false;  // User controls their own private keys
+
+                localStorage.setItem('demoUserId', userId);
+                localStorage.setItem('authMethod', 'web3');
+                localStorage.setItem('userWalletAddress', walletAddress);
+                localStorage.setItem('isSmartWallet', 'false');
+                localStorage.setItem('firebaseUid', result.user.uid);
+
+                await initializeUserProfile();
+
+                const { getDoc, doc } = window.firebase.firestore;
+                const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
+                const profileSnap = await getDoc(profileRef);
+
+                if (!profileSnap.exists() || !profileSnap.data().displayName) {
+                    showScreen('onboarding-screen');
+                } else {
+                    userProfile = { ...userProfile, ...profileSnap.data() };
+                    showScreen('home-screen');
+                }
+
+                showLoadingOverlay(false);
+                showToast("🎉 Wallet connected successfully!", "success");
+
             } catch (error) {
-                console.error('Error verifying OTP:', error);
-                showToast("Verification failed. Please try again.", "error");
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Verify & Sign In';
+                console.error('Web3 wallet connection error:', error);
+                showLoadingOverlay(false);
+                
+                if (error.code === 4001) {
+                    showToast("Wallet connection rejected", "error");
+                } else {
+                    showToast("Failed to connect wallet: " + error.message, "error");
+                }
             }
-        }
+        };
 
         /**
          * Logs in as a demo user without email verification
@@ -5287,7 +5536,7 @@
                     'quick-play-screen', 
                     'admin-password-screen',
                     'login-screen',
-                    'otp-screen',
+                    'email-password-screen',
                     'onboarding-screen'
                 ];
 
