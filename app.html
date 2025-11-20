@@ -1459,9 +1459,7 @@
                 <!-- Hero Section -->
                 <div class="text-center space-y-5">
                     <div class="inline-block p-6 rounded-3xl bg-gradient-to-br from-sky-500/30 via-indigo-500/20 to-purple-500/30 backdrop-blur-xl mb-3 shadow-2xl shadow-sky-500/20 animate-pulse-slow">
-                        <svg class="w-20 h-20 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
+                        <img src="https://res.cloudinary.com/djslxbghy/image/upload/IMG_4551_e9bv2x.jpg" alt="Predora Logo" class="w-20 h-20 rounded-2xl object-cover">
                     </div>
                     <h1 class="text-5xl lg:text-6xl font-black gradient-text leading-tight">
                         Welcome to<br/>Predora
@@ -2553,11 +2551,11 @@
                     </button>
 
                     <!-- Feed / Leaderboard Toggle -->
-                    <div class="flex gap-6 border-b-2 border-white/10 relative">
-                        <button onclick="switchSocialTab('feed')" id="social-tab-feed" class="social-tab-btn pb-4 font-bold text-lg border-b-4 border-sky-400 text-sky-400 transition-all relative">
+                    <div class="flex justify-start items-center border-b-2 border-white/10 relative">
+                        <button onclick="switchSocialTab('feed')" id="social-tab-feed" class="social-tab-btn pb-4 px-4 font-bold text-lg border-b-4 border-sky-400 text-sky-400 transition-all relative">
                             <span class="relative z-10">Feed</span>
                         </button>
-                        <button onclick="switchSocialTab('leaderboard')" id="social-tab-leaderboard" class="social-tab-btn pb-4 font-bold text-lg border-b-4 border-transparent text-gray-400 hover:text-white hover:border-gray-600 transition-all relative">
+                        <button onclick="switchSocialTab('leaderboard')" id="social-tab-leaderboard" class="social-tab-btn pb-4 px-4 ml-auto font-bold text-lg border-b-4 border-transparent text-gray-400 hover:text-white hover:border-gray-600 transition-all relative">
                             <span class="relative z-10">Leaderboard</span>
                         </button>
                     </div>
@@ -2587,10 +2585,10 @@
                     <!-- Leaderboard Section -->
                     <div id="social-leaderboard-section" class="hidden space-y-6">
                         <!-- Leaderboard Tabs -->
-                        <div class="flex gap-4 border-b-2 border-white/10">
-                            <button class="leaderboard-tab-social pb-4 font-bold text-base border-b-4 border-sky-400 text-sky-400" data-timeframe="all" onclick="switchLeaderboardTimeframeSocial('all')">All-Time</button>
-                            <button class="leaderboard-tab-social pb-4 font-bold text-base border-b-4 border-transparent text-gray-400 hover:text-white hover:border-gray-600" data-timeframe="weekly" onclick="switchLeaderboardTimeframeSocial('weekly')">Weekly</button>
-                            <button class="leaderboard-tab-social pb-4 font-bold text-base border-b-4 border-transparent text-gray-400 hover:text-white hover:border-gray-600" data-timeframe="daily" onclick="switchLeaderboardTimeframeSocial('daily')">Daily</button>
+                        <div class="flex justify-start items-center border-b-2 border-white/10">
+                            <button class="leaderboard-tab-social pb-4 px-3 font-bold text-base border-b-4 border-sky-400 text-sky-400" data-timeframe="all" onclick="switchLeaderboardTimeframeSocial('all')">All-Time</button>
+                            <button class="leaderboard-tab-social pb-4 px-3 font-bold text-base border-b-4 border-transparent text-gray-400 hover:text-white hover:border-gray-600" data-timeframe="weekly" onclick="switchLeaderboardTimeframeSocial('weekly')">Weekly</button>
+                            <button class="leaderboard-tab-social pb-4 px-3 ml-auto font-bold text-base border-b-4 border-transparent text-gray-400 hover:text-white hover:border-gray-600" data-timeframe="daily" onclick="switchLeaderboardTimeframeSocial('daily')">Daily</button>
                         </div>
                         <div id="social-user-rank-panel" class="leaderboard-card-clean p-8 shadow-xl">
                             <div class="inline-block p-4 rounded-full bg-sky-500/10 mb-4">
@@ -5688,6 +5686,7 @@
                     'quick-play-screen', 
                     'admin-password-screen',
                     'login-screen',
+                    'demo-select-screen',
                     'email-password-screen',
                     'onboarding-screen'
                 ];
