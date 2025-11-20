@@ -5805,7 +5805,15 @@
                     break;
                 case 'admin-panel-screen':
                     renderResolutionPanel();
+                    break;
+                case 'admin-quickplay-screen':
                     renderQuickPlayResolutionPanel();
+                    break;
+                case 'admin-quickpoll-screen':
+                    renderQuickPollPanel();
+                    break;
+                case 'admin-guardrails-screen':
+                    // AI Guardrails screen - no data to load
                     break;
             }
         }
@@ -8850,6 +8858,134 @@ ${historyText}`;
             });
         }
 
+        /**
+         * Renders the list of active quick play markets for resolution
+         */
+        async function renderQuickPlayResolutionPanel() {
+            const listEl = document.getElementById('quick-play-resolution-list');
+            const countEl = document.getElementById('quickplay-count');
+            
+            if (!listEl) return;
+            if (!adminSecret) {
+                listEl.innerHTML = '<p class="text-red-400 text-center py-4">Not authenticated</p>';
+                return;
+            }
+            
+            listEl.innerHTML = '<p class="text-gray-400 text-center py-4">Loading quick plays...</p>';
+            
+            try {
+                const response = await fetch('/api/admin/quick-plays', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-admin-secret': adminSecret
+                    }
+                });
+                
+                const data = await response.json();
+                const quickPlays = data.quickPlays || [];
+                
+                if (countEl) countEl.textContent = `${quickPlays.length} quick plays`;
+                
+                if (quickPlays.length === 0) {
+                    listEl.innerHTML = '<p class="text-gray-400 text-center py-4">No quick plays found</p>';
+                    return;
+                }
+                
+                let html = '';
+                quickPlays.forEach(qp => {
+                    const isResolved = qp.isResolved || false;
+                    const borderColor = isResolved ? 'border-gray-600' : 'border-sky-500';
+                    
+                    html += `
+                        <div class="ui-panel p-4 border-l-4 ${borderColor}">
+                            <p class="text-white font-semibold mb-2">${qp.question || 'N/A'}</p>
+                            <p class="text-xs text-gray-400 mb-3">Expires: ${qp.expiresAt ? new Date(qp.expiresAt).toLocaleString() : 'N/A'}</p>
+                            ${!isResolved ? `
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button onclick="resolveQuickPlay('${qp.id}', 'yes')" class="btn btn-stake-yes">
+                                        Resolve YES
+                                    </button>
+                                    <button onclick="resolveQuickPlay('${qp.id}', 'no')" class="btn btn-stake-no">
+                                        Resolve NO
+                                    </button>
+                                </div>
+                            ` : `
+                                <p class="text-sm ${qp.winningOutcome === 'yes' ? 'text-green-400' : 'text-red-400'}">
+                                    RESOLVED AS: ${(qp.winningOutcome || 'N/A').toUpperCase()}
+                                </p>
+                            `}
+                        </div>
+                    `;
+                });
+                
+                listEl.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading quick plays:', error);
+                listEl.innerHTML = '<p class="text-red-400 text-center py-4">Error loading quick plays</p>';
+            }
+        }
+        
+        /**
+         * Renders the list of quick polls
+         */
+        async function renderQuickPollPanel() {
+            const listEl = document.getElementById('quickpoll-list');
+            const countEl = document.getElementById('quickpoll-count');
+            
+            if (!listEl) return;
+            if (!adminSecret) {
+                listEl.innerHTML = '<p class="text-red-400 text-center py-4">Not authenticated</p>';
+                return;
+            }
+            
+            listEl.innerHTML = '<p class="text-gray-400 text-center py-4">Loading quick polls...</p>';
+            
+            try {
+                const response = await fetch('/api/admin/quick-polls', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-admin-secret': adminSecret
+                    }
+                });
+                
+                const data = await response.json();
+                const quickPolls = data.quickPolls || [];
+                
+                if (countEl) countEl.textContent = `${quickPolls.length} polls`;
+                
+                if (quickPolls.length === 0) {
+                    listEl.innerHTML = '<p class="text-gray-400 text-center py-4">No quick polls found</p>';
+                    return;
+                }
+                
+                let html = '';
+                quickPolls.forEach(poll => {
+                    html += `
+                        <div class="ui-panel p-4">
+                            <p class="text-white font-semibold mb-2">${poll.question || 'N/A'}</p>
+                            <p class="text-xs text-gray-400 mb-3">Created: ${poll.createdAt ? new Date(poll.createdAt).toLocaleString() : 'N/A'}</p>
+                            ${poll.options ? `
+                                <div class="space-y-2">
+                                    ${poll.options.map(opt => `
+                                        <div class="flex justify-between items-center text-sm">
+                                            <span class="text-gray-300">${opt}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                
+                listEl.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading quick polls:', error);
+                listEl.innerHTML = '<p class="text-red-400 text-center py-4">Error loading quick polls</p>';
+            }
+        }
+
         // --- "AI JUDGE" FEATURE (MODIFIED) ---
         /**
          * AI Function: The "AI Judge" - finds the outcome AND a source URL.
@@ -8915,6 +9051,47 @@ ${historyText}`;
                 console.error("AI Resolution Error:", error);
                 showToast("Error getting AI resolution. Check console.");
                 resultDiv.innerHTML = '<p class="text-red-400 text-center">AI check failed. Please resolve manually.</p>';
+            }
+        }
+        
+        /**
+         * Resolves a Quick Play market via admin API
+         */
+        window.resolveQuickPlay = async (quickPlayId, outcome) => {
+            if (!adminSecret) {
+                showToast("Not authenticated", "error");
+                return;
+            }
+            
+            showLoadingOverlay(true, `Resolving Quick Play as ${outcome.toUpperCase()}...`);
+            
+            try {
+                const response = await fetch('/api/admin/resolve-quick-play', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-admin-secret': adminSecret
+                    },
+                    body: JSON.stringify({
+                        quickPlayId,
+                        outcome
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showToast("Quick Play resolved successfully!", "success");
+                    // Refresh the list
+                    renderQuickPlayResolutionPanel();
+                } else {
+                    showToast(data.error || "Failed to resolve Quick Play", "error");
+                }
+            } catch (error) {
+                console.error('Error resolving quick play:', error);
+                showToast("Error resolving Quick Play", "error");
+            } finally {
+                showLoadingOverlay(false);
             }
         }
 
