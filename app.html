@@ -3214,7 +3214,7 @@
                 <button onclick="closeMarketSearch()" class="text-gray-400 hover:text-white text-3xl">&times;</button>
             </div>
             
-            <input type="text" id="market-search-input" class="ui-input w-full mb-4" placeholder="Search markets (e.g., ETH, BTC, elections...)">
+            <input type="text" id="smart-tag-market-search" class="ui-input w-full mb-4" placeholder="Search markets (e.g., ETH, BTC, elections...)">
             
             <div id="market-search-results" class="space-y-2 max-h-96 overflow-y-auto">
                 <p class="text-gray-400 text-center py-8">Type to search markets...</p>
@@ -10043,7 +10043,7 @@ ${historyText}`;
          */
         window.openMarketSearch = () => {
             const modal = document.getElementById('market-search-modal');
-            const input = document.getElementById('market-search-input');
+            const input = document.getElementById('smart-tag-market-search');
             modal.classList.remove('hidden');
             input.value = '';
             input.focus();
