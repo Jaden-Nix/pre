@@ -10272,6 +10272,44 @@ ${historyText}`;
                 // Fetch leaderboard data once for all posts
                 const leaderboardData = await getLeaderboardData();
 
+                // Batch fetch pledge data for whale/skin checks (performance optimization)
+                const { collection: col2, query: q2, where: w2, getDocs: getDocs2 } = window.firebase.firestore;
+                const pledgesByUser = {};
+                const pledgesByMarket = {};
+                
+                // Get unique user IDs from current posts
+                const allUserIds = [...new Set(posts.map(p => p.userId))];
+                
+                // Fetch pledges only for users in the current feed (Firestore 'in' limits to 30 items max)
+                try {
+                    // Process in batches of 30 (Firestore 'in' query limit)
+                    for (let i = 0; i < allUserIds.length; i += 30) {
+                        const userBatch = allUserIds.slice(i, Math.min(i + 30, allUserIds.length));
+                        if (userBatch.length === 0) continue;
+                        
+                        const batchQuery = q2(
+                            col2(db, 'artifacts', APP_ID, 'public', 'data', PLEDGES_COLLECTION),
+                            w2('userId', 'in', userBatch)
+                        );
+                        const pledgesSnapshot = await getDocs2(batchQuery);
+                        
+                        pledgesSnapshot.forEach(doc => {
+                            const pledge = doc.data();
+                            const userId = pledge.userId;
+                            const marketId = pledge.marketId;
+                            
+                            if (!pledgesByUser[userId]) pledgesByUser[userId] = [];
+                            pledgesByUser[userId].push(pledge);
+                            
+                            if (!pledgesByMarket[marketId]) pledgesByMarket[marketId] = {};
+                            if (!pledgesByMarket[marketId][userId]) pledgesByMarket[marketId][userId] = true;
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error batch fetching pledges:', error);
+                    // Gracefully degrade - badges just won't show if fetch fails
+                }
+
                 let html = '';
                 for (const post of posts) {
                     const reactions = post.reactions || {};
@@ -10350,6 +10388,15 @@ ${historyText}`;
                         `;
                     }
 
+                    // Check if user is a whale (using cached pledge data)
+                    const userPledges = pledgesByUser[post.userId] || [];
+                    let totalStaked = 0;
+                    userPledges.forEach(pledge => {
+                        totalStaked += (pledge.yesAmount || 0) + (pledge.noAmount || 0);
+                    });
+                    const isWhale = totalStaked >= 500;
+                    const whaleBadge = isWhale ? '<span class="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full border border-yellow-400/30">🐋 Whale</span>' : '';
+
                     // Build attached market card if present
                     let attachedMarketHtml = '';
                     if (post.attachedMarket) {
@@ -10357,8 +10404,9 @@ ${historyText}`;
                         const stanceColor = market.stance === 'YES' ? 'text-green-400' : 'text-red-400';
                         const stanceIcon = market.stance === 'YES' ? '✅' : '❌';
                         
-                        // TODO: Check for Skin in the Game badge (requires bet verification)
-                        const skinBadge = ''; // await checkSkinInTheGame(post.userId, market.marketId) ? '<span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-400/30">✅ Bet Placed</span>' : '';
+                        // Check for Skin in the Game badge (using cached data)
+                        const hasSkin = pledgesByMarket[market.marketId]?.[post.userId] || false;
+                        const skinBadge = hasSkin ? '<span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-400/30">✅ Skin in the Game</span>' : '';
                         
                         attachedMarketHtml = `
                             <div class="mt-3 p-4 rounded-2xl bg-gradient-to-br from-sky-500/10 to-purple-500/10 border border-sky-400/30">
@@ -10392,6 +10440,7 @@ ${historyText}`;
                                             <button onclick="viewUserProfile('${post.userId}')" class="font-semibold text-white hover:text-sky-400 transition-colors">${safeDisplayName}</button>
                                         `}
                                         ${rankBadge}
+                                        ${whaleBadge}
                                         <span class="text-xs text-gray-500">${timeAgo}${post.edited ? ' <span class="text-gray-600">(edited)</span>' : ''}</span>
                                     </div>
                                     <p class="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">${safeContent}</p>
@@ -10793,7 +10842,7 @@ ${historyText}`;
             // You can enhance this to open a quick betting modal or navigate directly
             // For now, let's show a simple confirmation that takes them to the market
             setTimeout(() => {
-                showMarketDetail(marketId);
+                viewMarketDetail(marketId);
             }, 500);
         }
 
