@@ -1275,6 +1275,22 @@
                 <div class="ui-panel space-y-4 lg:space-y-5">
                     <input id="email-input" type="email" class="ui-input lg:text-lg" placeholder="your-email@gmail.com">
                     <button id="send-otp-btn" onclick="sendOTPEmail()" class="btn btn-primary w-full lg:text-lg">Send Login Code</button>
+                    
+                    <div class="relative">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-gray-700"></div>
+                        </div>
+                        <div class="relative flex justify-center text-sm">
+                            <span class="px-2 bg-gray-900 text-gray-400">or</span>
+                        </div>
+                    </div>
+                    
+                    <button onclick="loginAsDemo()" class="btn btn-secondary w-full lg:text-lg">
+                        <svg class="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Try Demo
+                    </button>
                 </div>
             </div>
 
@@ -4267,6 +4283,31 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Verify & Sign In';
+            }
+        }
+
+        /**
+         * Logs in as a demo user without email verification
+         */
+        window.loginAsDemo = async () => {
+            const randomId = 'demo_' + Math.random().toString(36).substring(2, 15);
+            const randomName = 'User' + Math.floor(Math.random() * 10000);
+            
+            currentUserId = randomId;
+            userProfile.displayName = randomName;
+            
+            localStorage.setItem('demoUserId', randomId);
+            localStorage.setItem('demoDisplayName', randomName);
+            
+            showToast("Welcome to Predora! You're using a demo account.", "success");
+            
+            try {
+                await initializeUserProfile();
+                attachDataListeners();
+                showScreen('onboarding-screen');
+            } catch (error) {
+                console.error('Error initializing demo profile:', error);
+                showScreen('home-screen');
             }
         }
 
