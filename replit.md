@@ -99,10 +99,19 @@ Predora is a next-generation prediction market platform built on BNB Chain, feat
 - `CRON_SECRET` - Secret for Oracle job endpoint
 - `GOOGLE_APPLICATION_CREDENTIALS` - Firebase Admin JSON
 
-## Recent Changes (Nov 19, 2025)
+## Recent Changes (Nov 20, 2025)
+- ✅ Fixed Turbopack compilation issues with memory optimization (NODE_OPTIONS, Turbo mode)
+- ✅ Temporarily removed Web3 packages (wagmi, viem, RainbowKit) due to Turbopack hanging - reduced from 687 to 203 packages
+- ✅ Implemented graceful Firebase configuration error handling with user-friendly UI
+- ✅ Created FirebaseConfigError component for missing environment variables
+- ✅ Added comprehensive SETUP.md with step-by-step Firebase configuration instructions
+- ✅ Landing page working perfectly with stunning glassmorphism UI and smooth animations
+- ✅ App page shows helpful error message when Firebase env vars are missing
+- ⚠️ **Note**: Web3 wallet integration temporarily disabled - will be re-added with proper code splitting when Turbopack issues are resolved
+
+## Previous Changes (Nov 19, 2025)
 - Migrated from vanilla HTML to Next.js framework
 - Set up full TypeScript project structure
-- Implemented Web3 integration with wagmi and RainbowKit
 - Created component-based architecture for scalability
 - Separated frontend and backend into different directories
 - Added Framer Motion for smooth animations
@@ -131,13 +140,14 @@ Predora is a next-generation prediction market platform built on BNB Chain, feat
 - CORS
 
 ## Next Steps
-1. Connect frontend to backend API
-2. Implement AI market generation
-3. Add smart contract integration
-4. Build out social features
-5. Implement yield protocols integration
-6. Add real-time market updates via Firebase
-7. Deploy to production
+1. **Add Firebase configuration** - Create `client/.env.local` with Firebase credentials (see `client/SETUP.md`)
+2. Test Firebase integration and real-time data features
+3. Re-implement Web3 wallet integration with proper code splitting to fix Turbopack issues
+4. Connect frontend to backend API for AI market generation
+5. Add smart contract integration for on-chain predictions
+6. Build out social features (XP, levels, leaderboards)
+7. Implement yield protocols integration
+8. Deploy to production
 
 ## User Preferences
 - Modern, component-based architecture
