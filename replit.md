@@ -87,6 +87,30 @@ Predora is an AI-native prediction market platform built on BNB Chain, featuring
   - Ticker Post button: Upgraded to px-6, py-2.5, font-bold, rounded-xl, shadow-lg
 - **Code Quality**: All changes architect-reviewed and approved. No regressions in functionality, security, or theme switching.
 
+### Session 7: Critical Bug Fixes & UX Enhancements
+- **Social Feed Reply Fix**: Added Reply button to nested replies in social feed comments, enabling users to reply to replies instead of only top-level comments. All replies maintain proper threading and display "@username" tags.
+- **Admin Panel Session Persistence**: Implemented automatic admin authentication restoration on page reload:
+  - Admin secret now loads from sessionStorage on app initialization
+  - Backend verification ensures stored secret is still valid before granting access
+  - Invalid/expired secrets are automatically cleared from storage
+  - Eliminates need to re-login to admin panel on every page refresh
+- **User Profile Rank Display**: Fixed "Rank: N/A" bug by implementing actual rank calculation:
+  - Calls `getUserRank()` to query leaderboard and calculate real position
+  - Displays "Rank #X" for ranked users or "Unranked" for new users
+  - Rank updates dynamically based on XP leaderboard position
+- **Smart Chart Enhancements**: Upgraded Chart.js tooltips with contextual information:
+  - Date display with emoji (📊 Nov 20)
+  - Formatted trading volume ($XXX.XX)
+  - Percentage change from previous day with directional arrows (↗/↘)
+  - Custom styling with sky-blue theme colors and proper padding
+- **Post Creation Button Polish**: Enhanced "Attach Bet" and "Add Image" buttons:
+  - Added smooth hover animations (scale, rotate, icon transforms)
+  - Improved shadows and borders for depth
+  - Better spacing and font weights for readability
+  - Character counter now has styled container
+  - Active/hover states provide clear visual feedback
+- **Code Quality**: All changes architect-reviewed and approved with no security issues or race conditions. Admin session restore includes proper async handling and error recovery.
+
 ## User Preferences
 - Vanilla HTML/CSS/JS architecture (original design, not Next.js)
 - Web3-native with MetaMask wallet integration
