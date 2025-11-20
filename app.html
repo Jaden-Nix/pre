@@ -8603,6 +8603,7 @@ ${historyText}`;
                     if (response.ok && data.valid) {
                         // Store admin secret in session for future admin requests
                         sessionStorage.setItem('admin_secret', pass);
+                        adminSecret = pass; // Update the variable too
                         showScreen('admin-panel-screen');
                     } else {
                         showToast("Incorrect password.");
