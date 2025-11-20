@@ -859,6 +859,12 @@
             color: #0F172A;
         }
 
+        /* Override text-white to dark color in light mode */
+        :root.light-mode .text-white,
+        body.light-mode .text-white {
+            color: #0F172A !important;
+        }
+
         /* Override all gray shades to dark readable colors */
         :root.light-mode .text-gray-300,
         body.light-mode .text-gray-300 {
@@ -2999,7 +3005,7 @@
                     </div>
                 </div>
 
-                <button id="follow-btn" class="btn btn-primary w-full">
+                <button id="follow-btn" class="btn btn-primary w-full text-base font-bold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all">
                     Follow
                 </button>
 
@@ -3205,48 +3211,55 @@
             </div>
         </div>
 
-    <!-- Create Post Modal -->
+    <!-- Create Post Modal - Redesigned -->
     <div id="create-post-modal" class="hidden fixed inset-0 z-[995] bg-black/70 backdrop-blur-sm flex justify-center items-center p-4">
         <div class="ui-panel w-full max-w-lg">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold gradient-text">Create Post</h2>
-                <button onclick="closeCreatePost()" class="text-gray-400 hover:text-white text-3xl">&times;</button>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold gradient-text">Create Post</h2>
+                <button onclick="closeCreatePost()" class="text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
             </div>
             
-            <textarea id="post-content-input" class="ui-input w-full h-32 resize-none" placeholder="What's on your mind? Share your predictions, insights, or market analysis..."></textarea>
+            <textarea id="post-content-input" class="ui-input w-full h-36 resize-none text-base" style="font-size: 16px; line-height: 1.6;" placeholder="What's on your mind? Share your predictions, insights, or market analysis..."></textarea>
             
             <!-- Attached Market Display -->
-            <div id="attached-market-display" class="hidden mt-3">
-                <div class="flex items-center justify-between p-3 rounded-xl bg-sky-400/10 border border-sky-400/30">
-                    <div class="flex items-center gap-2 min-w-0 flex-1">
-                        <svg class="w-5 h-5 text-sky-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div id="attached-market-display" class="hidden mt-4">
+                <div class="flex items-center justify-between p-4 rounded-xl bg-sky-400/10 border border-sky-400/30">
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <svg class="w-6 h-6 text-sky-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                         </svg>
                         <div class="min-w-0 flex-1">
-                            <p id="attached-market-title" class="text-sm font-medium text-white truncate"></p>
-                            <p id="attached-market-stance" class="text-xs text-sky-400"></p>
+                            <p id="attached-market-title" class="text-sm font-semibold text-white truncate"></p>
+                            <p id="attached-market-stance" class="text-xs font-medium text-sky-400"></p>
                         </div>
                     </div>
-                    <button onclick="removeAttachedMarket()" class="text-gray-400 hover:text-white ml-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button onclick="removeAttachedMarket()" class="text-gray-400 hover:text-red-400 ml-2 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
             </div>
             
-            <div class="flex items-center justify-between mt-4">
-                <div class="flex items-center gap-2">
-                    <button onclick="openMarketSearch()" class="p-2 rounded-lg text-gray-400 hover:text-sky-400 hover:bg-sky-400/10 transition-colors" title="Attach Market">
+            <div class="flex items-center justify-between mt-5 pt-4 border-t border-gray-700">
+                <div class="flex items-center gap-3">
+                    <button onclick="openMarketSearch()" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sky-400 hover:text-sky-300 bg-sky-400/10 hover:bg-sky-400/20 transition-all border border-sky-400/30 font-medium">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                         </svg>
+                        <span class="text-sm">📎 Attach Bet</span>
                     </button>
-                    <div class="text-xs text-gray-400">
+                    <div class="text-xs text-gray-400 font-medium">
                         <span id="post-char-count">0</span>/500
                     </div>
                 </div>
-                <button onclick="submitPost()" id="submit-post-btn" class="btn btn-primary px-6">Post</button>
+                <button onclick="submitPost()" id="submit-post-btn" class="btn btn-primary px-8 py-3 text-base font-bold rounded-xl shadow-lg hover:shadow-xl transition-all">
+                    Post
+                </button>
             </div>
         </div>
     </div>
@@ -3521,8 +3534,8 @@
 
                 <!-- This input shows when chat is UNLOCKED -->
                 <div id="ticker-input-area" class="hidden flex space-x-2">
-                    <input type="text" id="ticker-comment-input" class="ui-input flex-grow" placeholder="Add your insight...">
-                    <button id="ticker-post-btn" class="btn btn-primary w-20">Post</button>
+                    <input type="text" id="ticker-comment-input" class="ui-input flex-grow text-base" style="font-size: 16px;" placeholder="Add your insight...">
+                    <button id="ticker-post-btn" class="btn btn-primary px-6 py-2.5 font-bold text-base rounded-xl shadow-lg hover:shadow-xl transition-all">Post</button>
                 </div>
             </div>
 
@@ -9924,7 +9937,7 @@ ${historyText}`;
             const leaderboardSection = document.getElementById('social-leaderboard-section');
             const feedBtn = document.getElementById('social-tab-feed');
             const leaderboardBtn = document.getElementById('social-tab-leaderboard');
-            const createPostBtn = document.getElementById('create-post-btn');
+            const socialFab = document.getElementById('social-fab');
 
             if (tab === 'feed') {
                 feedSection.classList.remove('hidden');
@@ -9933,7 +9946,7 @@ ${historyText}`;
                 feedBtn.classList.remove('border-transparent', 'text-gray-400');
                 leaderboardBtn.classList.add('border-transparent', 'text-gray-400');
                 leaderboardBtn.classList.remove('border-sky-400', 'text-sky-400');
-                createPostBtn.classList.remove('hidden');
+                if (socialFab) socialFab.classList.remove('hidden');
             } else if (tab === 'leaderboard') {
                 feedSection.classList.add('hidden');
                 leaderboardSection.classList.remove('hidden');
@@ -9941,7 +9954,7 @@ ${historyText}`;
                 leaderboardBtn.classList.remove('border-transparent', 'text-gray-400');
                 feedBtn.classList.add('border-transparent', 'text-gray-400');
                 feedBtn.classList.remove('border-sky-400', 'text-sky-400');
-                createPostBtn.classList.add('hidden');
+                if (socialFab) socialFab.classList.add('hidden');
                 
                 // Load leaderboard data
                 loadSocialLeaderboard();
@@ -12096,7 +12109,6 @@ ${historyText}`;
             window.setPledgeAll = setPledgeAll; 
             window.updatePledgeTotalSummary = updatePledgeTotalSummary; 
             window.clearAllDemoData = clearAllDemoData;
-            window.validateAndShowOtp = validateAndShowOtp;
             window.selectMarketType = selectMarketType;
             window.viewQuickPlayDetails = viewQuickPlayDetails;
             window.closeQuickPlayDetails = closeQuickPlayDetails;
