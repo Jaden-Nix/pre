@@ -10612,6 +10612,7 @@ ${historyText}`;
             modal.classList.remove('hidden');
             input.value = '';
             charCount.textContent = '0';
+            removePostImage();
             
             // Add character counter
             input.oninput = () => {
@@ -10630,6 +10631,7 @@ ${historyText}`;
         window.closeCreatePost = () => {
             document.getElementById('create-post-modal').classList.add('hidden');
             removeAttachedMarket();
+            removePostImage();
         }
 
         // Smart Tag Feature Variables
