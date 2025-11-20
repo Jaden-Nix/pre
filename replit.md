@@ -71,6 +71,22 @@ Predora is an AI-native prediction market platform built on BNB Chain, featuring
   - `post_comments` - Comments and replies
 - **Code Quality**: All social features use proper Firestore queries, content sanitization, and backend validation. Stake requirements enforced on both frontend and backend.
 
+### Session 6: UI/UX Polish & Bug Fixes
+- **JavaScript Error Fixes**: Removed undefined `validateAndShowOtp` export and fixed `switchSocialTab()` to reference correct `social-fab` element, eliminating console errors during initialization.
+- **Smart Tag Feature Enhancement**: Redesigned "Attach Market" button with explicit "📎 Attach Bet" label and prominent styling (`bg-sky-400/10`, border, hover effects) to make market tagging feature immediately discoverable.
+- **Create Post Modal Redesign**: Complete visual overhaul for better UX:
+  - Larger heading (text-2xl) and close button (w-7 h-7)
+  - Bigger textarea (h-36, font-size 16px, line-height 1.6)
+  - Enhanced "Post" button (px-8 py-3, text-base, font-bold, rounded-xl, shadow-lg)
+  - Improved spacing and visual hierarchy throughout
+  - Better attached market display with increased padding and font weights
+- **Light Mode Text Visibility**: Added CSS override for `.text-white` class in light mode (`color: #0F172A`) to fix invisible usernames in leaderboard and social feed.
+- **Button Styling Consistency**: Unified styling across all major CTAs:
+  - Follow button: Enhanced with text-base, font-bold, py-3, rounded-xl, shadow-lg
+  - Ticker chat input: Increased font-size to 16px with better styling
+  - Ticker Post button: Upgraded to px-6, py-2.5, font-bold, rounded-xl, shadow-lg
+- **Code Quality**: All changes architect-reviewed and approved. No regressions in functionality, security, or theme switching.
+
 ## User Preferences
 - Vanilla HTML/CSS/JS architecture (original design, not Next.js)
 - Web3-native with MetaMask wallet integration
