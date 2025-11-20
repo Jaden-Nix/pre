@@ -1286,6 +1286,303 @@ app.post('/api/validate-market', async (req, res) => {
     }
 });
 
+// =====================================================================
+// --- ACCOUNT ABSTRACTION CONFIG ---
+// =====================================================================
+
+app.get('/api/admin/account-abstraction/config', requireAdmin, async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase not initialized' });
+    }
+    
+    try {
+        const configRef = db.collection(`artifacts/${APP_ID}/public/data/config`).doc('account_abstraction');
+        const configDoc = await configRef.get();
+        
+        if (!configDoc.exists) {
+            return res.status(200).json({
+                googleAuthEnabled: false,
+                appleAuthEnabled: false,
+                gasSponsorship: true,
+                gasLimit: '0.01',
+                paymasterUrl: '',
+                biconomyApiKey: ''
+            });
+        }
+        
+        res.status(200).json(configDoc.data());
+    } catch (error) {
+        console.error('Error fetching AA config:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/admin/account-abstraction/config', requireAdmin, async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase not initialized' });
+    }
+    
+    const { config } = req.body;
+    
+    try {
+        const configRef = db.collection(`artifacts/${APP_ID}/public/data/config`).doc('account_abstraction');
+        await configRef.set(config, { merge: true });
+        
+        res.status(200).json({ success: true, message: 'Configuration saved successfully' });
+    } catch (error) {
+        console.error('Error saving AA config:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/admin/account-abstraction/stats', requireAdmin, async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase not initialized' });
+    }
+    
+    try {
+        const profilesRef = db.collection(`artifacts/${APP_ID}/public/data/profile`);
+        const profilesSnapshot = await profilesRef.get();
+        
+        let googleLogins = 0;
+        let appleLogins = 0;
+        profilesSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.authMethod === 'google') googleLogins++;
+            if (data.authMethod === 'apple') appleLogins++;
+        });
+        
+        res.status(200).json({
+            totalUsers: profilesSnapshot.size,
+            googleLogins,
+            appleLogins,
+            gasSponsoredTxs: 0,
+            totalGasSpent: '0.00'
+        });
+    } catch (error) {
+        console.error('Error fetching AA stats:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// =====================================================================
+// --- MARKET DATA API (Historical Data, Analytics, Leaderboards) ---
+// =====================================================================
+
+app.get('/api/data/markets', async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase not initialized' });
+    }
+    
+    try {
+        const { category, status, limit = 50, offset = 0 } = req.query;
+        let query = db.collection(`artifacts/${APP_ID}/public/data/standard_markets`);
+        
+        if (category && category !== 'all') {
+            query = query.where('category', '==', category);
+        }
+        if (status) {
+            if (status === 'resolved') {
+                query = query.where('isResolved', '==', true);
+            } else if (status === 'active') {
+                query = query.where('isResolved', '==', false);
+            }
+        }
+        
+        query = query.orderBy('createdAt', 'desc').limit(parseInt(limit)).offset(parseInt(offset));
+        const snapshot = await query.get();
+        
+        const markets = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        res.status(200).json({ markets, count: markets.length });
+    } catch (error) {
+        console.error('Error fetching markets data:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/data/market/:marketId', async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase not initialized' });
+    }
+    
+    const { marketId } = req.params;
+    
+    try {
+        const marketRef = db.collection(`artifacts/${APP_ID}/public/data/standard_markets`).doc(marketId);
+        const marketDoc = await marketRef.get();
+        
+        if (!marketDoc.exists) {
+            return res.status(404).json({ error: 'Market not found' });
+        }
+        
+        const pledgesRef = db.collection(`artifacts/${APP_ID}/public/data/pledges`);
+        const pledgesSnapshot = await pledgesRef.where('marketId', '==', marketId).get();
+        const pledges = pledgesSnapshot.docs.map(doc => doc.data());
+        
+        const yesCount = pledges.filter(p => p.prediction === 'YES').length;
+        const noCount = pledges.filter(p => p.prediction === 'NO').length;
+        const totalVolume = pledges.reduce((sum, p) => sum + (p.amount || 0), 0);
+        
+        res.status(200).json({
+            market: { id: marketDoc.id, ...marketDoc.data() },
+            stats: {
+                totalVolume,
+                yesCount,
+                noCount,
+                totalPledges: pledges.length
+            },
+            pledges
+        });
+    } catch (error) {
+        console.error('Error fetching market data:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/data/market/:marketId/history', async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase not initialized' });
+    }
+    
+    const { marketId } = req.params;
+    
+    try {
+        const stakeLogsRef = db.collection(`artifacts/${APP_ID}/public/data/stake_logs`);
+        const snapshot = await stakeLogsRef.where('marketId', '==', marketId).orderBy('timestamp', 'asc').get();
+        
+        const history = snapshot.docs.map(doc => ({
+            timestamp: doc.data().timestamp,
+            yesOdds: doc.data().yesOdds || 50,
+            noOdds: doc.data().noOdds || 50,
+            volume: doc.data().volume || 0
+        }));
+        
+        res.status(200).json({ marketId, history });
+    } catch (error) {
+        console.error('Error fetching market history:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/data/leaderboard', async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase not initialized' });
+    }
+    
+    try {
+        const { limit = 100, sortBy = 'xp' } = req.query;
+        const profilesRef = db.collection(`artifacts/${APP_ID}/public/data/profile`);
+        
+        let query = profilesRef;
+        if (sortBy === 'xp') {
+            query = query.orderBy('xp', 'desc');
+        } else if (sortBy === 'totalEarnings') {
+            query = query.orderBy('totalEarnings', 'desc');
+        } else if (sortBy === 'winRate') {
+            query = query.orderBy('winRate', 'desc');
+        }
+        
+        query = query.limit(parseInt(limit));
+        const snapshot = await query.get();
+        
+        const leaderboard = snapshot.docs.map((doc, index) => ({
+            rank: index + 1,
+            userId: doc.id,
+            displayName: doc.data().displayName || 'Anonymous',
+            avatar: doc.data().avatar || '🎯',
+            xp: doc.data().xp || 0,
+            totalEarnings: doc.data().totalEarnings || 0,
+            totalPredictions: doc.data().totalPredictions || 0,
+            totalWins: doc.data().totalWins || 0,
+            winRate: doc.data().winRate || 0
+        }));
+        
+        res.status(200).json({ leaderboard });
+    } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/data/user/:userId/activity', async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase not initialized' });
+    }
+    
+    const { userId } = req.params;
+    
+    try {
+        const profileRef = db.collection(`artifacts/${APP_ID}/public/data/profile`).doc(userId);
+        const profileDoc = await profileRef.get();
+        
+        if (!profileDoc.exists) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const pledgesRef = db.collection(`artifacts/${APP_ID}/public/data/pledges`);
+        const pledgesSnapshot = await pledgesRef.where('userId', '==', userId).orderBy('timestamp', 'desc').limit(50).get();
+        
+        const recentActivity = pledgesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        const marketsCreatedRef = db.collection(`artifacts/${APP_ID}/public/data/standard_markets`);
+        const marketsSnapshot = await marketsCreatedRef.where('createdBy', '==', userId).get();
+        const marketsCreated = marketsSnapshot.size;
+        
+        res.status(200).json({
+            profile: { id: profileDoc.id, ...profileDoc.data() },
+            recentActivity,
+            stats: {
+                marketsCreated,
+                totalPledges: recentActivity.length
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching user activity:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/data/stats', async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase not initialized' });
+    }
+    
+    try {
+        const marketsRef = db.collection(`artifacts/${APP_ID}/public/data/standard_markets`);
+        const [allMarketsSnap, resolvedMarketsSnap, activeMarketsSnap] = await Promise.all([
+            marketsRef.get(),
+            marketsRef.where('isResolved', '==', true).get(),
+            marketsRef.where('isResolved', '==', false).get()
+        ]);
+        
+        const pledgesRef = db.collection(`artifacts/${APP_ID}/public/data/pledges`);
+        const pledgesSnap = await pledgesRef.get();
+        const totalVolume = pledgesSnap.docs.reduce((sum, doc) => sum + (doc.data().amount || 0), 0);
+        
+        const profilesRef = db.collection(`artifacts/${APP_ID}/public/data/profile`);
+        const profilesSnap = await profilesRef.get();
+        
+        res.status(200).json({
+            totalMarkets: allMarketsSnap.size,
+            resolvedMarkets: resolvedMarketsSnap.size,
+            activeMarkets: activeMarketsSnap.size,
+            totalPledges: pledgesSnap.size,
+            totalVolume,
+            totalUsers: profilesSnap.size
+        });
+    } catch (error) {
+        console.error('Error fetching platform stats:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Predora Backend Server is live on port ${PORT}`);
     console.log(`🌐 Landing page: http://localhost:${PORT}/`);

@@ -19,6 +19,7 @@ export function NormalMarketsResolve({ adminSecret }: { adminSecret: string }) {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [filter, setFilter] = useState<'all' | 'active' | 'disputed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const marketsPerPage = 10;
 
   useEffect(() => {
@@ -68,8 +69,13 @@ export function NormalMarketsResolve({ adminSecret }: { adminSecret: string }) {
     }
   };
 
-  const totalPages = Math.ceil(markets.length / marketsPerPage);
-  const paginatedMarkets = markets.slice(
+  const filteredMarkets = markets.filter(market => 
+    market.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    market.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const totalPages = Math.ceil(filteredMarkets.length / marketsPerPage);
+  const paginatedMarkets = filteredMarkets.slice(
     (currentPage - 1) * marketsPerPage,
     currentPage * marketsPerPage
   );
@@ -81,20 +87,38 @@ export function NormalMarketsResolve({ adminSecret }: { adminSecret: string }) {
         <p className="text-gray-400">Manually resolve prediction markets</p>
       </div>
 
-      <div className="flex gap-2 mb-6">
-        {['all', 'active', 'disputed'].map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f as any)}
-            className={`px-6 py-2 rounded-full font-medium transition-all ${
-              filter === f
-                ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10'
-            }`}
-          >
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
+      <div className="mb-6">
+        <div className="relative mb-4">
+          <input
+            type="text"
+            placeholder="Search markets by title or category..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full px-4 py-3 pl-12 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+          />
+          <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        
+        <div className="flex gap-2">
+          {['all', 'active', 'disputed'].map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f as any)}
+              className={`px-6 py-2 rounded-full font-medium transition-all ${
+                filter === f
+                  ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (

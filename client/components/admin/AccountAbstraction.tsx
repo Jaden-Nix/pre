@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings, Zap, DollarSign, Users, ExternalLink } from 'lucide-react';
 
 export function AccountAbstraction({ adminSecret }: { adminSecret: string }) {
@@ -20,6 +20,36 @@ export function AccountAbstraction({ adminSecret }: { adminSecret: string }) {
     gasSponsoredTxs: 0,
     totalGasSpent: '0.00',
   });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const [configRes, statsRes] = await Promise.all([
+          fetch(`${apiUrl}/api/admin/account-abstraction/config`, {
+            headers: { 'x-admin-secret': adminSecret }
+          }),
+          fetch(`${apiUrl}/api/admin/account-abstraction/stats`, {
+            headers: { 'x-admin-secret': adminSecret }
+          })
+        ]);
+        
+        if (configRes.ok) {
+          const configData = await configRes.json();
+          setConfig(configData);
+        }
+        
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats(statsData);
+        }
+      } catch (error) {
+        console.error('Error fetching AA data:', error);
+      }
+    };
+    
+    fetchData();
+  }, [adminSecret]);
 
   const handleSaveConfig = async () => {
     try {

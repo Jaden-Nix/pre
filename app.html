@@ -1279,9 +1279,9 @@
                 </div>
 
                 <div class="ui-panel space-y-4 lg:space-y-5">
-                    <p class="text-center text-gray-400 text-sm lg:text-base">Or, test the (mock) OTP flow:</p>
-                    <input id="mock-email-input" type="email" class="ui-input lg:text-lg" placeholder="your-email@gmail.com">
-                    <button onclick="validateAndShowOtp()" class="btn btn-secondary w-full lg:text-lg">Sign in with Email</button>
+                    <p class="text-center text-gray-400 text-sm lg:text-base">Or, sign in with email:</p>
+                    <input id="email-input" type="email" class="ui-input lg:text-lg" placeholder="your-email@gmail.com">
+                    <button id="send-otp-btn" onclick="sendOTPEmail()" class="btn btn-primary w-full lg:text-lg">Send Login Code</button>
                 </div>
             </div>
 
@@ -1291,9 +1291,10 @@
                     Back
                 </button>
                 <h1 class="text-2xl lg:text-3xl font-bold gradient-text">Enter OTP</h1>
-                <p class="text-gray-300 lg:text-lg">A (mock) code was sent. <br> Hint: It's `123456`</p>
-                <input id="mock-otp-input" type="text" class="ui-input text-center text-2xl lg:text-3xl tracking-[1em]" placeholder="123456" maxlength="6">
-                <button onclick="mockOtpLogin()" class="btn btn-primary w-full lg:text-lg">Verify & Sign In</button>
+                <p id="otp-message" class="text-gray-300 lg:text-lg">We sent a code to your email</p>
+                <input id="otp-input" type="text" class="ui-input text-center text-2xl lg:text-3xl tracking-[1em]" placeholder="123456" maxlength="6">
+                <button id="verify-otp-btn" onclick="verifyOTPLogin()" class="btn btn-primary w-full lg:text-lg">Verify & Sign In</button>
+                <button onclick="sendOTPEmail()" class="btn btn-secondary w-full lg:text-lg">Resend Code</button>
             </div>
 
             <div id="onboarding-screen" class="screen screen-inactive max-w-md mx-auto lg:max-w-lg">
@@ -4333,33 +4334,6 @@
                 });
         };
 
-        /**
-         * Handles the mock OTP login flow.
-         */
-        window.mockOtpLogin = () => {
-            const otp = document.getElementById('mock-otp-input').value;
-            if (otp === '123456') {
-                const email = document.getElementById('mock-email-input').value || 'demo-user@predora.io';
-                const userId = email.split('@')[0];
-                const displayName = userId;
-                mockLogin(userId, displayName);
-            } else {
-                showToast("Invalid OTP. Hint: 123456", "error");
-            }
-        };
-
-        /**
-         * Checks if an email is entered before showing the OTP screen.
-         */
-        window.validateAndShowOtp = () => {
-            const email = document.getElementById('mock-email-input').value;
-
-            if (!email || email.trim() === '' || !email.includes('@')) {
-                showToast("Please enter a valid email address.", "warning");
-            } else {
-                showScreen('otp-screen');
-            }
-        };
 
         // =====================================================================
         // --- ONBOARDING AND PROFILE EDITING ---
