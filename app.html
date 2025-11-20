@@ -9852,16 +9852,33 @@ ${historyText}`;
                     // Check if user is author
                     const isAuthor = post.userId === currentUserId;
 
-                    // Build edit/delete buttons for author
+                    // Build three-dot menu for author
                     let authorActionsHtml = '';
                     if (isAuthor) {
                         authorActionsHtml = `
-                            <button onclick="editPost('${post.postId}', '${post.userId}', \`${safeContent.replace(/`/g, '\\`')}\`)" class="text-xs text-gray-400 hover:text-sky-400 transition-colors">
-                                Edit
-                            </button>
-                            <button onclick="deletePost('${post.postId}', '${post.userId}')" class="text-xs text-gray-400 hover:text-red-400 transition-colors ml-2">
-                                Delete
-                            </button>
+                            <div class="relative ml-auto">
+                                <button onclick="togglePostMenu('${post.postId}')" class="text-gray-400 hover:text-white transition-colors p-1">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 16 16">
+                                        <circle cx="8" cy="2" r="1.5"/>
+                                        <circle cx="8" cy="8" r="1.5"/>
+                                        <circle cx="8" cy="14" r="1.5"/>
+                                    </svg>
+                                </button>
+                                <div id="post-menu-${post.postId}" class="hidden absolute right-0 top-8 bg-gray-800 border border-white/10 rounded-lg shadow-xl overflow-hidden z-50 min-w-[140px]">
+                                    <button onclick="editPost('${post.postId}', '${post.userId}', \`${safeContent.replace(/`/g, '\\`')}\`)" class="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-sky-500/20 hover:text-sky-400 transition-colors flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
+                                        Edit
+                                    </button>
+                                    <button onclick="deletePost('${post.postId}', '${post.userId}')" class="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-red-500/20 hover:text-red-400 transition-colors flex items-center gap-2 border-t border-white/5">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
                         `;
                     }
 
@@ -9930,10 +9947,10 @@ ${historyText}`;
                                         `}
                                         ${rankBadge}
                                         <span class="text-xs text-gray-500">${timeAgo}${post.edited ? ' <span class="text-gray-600">(edited)</span>' : ''}</span>
-                                        ${authorActionsHtml}
                                     </div>
                                     <p class="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">${safeContent}</p>
                                 </div>
+                                ${authorActionsHtml}
                             </div>
 
                             ${imageHtml}
@@ -10477,13 +10494,27 @@ ${historyText}`;
                     const safeContent = sanitizeHTML(comment.content);
                     const isAuthor = comment.userId === currentUserId;
                     
-                    // Build action buttons
-                    let actionBtns = '';
+                    // Build three-dot menu for comment author
+                    let commentMenuHtml = '';
                     if (isAuthor) {
-                        actionBtns = `
-                            <button onclick="deleteComment('${currentPostId}', '${comment.commentId}', '${comment.userId}')" class="text-xs text-gray-400 hover:text-red-400 transition-colors ml-2">
-                                Delete
-                            </button>
+                        commentMenuHtml = `
+                            <div class="relative ml-auto">
+                                <button onclick="toggleCommentMenu('${comment.commentId}')" class="text-gray-400 hover:text-white transition-colors p-1">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+                                        <circle cx="8" cy="2" r="1.5"/>
+                                        <circle cx="8" cy="8" r="1.5"/>
+                                        <circle cx="8" cy="14" r="1.5"/>
+                                    </svg>
+                                </button>
+                                <div id="comment-menu-${comment.commentId}" class="hidden absolute right-0 top-6 bg-gray-800 border border-white/10 rounded-lg shadow-xl overflow-hidden z-50 min-w-[140px]">
+                                    <button onclick="deleteComment('${currentPostId}', '${comment.commentId}', '${comment.userId}')" class="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-red-500/20 hover:text-red-400 transition-colors flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
                         `;
                     }
                     
@@ -10495,13 +10526,13 @@ ${historyText}`;
                                     <div class="flex items-center space-x-2 flex-wrap">
                                         <span class="font-semibold text-white">${safeDisplayName}</span>
                                         <span class="text-xs text-gray-400">${timeAgo}</span>
-                                        ${actionBtns}
                                     </div>
                                     <p class="text-gray-300 text-sm mt-1 break-words">${safeContent}</p>
                                     <button onclick="startReply('${comment.commentId}', '${safeDisplayName}')" class="text-xs text-sky-400 hover:text-sky-300 mt-1.5">
                                         Reply
                                     </button>
                                 </div>
+                                ${commentMenuHtml}
                             </div>
                     `;
                     
@@ -10515,12 +10546,26 @@ ${historyText}`;
                             const safeReplyContent = sanitizeHTML(reply.content);
                             const isReplyAuthor = reply.userId === currentUserId;
                             
-                            let replyActionBtns = '';
+                            let replyMenuHtml = '';
                             if (isReplyAuthor) {
-                                replyActionBtns = `
-                                    <button onclick="deleteComment('${currentPostId}', '${reply.commentId}', '${reply.userId}')" class="text-xs text-gray-400 hover:text-red-400 transition-colors ml-2">
-                                        Delete
-                                    </button>
+                                replyMenuHtml = `
+                                    <div class="relative ml-auto">
+                                        <button onclick="toggleCommentMenu('${reply.commentId}')" class="text-gray-400 hover:text-white transition-colors p-1">
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+                                                <circle cx="8" cy="2" r="1.5"/>
+                                                <circle cx="8" cy="8" r="1.5"/>
+                                                <circle cx="8" cy="14" r="1.5"/>
+                                            </svg>
+                                        </button>
+                                        <div id="comment-menu-${reply.commentId}" class="hidden absolute right-0 top-6 bg-gray-800 border border-white/10 rounded-lg shadow-xl overflow-hidden z-50 min-w-[140px]">
+                                            <button onclick="deleteComment('${currentPostId}', '${reply.commentId}', '${reply.userId}')" class="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-red-500/20 hover:text-red-400 transition-colors flex items-center gap-2">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
                                 `;
                             }
                             
@@ -10532,10 +10577,10 @@ ${historyText}`;
                                             <span class="font-semibold text-white text-sm">${safeReplyDisplayName}</span>
                                             <span class="text-xs text-gray-500">→ ${sanitizeHTML(reply.replyToUser)}</span>
                                             <span class="text-xs text-gray-400">${replyTimeAgo}</span>
-                                            ${replyActionBtns}
                                         </div>
                                         <p class="text-gray-300 text-sm mt-0.5 break-words">${safeReplyContent}</p>
                                     </div>
+                                    ${replyMenuHtml}
                                 </div>
                             `;
                         });
@@ -10657,6 +10702,10 @@ ${historyText}`;
          * Delete a post (author or admin only)
          */
         window.deletePost = async (postId, authorId) => {
+            // Close menu
+            const menu = document.getElementById(`post-menu-${postId}`);
+            if (menu) menu.classList.add('hidden');
+
             if (currentUserId !== authorId && !await isUserAdmin()) {
                 showToast('You can only delete your own posts', 'error');
                 return;
@@ -10677,9 +10726,55 @@ ${historyText}`;
         }
 
         /**
+         * Toggle three-dot menu for posts
+         */
+        window.togglePostMenu = (postId) => {
+            const menu = document.getElementById(`post-menu-${postId}`);
+            if (!menu) return;
+            
+            // Close all other menus first
+            document.querySelectorAll('[id^="post-menu-"], [id^="comment-menu-"]').forEach(m => {
+                if (m.id !== `post-menu-${postId}`) m.classList.add('hidden');
+            });
+            
+            // Toggle this menu
+            menu.classList.toggle('hidden');
+        }
+
+        /**
+         * Toggle three-dot menu for comments
+         */
+        window.toggleCommentMenu = (commentId) => {
+            const menu = document.getElementById(`comment-menu-${commentId}`);
+            if (!menu) return;
+            
+            // Close all other menus first
+            document.querySelectorAll('[id^="post-menu-"], [id^="comment-menu-"]').forEach(m => {
+                if (m.id !== `comment-menu-${commentId}`) m.classList.add('hidden');
+            });
+            
+            // Toggle this menu
+            menu.classList.toggle('hidden');
+        }
+
+        // Close menus when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('[id^="post-menu-"]') && !e.target.closest('button[onclick^="togglePostMenu"]') &&
+                !e.target.closest('[id^="comment-menu-"]') && !e.target.closest('button[onclick^="toggleCommentMenu"]')) {
+                document.querySelectorAll('[id^="post-menu-"], [id^="comment-menu-"]').forEach(m => {
+                    m.classList.add('hidden');
+                });
+            }
+        });
+
+        /**
          * Edit a post (author only)
          */
         window.editPost = async (postId, authorId, currentContent) => {
+            // Close menu
+            const menu = document.getElementById(`post-menu-${postId}`);
+            if (menu) menu.classList.add('hidden');
+
             if (currentUserId !== authorId) {
                 showToast('You can only edit your own posts', 'error');
                 return;
@@ -10708,6 +10803,10 @@ ${historyText}`;
          * Delete a comment (author or admin only)
          */
         window.deleteComment = async (postId, commentId, authorId) => {
+            // Close menu
+            const menu = document.getElementById(`comment-menu-${commentId}`);
+            if (menu) menu.classList.add('hidden');
+
             if (currentUserId !== authorId && !await isUserAdmin()) {
                 showToast('You can only delete your own comments', 'error');
                 return;
