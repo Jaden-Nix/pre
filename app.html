@@ -3170,12 +3170,76 @@
             
             <textarea id="post-content-input" class="ui-input w-full h-32 resize-none" placeholder="What's on your mind? Share your predictions, insights, or market analysis..."></textarea>
             
-            <div class="flex items-center justify-between mt-4">
-                <div class="text-xs text-gray-400">
-                    <span id="post-char-count">0</span>/500 characters
+            <!-- Attached Market Display -->
+            <div id="attached-market-display" class="hidden mt-3">
+                <div class="flex items-center justify-between p-3 rounded-xl bg-sky-400/10 border border-sky-400/30">
+                    <div class="flex items-center gap-2 min-w-0 flex-1">
+                        <svg class="w-5 h-5 text-sky-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        <div class="min-w-0 flex-1">
+                            <p id="attached-market-title" class="text-sm font-medium text-white truncate"></p>
+                            <p id="attached-market-stance" class="text-xs text-sky-400"></p>
+                        </div>
+                    </div>
+                    <button onclick="removeAttachedMarket()" class="text-gray-400 hover:text-white ml-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
                 </div>
-                <button onclick="submitPost()" id="submit-post-btn" class="btn btn-primary">Post</button>
             </div>
+            
+            <div class="flex items-center justify-between mt-4">
+                <div class="flex items-center gap-2">
+                    <button onclick="openMarketSearch()" class="p-2 rounded-lg text-gray-400 hover:text-sky-400 hover:bg-sky-400/10 transition-colors" title="Attach Market">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </button>
+                    <div class="text-xs text-gray-400">
+                        <span id="post-char-count">0</span>/500
+                    </div>
+                </div>
+                <button onclick="submitPost()" id="submit-post-btn" class="btn btn-primary px-6">Post</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Market Search Modal -->
+    <div id="market-search-modal" class="hidden fixed inset-0 z-[996] bg-black/80 backdrop-blur-sm flex justify-center items-center p-4">
+        <div class="ui-panel w-full max-w-lg">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold gradient-text">Attach Market</h2>
+                <button onclick="closeMarketSearch()" class="text-gray-400 hover:text-white text-3xl">&times;</button>
+            </div>
+            
+            <input type="text" id="market-search-input" class="ui-input w-full mb-4" placeholder="Search markets (e.g., ETH, BTC, elections...)">
+            
+            <div id="market-search-results" class="space-y-2 max-h-96 overflow-y-auto">
+                <p class="text-gray-400 text-center py-8">Type to search markets...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stance Selection Modal -->
+    <div id="stance-selection-modal" class="hidden fixed inset-0 z-[997] bg-black/80 backdrop-blur-sm flex justify-center items-center p-4">
+        <div class="ui-panel w-full max-w-sm">
+            <h2 class="text-xl font-bold text-center mb-2">Choose Your Stance</h2>
+            <p id="stance-market-title" class="text-gray-400 text-center mb-6 text-sm"></p>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="selectStance('YES')" class="py-6 rounded-xl bg-green-500/20 border-2 border-green-500/50 hover:bg-green-500/30 transition-all">
+                    <div class="text-4xl mb-2">✅</div>
+                    <div class="font-bold text-green-400">YES</div>
+                </button>
+                <button onclick="selectStance('NO')" class="py-6 rounded-xl bg-red-500/20 border-2 border-red-500/50 hover:bg-red-500/30 transition-all">
+                    <div class="text-4xl mb-2">❌</div>
+                    <div class="font-bold text-red-400">NO</div>
+                </button>
+            </div>
+            
+            <button onclick="closeStanceSelection()" class="btn btn-secondary w-full mt-4">Cancel</button>
         </div>
     </div>
 
@@ -9696,6 +9760,29 @@ ${historyText}`;
                     const safeDisplayName = sanitizeHTML(post.displayName);
                     const safeContent = sanitizeHTML(post.content);
 
+                    // Build attached market card if present
+                    let attachedMarketHtml = '';
+                    if (post.attachedMarket) {
+                        const market = post.attachedMarket;
+                        const stanceColor = market.stance === 'YES' ? 'text-green-400' : 'text-red-400';
+                        const stanceIcon = market.stance === 'YES' ? '✅' : '❌';
+                        
+                        attachedMarketHtml = `
+                            <div class="mt-3 p-4 rounded-2xl bg-gradient-to-br from-sky-500/10 to-purple-500/10 border border-sky-400/30">
+                                <div class="flex items-start gap-3 mb-3">
+                                    <div class="text-2xl">${stanceIcon}</div>
+                                    <div class="flex-grow min-w-0">
+                                        <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">${safeDisplayName} is betting ${market.stance}</p>
+                                        <p class="font-semibold text-white text-sm">${sanitizeHTML(market.title)}</p>
+                                    </div>
+                                </div>
+                                <button onclick="betWithUser('${market.marketId}', '${market.stance}')" class="w-full btn btn-primary py-2 text-sm">
+                                    Bet with ${safeDisplayName}
+                                </button>
+                            </div>
+                        `;
+                    }
+
                     html += `
                         <div class="social-post-card">
                             <div class="flex items-start gap-3 mb-4">
@@ -9712,6 +9799,8 @@ ${historyText}`;
                                     <p class="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">${safeContent}</p>
                                 </div>
                             </div>
+
+                            ${attachedMarketHtml}
 
                             <!-- Reactions Row -->
                             <div class="flex items-center justify-between pt-3 border-t border-white/5">
@@ -9942,6 +10031,171 @@ ${historyText}`;
          */
         window.closeCreatePost = () => {
             document.getElementById('create-post-modal').classList.add('hidden');
+            removeAttachedMarket();
+        }
+
+        // Smart Tag Feature Variables
+        let attachedMarket = null;
+        let selectedMarketForStance = null;
+
+        /**
+         * Open market search modal
+         */
+        window.openMarketSearch = () => {
+            const modal = document.getElementById('market-search-modal');
+            const input = document.getElementById('market-search-input');
+            modal.classList.remove('hidden');
+            input.value = '';
+            input.focus();
+            
+            // Add search listener
+            let searchTimeout;
+            input.oninput = () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    searchMarkets(input.value.trim());
+                }, 300);
+            };
+        }
+
+        /**
+         * Close market search modal
+         */
+        window.closeMarketSearch = () => {
+            document.getElementById('market-search-modal').classList.add('hidden');
+        }
+
+        /**
+         * Search for markets
+         */
+        window.searchMarkets = async (searchQuery) => {
+            const resultsContainer = document.getElementById('market-search-results');
+            
+            if (!searchQuery || searchQuery.length < 2) {
+                resultsContainer.innerHTML = '<p class="text-gray-400 text-center py-8">Type at least 2 characters...</p>';
+                return;
+            }
+
+            try {
+                const { collection, query, where, getDocs, orderBy, limit } = window.firebase.firestore;
+                
+                // Search in markets collection
+                const marketsRef = collection(db, 'artifacts', APP_ID, 'public', 'data', MARKETS_COLLECTION);
+                const snapshot = await getDocs(query(marketsRef, orderBy('timestamp', 'desc'), limit(20)));
+                
+                let markets = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.title && data.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+                        markets.push({
+                            ...data,
+                            marketId: doc.id
+                        });
+                    }
+                });
+
+                if (markets.length === 0) {
+                    resultsContainer.innerHTML = '<p class="text-gray-400 text-center py-8">No markets found. Try different keywords.</p>';
+                    return;
+                }
+
+                let html = '';
+                markets.forEach(market => {
+                    const resolveDate = market.resolveAt ? new Date(market.resolveAt.seconds * 1000).toLocaleDateString() : 'Not set';
+                    html += `
+                        <button onclick='selectMarket(${JSON.stringify(market)})' class="w-full text-left p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-sky-400/50 transition-all">
+                            <p class="font-medium text-white mb-1">${sanitizeHTML(market.title)}</p>
+                            <div class="flex items-center gap-3 text-xs text-gray-400">
+                                <span>${market.category || 'General'}</span>
+                                <span>•</span>
+                                <span>Resolves: ${resolveDate}</span>
+                            </div>
+                        </button>
+                    `;
+                });
+                resultsContainer.innerHTML = html;
+            } catch (error) {
+                console.error('Error searching markets:', error);
+                resultsContainer.innerHTML = '<p class="text-red-400 text-center py-8">Error loading markets</p>';
+            }
+        }
+
+        /**
+         * Select a market (opens stance selection)
+         */
+        window.selectMarket = (market) => {
+            selectedMarketForStance = market;
+            closeMarketSearch();
+            openStanceSelection();
+        }
+
+        /**
+         * Open stance selection modal
+         */
+        window.openStanceSelection = () => {
+            if (!selectedMarketForStance) return;
+            
+            const modal = document.getElementById('stance-selection-modal');
+            const titleElement = document.getElementById('stance-market-title');
+            titleElement.textContent = selectedMarketForStance.title;
+            modal.classList.remove('hidden');
+        }
+
+        /**
+         * Close stance selection modal
+         */
+        window.closeStanceSelection = () => {
+            document.getElementById('stance-selection-modal').classList.add('hidden');
+            selectedMarketForStance = null;
+        }
+
+        /**
+         * Select stance (YES or NO)
+         */
+        window.selectStance = (stance) => {
+            if (!selectedMarketForStance) return;
+            
+            attachedMarket = {
+                marketId: selectedMarketForStance.marketId,
+                title: selectedMarketForStance.title,
+                stance: stance,
+                category: selectedMarketForStance.category || 'General'
+            };
+            
+            // Update UI
+            const display = document.getElementById('attached-market-display');
+            const titleEl = document.getElementById('attached-market-title');
+            const stanceEl = document.getElementById('attached-market-stance');
+            
+            titleEl.textContent = attachedMarket.title;
+            stanceEl.textContent = `Betting ${stance}`;
+            stanceEl.className = stance === 'YES' ? 'text-xs text-green-400' : 'text-xs text-red-400';
+            display.classList.remove('hidden');
+            
+            closeStanceSelection();
+            showToast(`Market attached: ${stance}`, 'success');
+        }
+
+        /**
+         * Remove attached market
+         */
+        window.removeAttachedMarket = () => {
+            attachedMarket = null;
+            document.getElementById('attached-market-display').classList.add('hidden');
+        }
+
+        /**
+         * Bet with another user (from attached market)
+         */
+        window.betWithUser = (marketId, recommendedStance) => {
+            // Navigate to the market detail screen
+            showToast(`Redirecting to market to place bet...`, 'success');
+            
+            // You can enhance this to open a quick betting modal or navigate directly
+            // For now, let's show a simple confirmation that takes them to the market
+            setTimeout(() => {
+                showMarketDetail(marketId);
+            }, 500);
         }
 
         /**
@@ -9964,7 +10218,7 @@ ${historyText}`;
                 const userDoc = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId));
                 const userProfile = userDoc.data();
 
-                await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION), {
+                const postData = {
                     userId: currentUserId,
                     displayName: userProfile.displayName,
                     avatarUrl: userProfile.avatarUrl || LOGO_URL,
@@ -9977,7 +10231,14 @@ ${historyText}`;
                     },
                     commentCount: 0,
                     timestamp: serverTimestamp()
-                });
+                };
+
+                // Add attached market if present
+                if (attachedMarket) {
+                    postData.attachedMarket = attachedMarket;
+                }
+
+                await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION), postData);
 
                 showToast('Post created successfully!', 'success');
                 closeCreatePost();
