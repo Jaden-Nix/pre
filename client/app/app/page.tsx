@@ -1,12 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Home, BarChart2, Plus, Zap, User } from 'lucide-react';
+import { Home, BarChart2, Plus, Zap, User, Wallet } from 'lucide-react';
 import { QuickPlay } from '@/components/QuickPlay';
 import { MarketsList } from '@/components/MarketsList';
 import { UserProfile } from '@/components/UserProfile';
 import { CreateMarket } from '@/components/CreateMarket';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 export default function AppPage() {
   const [activeTab, setActiveTab] = useState<'home' | 'markets' | 'create' | 'quick' | 'profile'>('home');
@@ -21,7 +20,10 @@ export default function AppPage() {
           </div>
           
           <div className="flex items-center gap-4">
-            <ConnectButton />
+            <button className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full font-medium text-sm transition-all">
+              <Wallet className="w-4 h-4" />
+              Connect Wallet
+            </button>
           </div>
         </div>
       </nav>
