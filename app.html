@@ -3246,20 +3246,20 @@
             </div>
             
             <div class="flex items-center justify-between mt-5 pt-4 border-t border-gray-700">
-                <div class="flex items-center gap-3 flex-wrap">
-                    <button onclick="openMarketSearch()" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sky-400 hover:text-sky-300 bg-sky-400/10 hover:bg-sky-400/20 transition-all border border-sky-400/30 font-medium">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex items-center gap-2.5 flex-wrap">
+                    <button onclick="openMarketSearch()" class="group flex items-center gap-2 px-3.5 py-2 rounded-xl text-sky-400 hover:text-sky-300 bg-sky-400/10 hover:bg-sky-400/20 transition-all duration-200 border border-sky-400/30 hover:border-sky-400/50 font-medium shadow-sm hover:shadow-md hover:scale-105 active:scale-95">
+                        <svg class="w-5 h-5 group-hover:rotate-12 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                         </svg>
-                        <span class="text-sm">📎 Attach Bet</span>
+                        <span class="text-sm font-semibold">Attach Bet</span>
                     </button>
-                    <button onclick="uploadPostImage()" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-purple-400 hover:text-purple-300 bg-purple-400/10 hover:bg-purple-400/20 transition-all border border-purple-400/30 font-medium">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button onclick="uploadPostImage()" class="group flex items-center gap-2 px-3.5 py-2 rounded-xl text-purple-400 hover:text-purple-300 bg-purple-400/10 hover:bg-purple-400/20 transition-all duration-200 border border-purple-400/30 hover:border-purple-400/50 font-medium shadow-sm hover:shadow-md hover:scale-105 active:scale-95">
+                        <svg class="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                         </svg>
-                        <span class="text-sm">📷 Add Image</span>
+                        <span class="text-sm font-semibold">Add Image</span>
                     </button>
-                    <div class="text-xs text-gray-400 font-medium">
+                    <div class="text-xs text-gray-400 font-semibold bg-gray-400/5 px-3 py-2 rounded-lg border border-gray-400/20">
                         <span id="post-char-count">0</span>/500
                     </div>
                 </div>
@@ -4039,7 +4039,7 @@
 
         // === ADMIN DASHBOARD SYSTEM ===
         
-        let adminSecret = null;
+        let adminSecret = sessionStorage.getItem('admin_secret') || null;
         let isAdminAuthenticated = false;
 
         /**
@@ -4396,6 +4396,32 @@
                     // No session, show the login screen
                     console.log("No demo user in localStorage, showing login screen.");
                     showScreen('login-screen');
+                }
+                
+                // Check if admin session exists and restore it
+                if (adminSecret) {
+                    console.log('Admin session found, verifying...');
+                    // Verify the admin secret is still valid
+                    fetch('/api/admin/verify', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-admin-secret': adminSecret
+                        }
+                    }).then(response => response.json())
+                    .then(data => {
+                        if (data.valid) {
+                            isAdminAuthenticated = true;
+                            console.log('Admin session restored successfully');
+                        } else {
+                            // Invalid secret, clear it
+                            sessionStorage.removeItem('admin_secret');
+                            adminSecret = null;
+                            console.log('Saved admin secret is invalid, cleared');
+                        }
+                    }).catch(err => {
+                        console.error('Error verifying admin secret:', err);
+                    });
                 }
 
             } catch (error) {
@@ -9182,9 +9208,38 @@ ${historyText}`;
                             display: false // Hide the legend
                         },
                         tooltip: {
+                            backgroundColor: 'rgba(22, 27, 34, 0.95)',
+                            titleColor: '#38BDF8',
+                            bodyColor: '#E6EDF3',
+                            borderColor: '#38BDF8',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false,
                             callbacks: {
+                                title: function(context) {
+                                    return `📊 ${context[0].label}`;
+                                },
                                 label: function(context) {
-                                    return ` Volume: $${context.parsed.y.toFixed(2)}`;
+                                    const value = context.parsed.y;
+                                    return `Trading Volume: $${value.toFixed(2)}`;
+                                },
+                                afterLabel: function(context) {
+                                    const dataset = context.dataset.data;
+                                    const currentIndex = context.dataIndex;
+                                    
+                                    if (currentIndex > 0) {
+                                        const prevValue = dataset[currentIndex - 1];
+                                        const currentValue = dataset[currentIndex];
+                                        const change = currentValue - prevValue;
+                                        const percentChange = prevValue > 0 ? ((change / prevValue) * 100).toFixed(1) : 0;
+                                        
+                                        if (change !== 0) {
+                                            const arrow = change > 0 ? '↗' : '↘';
+                                            const color = change > 0 ? '+' : '';
+                                            return `${arrow} ${color}${percentChange}% from previous day`;
+                                        }
+                                    }
+                                    return '';
                                 }
                             }
                         }
@@ -10579,6 +10634,9 @@ ${historyText}`;
                                             <span class="text-xs text-gray-400">${replyTimeAgo}</span>
                                         </div>
                                         <p class="text-gray-300 text-sm mt-0.5 break-words">${safeReplyContent}</p>
+                                        <button onclick="startReply('${comment.commentId}', '${safeReplyDisplayName}')" class="text-xs text-sky-400 hover:text-sky-300 mt-1">
+                                            Reply
+                                        </button>
                                     </div>
                                     ${replyMenuHtml}
                                 </div>
@@ -11574,7 +11632,10 @@ ${historyText}`;
 
                 // Update follower count for this user
                 updateFollowerCount(userId);
-                dom.publicProfileRankBadge.innerText = `Rank: N/A`; // Note: Rank is tricky to get for a single user
+                
+                // Get and display actual rank
+                const userRank = await getUserRank(userId);
+                dom.publicProfileRankBadge.innerText = userRank ? `Rank #${userRank}` : 'Unranked';
                 dom.publicProfileAccuracyBadge.innerText = `${profile.xp > 0 ? '82' : '0'}% Accuracy`; // Still mocked
 
                 // 3. Set up the Follow button
