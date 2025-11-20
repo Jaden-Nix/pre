@@ -751,6 +751,50 @@
             border-bottom-width: 3px;
         }
 
+        /* Floating Action Button for Create Post */
+        .social-fab {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(to right, #38BDF8, #6366F1);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(56, 189, 248, 0.4);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 40;
+            border: none;
+        }
+
+        .social-fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(56, 189, 248, 0.6);
+        }
+
+        .social-fab:active {
+            transform: scale(0.95);
+        }
+
+        .social-fab.hidden {
+            display: none;
+        }
+
+        :root.light-mode .social-fab,
+        body.light-mode .social-fab {
+            background: linear-gradient(to right, #5CC6FF, #7B8CFF);
+            box-shadow: 0 4px 20px rgba(92, 198, 255, 0.4);
+        }
+
+        :root.light-mode .social-fab:hover,
+        body.light-mode .social-fab:hover {
+            box-shadow: 0 6px 25px rgba(92, 198, 255, 0.6);
+        }
+
         /* Light mode clean styles */
         :root.light-mode .social-post-card,
         body.light-mode .social-post-card {
@@ -2335,13 +2379,14 @@
                     <!-- Header -->
                     <div class="flex items-center justify-between pt-4">
                         <h1 class="text-3xl font-bold gradient-text">Social</h1>
-                        <button onclick="openCreatePost()" id="create-post-btn" class="btn btn-primary px-6 py-3 rounded-full shadow-lg">
-                            <svg class="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                            </svg>
-                            Create Post
-                        </button>
                     </div>
+                    
+                    <!-- Floating Action Button for Create Post -->
+                    <button onclick="openCreatePost()" id="social-fab" class="social-fab hidden" title="Create Post">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                    </button>
 
                     <!-- Feed / Leaderboard Toggle -->
                     <div class="flex gap-8 border-b border-white/10">
@@ -5216,6 +5261,25 @@
 
             currentScreenId = screenId;
             window.scrollTo(0, 0); // Scroll to top on new screen
+
+            // --- UI VISIBILITY CONTROLS ---
+            // Show/hide social FAB
+            const socialFab = document.getElementById('social-fab');
+            if (socialFab) {
+                socialFab.classList.toggle('hidden', screenId !== 'social-feed-screen');
+            }
+
+            // Show/hide logo - only visible on home screen
+            const mobileAppTitle = document.getElementById('mobile-app-title');
+            const desktopAppTitle = document.getElementById('app-title');
+            const isHomeScreen = screenId === 'home-screen';
+            
+            if (mobileAppTitle) {
+                mobileAppTitle.style.display = isHomeScreen ? 'block' : 'none';
+            }
+            if (desktopAppTitle) {
+                desktopAppTitle.style.display = isHomeScreen ? 'block' : 'none';
+            }
 
             // --- RACE CONDITION FIX ---
             // Clean up the single-market listener when we leave the detail screen
@@ -9961,17 +10025,15 @@ ${historyText}`;
                                     </div>
                                     <img src="${user.avatarUrl || LOGO_URL}" class="w-11 h-11 rounded-full border-2 border-${isCurrentUser ? 'sky-400' : 'gray-700'}" alt="Avatar">
                                     <div class="min-w-0">
-                                        <p class="font-semibold text-white ${isCurrentUser ? 'text-sky-400' : ''} truncate">${sanitizeHTML(user.displayName)}</p>
+                                        <button onclick="viewUserProfile('${user.userId}')" class="font-semibold text-white ${isCurrentUser ? 'text-sky-400' : 'hover:text-sky-400'} truncate text-left transition-colors">
+                                            ${sanitizeHTML(user.displayName)}
+                                        </button>
                                         <p class="text-xs text-gray-500">${user.xp || 0} XP</p>
                                     </div>
                                 </div>
-                                ${!isCurrentUser ? `
-                                    <button onclick="viewUserProfile('${user.userId}')" class="px-4 py-2 text-xs font-medium text-sky-400 hover:bg-sky-400/10 rounded-full transition-colors border border-sky-400/30">
-                                        View Profile
-                                    </button>
-                                ` : `
+                                ${isCurrentUser ? `
                                     <span class="px-3 py-1 text-xs font-medium bg-sky-400/20 text-sky-400 rounded-full border border-sky-400/30">You</span>
-                                `}
+                                ` : ''}
                             </div>
                         </div>
                     `;
