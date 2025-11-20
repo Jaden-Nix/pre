@@ -570,6 +570,169 @@ app.post('/api/get-source-link', async (req, res) => {
     }
 });
 
+// === ADMIN ENDPOINTS ===
+
+function isAdmin(req) {
+    const adminSecret = req.headers['x-admin-secret'] || req.body.adminSecret;
+    const configuredAdminSecret = process.env.ADMIN_SECRET;
+    
+    if (!configuredAdminSecret) {
+        console.warn('⚠️ ADMIN_SECRET not configured - admin endpoints disabled');
+        return false;
+    }
+    
+    return adminSecret === configuredAdminSecret;
+}
+
+app.post('/api/admin/disputed-markets', async (req, res) => {
+    if (!isAdmin(req)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    try {
+        const marketsRef = db.collection(`artifacts/${APP_ID}/public/data/standard_markets`);
+        const snapshot = await marketsRef.where('status', '==', 'disputed').get();
+        
+        const disputedMarkets = [];
+        
+        for (const doc of snapshot.docs) {
+            const marketData = doc.data();
+            
+            const votesRef = db.collection(`artifacts/${APP_ID}/public/data/jury_votes`);
+            const votesSnapshot = await votesRef.get();
+            
+            let yesVotes = 0, noVotes = 0, totalVotes = 0;
+            const votes = [];
+            
+            votesSnapshot.forEach(voteDoc => {
+                const voteData = voteDoc.data();
+                if (voteData.marketId === doc.id) {
+                    totalVotes++;
+                    if (voteData.vote === 'YES') yesVotes++;
+                    else if (voteData.vote === 'NO') noVotes++;
+                    votes.push({
+                        userId: voteData.userId,
+                        userName: voteData.userName,
+                        vote: voteData.vote,
+                        timestamp: voteData.timestamp
+                    });
+                }
+            });
+            
+            const juryCodesRef = db.collection(`artifacts/${APP_ID}/public/data/jury_codes`);
+            const juryCodesSnapshot = await juryCodesRef.where('marketId', '==', doc.id).get();
+            const totalJurors = juryCodesSnapshot.size;
+            
+            disputedMarkets.push({
+                id: doc.id,
+                title: marketData.title,
+                description: marketData.description,
+                disputedAt: marketData.disputedAt,
+                winningOutcome: marketData.winningOutcome,
+                yesPool: marketData.yesPool,
+                noPool: marketData.noPool,
+                juryStats: {
+                    yesVotes,
+                    noVotes,
+                    totalVotes,
+                    totalJurors,
+                    votes
+                }
+            });
+        }
+        
+        res.status(200).json({ markets: disputedMarkets });
+        
+    } catch (error) {
+        console.error('Error fetching disputed markets:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/admin/override-market', async (req, res) => {
+    const { marketId, outcome, reason } = req.body;
+    
+    if (!isAdmin(req)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    if (!marketId || !outcome) {
+        return res.status(400).json({ error: 'Missing marketId or outcome' });
+    }
+    
+    try {
+        const marketRef = db.collection(`artifacts/${APP_ID}/public/data/standard_markets`).doc(marketId);
+        const marketSnap = await marketRef.get();
+        
+        if (!marketSnap.exists) {
+            return res.status(404).json({ error: 'Market not found' });
+        }
+        
+        await marketRef.update({
+            isResolved: true,
+            winningOutcome: outcome,
+            resolutionMethod: 'admin_override',
+            adminOverrideReason: reason || 'Admin manual override',
+            adminOverrideAt: new Date().toISOString(),
+            status: 'resolved',
+            disputeStatus: 'admin_resolved'
+        });
+        
+        console.log(`🔧 Admin override: Market ${marketId} resolved as ${outcome}`);
+        res.status(200).json({ success: true, message: `Market resolved as ${outcome}` });
+        
+    } catch (error) {
+        console.error('Error overriding market:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/admin/stats', async (req, res) => {
+    if (!isAdmin(req)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    try {
+        const marketsRef = db.collection(`artifacts/${APP_ID}/public/data/standard_markets`);
+        const allMarketsSnapshot = await marketsRef.get();
+        const disputedMarketsSnapshot = await marketsRef.where('status', '==', 'disputed').get();
+        
+        const juryCodesRef = db.collection(`artifacts/${APP_ID}/public/data/jury_codes`);
+        const juryCodesSnapshot = await juryCodesRef.get();
+        const activeJuryCodes = juryCodesSnapshot.docs.filter(doc => {
+            const data = doc.data();
+            return !data.used && new Date(data.expiresAt) > new Date();
+        });
+        
+        const juryVotesRef = db.collection(`artifacts/${APP_ID}/public/data/jury_votes`);
+        const juryVotesSnapshot = await juryVotesRef.get();
+        
+        res.status(200).json({
+            totalMarkets: allMarketsSnapshot.size,
+            disputedMarkets: disputedMarketsSnapshot.size,
+            totalJuryCodes: juryCodesSnapshot.size,
+            activeJuryCodes: activeJuryCodes.length,
+            totalJuryVotes: juryVotesSnapshot.size
+        });
+        
+    } catch (error) {
+        console.error('Error fetching admin stats:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Predora Backend Server is live on port ${PORT}`);
     console.log(`🌐 Landing page: http://localhost:${PORT}/`);

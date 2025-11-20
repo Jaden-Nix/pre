@@ -1972,6 +1972,14 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Admin Dashboard Access -->
+                        <button onclick="showScreen('admin-dashboard-screen')" class="btn btn-secondary w-full flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            </svg>
+                            Admin Dashboard
+                        </button>
                     </div>
 
                     <div class="lg:col-span-2">
@@ -2320,6 +2328,61 @@
                                 <button id="jury-vote-yes-btn" class="btn btn-stake-yes flex-1">Vote YES</button>
                                 <button id="jury-vote-no-btn" class="btn btn-stake-no flex-1">Vote NO</button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Dashboard Screen -->
+            <div id="admin-dashboard-screen" class="screen screen-inactive space-y-6">
+                <button onclick="goBack()" class="flex items-center text-sky-400 font-medium transition-colors hover:text-sky-300">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    Back
+                </button>
+                
+                <div class="text-center">
+                    <h1 class="text-3xl font-bold gradient-text mb-2">🛡️ Admin Dashboard</h1>
+                    <p class="text-gray-400 text-sm">Manage disputed markets and jury system</p>
+                </div>
+
+                <!-- Admin Authentication -->
+                <div id="admin-auth-panel" class="ui-panel">
+                    <h3 class="text-lg font-semibold text-purple-400 mb-3">Admin Authentication Required</h3>
+                    <p class="text-sm text-gray-400 mb-4">Enter your admin secret key to access the dashboard</p>
+                    <input type="password" id="admin-secret-input" class="ui-input mb-4" placeholder="Enter admin secret">
+                    <button id="admin-login-btn" class="btn btn-primary w-full">Authenticate</button>
+                </div>
+
+                <!-- Admin Dashboard Content (hidden until authenticated) -->
+                <div id="admin-content" class="hidden space-y-6">
+                    <!-- Stats Overview -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="ui-panel text-center">
+                            <div class="text-3xl font-bold text-purple-400" id="admin-total-markets">-</div>
+                            <div class="text-xs text-gray-400 mt-1">Total Markets</div>
+                        </div>
+                        <div class="ui-panel text-center">
+                            <div class="text-3xl font-bold text-red-400" id="admin-disputed-markets">-</div>
+                            <div class="text-xs text-gray-400 mt-1">Disputed</div>
+                        </div>
+                        <div class="ui-panel text-center">
+                            <div class="text-3xl font-bold text-yellow-400" id="admin-active-jury-codes">-</div>
+                            <div class="text-xs text-gray-400 mt-1">Active Jury Codes</div>
+                        </div>
+                        <div class="ui-panel text-center">
+                            <div class="text-3xl font-bold text-green-400" id="admin-total-votes">-</div>
+                            <div class="text-xs text-gray-400 mt-1">Total Jury Votes</div>
+                        </div>
+                    </div>
+
+                    <!-- Refresh Button -->
+                    <button id="admin-refresh-btn" class="btn btn-secondary w-full">🔄 Refresh Data</button>
+
+                    <!-- Disputed Markets List -->
+                    <div class="ui-panel">
+                        <h3 class="text-lg font-semibold text-purple-400 mb-4">Disputed Markets</h3>
+                        <div id="admin-disputed-markets-list" class="space-y-4">
+                            <p class="text-gray-400 text-center py-4">No disputed markets</p>
                         </div>
                     </div>
                 </div>
@@ -3107,6 +3170,220 @@
             }
         }
 
+        // === ADMIN DASHBOARD SYSTEM ===
+        
+        let adminSecret = null;
+        let isAdminAuthenticated = false;
+
+        /**
+         * Authenticates admin user
+         */
+        async function authenticateAdmin() {
+            const secretInput = document.getElementById('admin-secret-input');
+            const secret = secretInput.value.trim();
+            
+            if (!secret) {
+                showToast('Please enter admin secret', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/stats', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-admin-secret': secret
+                    },
+                    body: JSON.stringify({})
+                });
+
+                if (response.ok) {
+                    adminSecret = secret;
+                    isAdminAuthenticated = true;
+                    document.getElementById('admin-auth-panel').classList.add('hidden');
+                    document.getElementById('admin-content').classList.remove('hidden');
+                    showToast('Admin authenticated successfully', 'success');
+                    await loadAdminDashboard();
+                } else {
+                    showToast('Invalid admin secret', 'error');
+                }
+            } catch (error) {
+                console.error('Admin auth error:', error);
+                showToast('Authentication failed: ' + error.message, 'error');
+            }
+        }
+
+        /**
+         * Loads admin dashboard data
+         */
+        async function loadAdminDashboard() {
+            if (!isAdminAuthenticated) return;
+
+            try {
+                await Promise.all([
+                    loadAdminStats(),
+                    loadDisputedMarkets()
+                ]);
+            } catch (error) {
+                console.error('Error loading admin dashboard:', error);
+                showToast('Failed to load dashboard data', 'error');
+            }
+        }
+
+        /**
+         * Loads admin statistics
+         */
+        async function loadAdminStats() {
+            try {
+                const response = await fetch('/api/admin/stats', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-admin-secret': adminSecret
+                    },
+                    body: JSON.stringify({})
+                });
+
+                if (!response.ok) throw new Error('Failed to load stats');
+
+                const data = await response.json();
+                
+                document.getElementById('admin-total-markets').textContent = data.totalMarkets || 0;
+                document.getElementById('admin-disputed-markets').textContent = data.disputedMarkets || 0;
+                document.getElementById('admin-active-jury-codes').textContent = data.activeJuryCodes || 0;
+                document.getElementById('admin-total-votes').textContent = data.totalJuryVotes || 0;
+            } catch (error) {
+                console.error('Error loading admin stats:', error);
+            }
+        }
+
+        /**
+         * Loads disputed markets with jury voting details
+         */
+        async function loadDisputedMarkets() {
+            try {
+                const response = await fetch('/api/admin/disputed-markets', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-admin-secret': adminSecret
+                    },
+                    body: JSON.stringify({})
+                });
+
+                if (!response.ok) throw new Error('Failed to load disputed markets');
+
+                const data = await response.json();
+                const marketsList = document.getElementById('admin-disputed-markets-list');
+                
+                if (!data.markets || data.markets.length === 0) {
+                    marketsList.innerHTML = '<p class="text-gray-400 text-center py-4">No disputed markets</p>';
+                    return;
+                }
+
+                marketsList.innerHTML = data.markets.map(market => {
+                    const stats = market.juryStats;
+                    const voteProgress = stats.totalJurors > 0 ? (stats.totalVotes / stats.totalJurors * 100).toFixed(0) : 0;
+                    const yesPercent = stats.totalVotes > 0 ? (stats.yesVotes / stats.totalVotes * 100).toFixed(0) : 0;
+                    const noPercent = stats.totalVotes > 0 ? (stats.noVotes / stats.totalVotes * 100).toFixed(0) : 0;
+                    
+                    return `
+                        <div class="border border-red-500/30 rounded-lg p-4 bg-red-900/10">
+                            <h4 class="font-bold text-white mb-2">${market.title}</h4>
+                            <p class="text-sm text-gray-400 mb-3">${market.description || 'No description'}</p>
+                            
+                            <div class="grid grid-cols-2 gap-2 mb-3 text-xs">
+                                <div>
+                                    <span class="text-gray-400">Original Outcome:</span>
+                                    <span class="font-semibold ml-1 ${market.winningOutcome === 'YES' ? 'text-green-400' : 'text-red-400'}">${market.winningOutcome}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-400">Disputed:</span>
+                                    <span class="font-semibold ml-1 text-yellow-400">${new Date(market.disputedAt).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-white/10 pt-3 mb-3">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-purple-400 font-semibold">Jury Voting Progress</span>
+                                    <span class="text-sm text-gray-400">${stats.totalVotes}/${stats.totalJurors} votes (${voteProgress}%)</span>
+                                </div>
+                                <div class="w-full bg-gray-700 rounded-full h-2 mb-3">
+                                    <div class="bg-purple-500 h-2 rounded-full transition-all" style="width: ${voteProgress}%"></div>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-2 text-center">
+                                    <div class="bg-green-900/30 rounded p-2">
+                                        <div class="text-2xl font-bold text-green-400">${yesPercent}%</div>
+                                        <div class="text-xs text-gray-400">YES (${stats.yesVotes})</div>
+                                    </div>
+                                    <div class="bg-red-900/30 rounded p-2">
+                                        <div class="text-2xl font-bold text-red-400">${noPercent}%</div>
+                                        <div class="text-xs text-gray-400">NO (${stats.noVotes})</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-white/10 pt-3">
+                                <p class="text-xs text-gray-400 mb-2 font-semibold">Admin Override:</p>
+                                <div class="flex gap-2">
+                                    <button onclick="overrideMarket('${market.id}', 'YES')" class="btn btn-stake-yes flex-1 text-sm py-2">Force YES</button>
+                                    <button onclick="overrideMarket('${market.id}', 'NO')" class="btn btn-stake-no flex-1 text-sm py-2">Force NO</button>
+                                </div>
+                            </div>
+
+                            ${stats.votes && stats.votes.length > 0 ? `
+                                <div class="mt-3 border-t border-white/10 pt-3">
+                                    <p class="text-xs text-gray-400 mb-2 font-semibold">Individual Votes:</p>
+                                    <div class="space-y-1 text-xs">
+                                        ${stats.votes.map(v => `
+                                            <div class="flex justify-between items-center bg-black/20 rounded px-2 py-1">
+                                                <span class="text-gray-300">${v.userName}</span>
+                                                <span class="font-semibold ${v.vote === 'YES' ? 'text-green-400' : 'text-red-400'}">${v.vote}</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error loading disputed markets:', error);
+            }
+        }
+
+        /**
+         * Admin override market outcome
+         */
+        async function overrideMarket(marketId, outcome) {
+            if (!confirm(`Are you sure you want to override this market to ${outcome}? This action cannot be undone.`)) {
+                return;
+            }
+
+            const reason = prompt('Enter reason for override (optional):');
+
+            try {
+                const response = await fetch('/api/admin/override-market', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-admin-secret': adminSecret
+                    },
+                    body: JSON.stringify({ marketId, outcome, reason })
+                });
+
+                if (!response.ok) throw new Error('Failed to override market');
+
+                const data = await response.json();
+                showToast(`Market overridden to ${outcome}`, 'success');
+                await loadAdminDashboard();
+            } catch (error) {
+                console.error('Error overriding market:', error);
+                showToast('Failed to override market: ' + error.message, 'error');
+            }
+        }
+
         /**
          * Updates the UI to show real BNB balance
          */
@@ -3167,6 +3444,11 @@
         window.getRealBNBBalance = getRealBNBBalance;
         window.submitJuryVote = submitJuryVote;
         window.updateRealBNBBalance = updateRealBNBBalance;
+        
+        // Expose admin functions globally
+        window.authenticateAdmin = authenticateAdmin;
+        window.loadAdminDashboard = loadAdminDashboard;
+        window.overrideMarket = overrideMarket;
 
         // --- INITIALIZATION ---
         document.addEventListener("DOMContentLoaded", () => {
@@ -9368,11 +9650,17 @@ ${historyText}`;
                         </div>
                     `;
                 
+                // Check if market is disputed
+                const isDisputed = market.status === 'disputed';
+                const juryVotes = market.juryVotes || {};
+                const juryVoteCount = (juryVotes.yes || 0) + (juryVotes.no || 0);
+                
                 html += `
-                    <div class="ui-panel">
+                    <div class="ui-panel ${isDisputed ? 'border-2 border-red-500/50' : ''}">
                         <div class="flex justify-between items-center mb-3">
                             <span class="text-xs text-gray-400 font-light">By ${displayName}</span>
-                            <div class="flex items-center space-x-2">
+                            <div class="flex items-center space-x-2 flex-wrap">
+                                ${isDisputed ? '<span class="badge bg-red-600 text-white">🚨 DISPUTED</span>' : ''}
                                 <span class="badge ${market.isNoLoss ? 'badge-blue' : 'badge-green'}">${market.isNoLoss ? 'No-Loss' : 'Classic'}</span>
                                 ${isMultipleChoice ? '<span class="badge badge-timer">Multi-Choice</span>' : ''}
                                 <div class.badge badge-timer flex items-center space-x-1.5">
@@ -9381,6 +9669,27 @@ ${historyText}`;
                                 </div>
                             </div>
                         </div>
+                        
+                        ${isDisputed ? `
+                            <div class="mb-3 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm font-semibold text-red-400">⚖️ Jury Review in Progress</span>
+                                    ${juryVoteCount > 0 ? `<span class="text-xs text-gray-400">${juryVoteCount} votes cast</span>` : ''}
+                                </div>
+                                <p class="text-xs text-gray-400">This market outcome is being reviewed by a jury. All payouts are frozen until resolution.</p>
+                                ${juryVoteCount >= 3 ? `
+                                    <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+                                        <div class="bg-green-900/30 rounded p-1.5 text-center">
+                                            <span class="text-green-400 font-bold">${juryVotes.yes || 0} YES</span>
+                                        </div>
+                                        <div class="bg-red-900/30 rounded p-1.5 text-center">
+                                            <span class="text-red-400 font-bold">${juryVotes.no || 0} NO</span>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        ` : ''}
+                        
                         <h3 class="text-lg font-semibold text-white mb-3 leading-tight">${market.title}</h3>
                         ${optionsHtml}
                         <button onclick="viewMarketDetail('${market.id}')" class="btn btn-primary w-full">View Market</button>
