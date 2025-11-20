@@ -26,6 +26,24 @@ Predora is an AI-native prediction market platform built on BNB Chain, featuring
 - **API Documentation**: Created comprehensive API documentation in `API_DOCUMENTATION.md` with examples and use cases.
 - **Code Quality**: All changes passed architect review with proper error handling, Firestore guards, and React best practices.
 
+### Session 3: Critical Bug Fixes & BSC Testnet Integration
+- **Admin Panel Security**: Verified secure backend authentication using ADMIN_SECRET environment variable. Admin access properly validates against server-side secret with fail-closed behavior when not configured.
+- **User Ranking Fix**: Implemented `fetchUserRank()` function that queries actual leaderboard data and calculates real rank position based on XP sorting. Replaced hardcoded rank logic.
+- **Dispute UI Enhancement**: Updated history stakes display to show "FROZEN" status in orange for disputed markets instead of WON/LOST, providing clear visual feedback during jury review.
+- **Market Data Indexer API**: Built production-ready indexer with 5 REST endpoints:
+  - `GET /api/indexer/markets` - Advanced market queries with cursor-based pagination, filtering (category, status, isResolved, createdBy), sorting, and text search
+  - `GET /api/indexer/markets/:marketId/history` - Historical odds tracking with timestamps
+  - `GET /api/indexer/markets/:marketId/volume` - Volume analysis and participant metrics
+  - `GET /api/indexer/user/:userId/complete-activity` - Comprehensive user stats (pledges, win rate, earnings, net profit)
+  - `POST /api/indexer/markets/:marketId/odds-snapshot` - Admin-authenticated odds recording for historical tracking
+- **BSC Testnet Smart Contract**: Created complete smart contract infrastructure:
+  - `PredictionMarket.sol` - Solidity contract with market creation, betting, resolution, disputes, and payouts
+  - Hardhat deployment configuration for BSC Testnet (chainId: 97)
+  - Automated deployment script with ABI export and deployment info recording
+  - Comprehensive deployment documentation and instructions
+  - Contract features: On-chain markets, real BNB betting, automated odds calculation, 1% platform fee, dispute mechanism, admin controls
+- **Code Quality**: All implementations use Firestore-safe queries (cursor pagination, single filters), proper authentication, and fail-safe error handling. Architect-reviewed and approved.
+
 ## User Preferences
 - Vanilla HTML/CSS/JS architecture (original design, not Next.js)
 - Web3-native with MetaMask wallet integration
