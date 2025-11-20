@@ -61,6 +61,117 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, '..')));
 
+// --- AI GUARDRAILS ---
+async function checkDuplicateMarket(title, existingMarkets) {
+    if (!GEMINI_API_KEY || !existingMarkets || existingMarkets.length === 0) {
+        return { isDuplicate: false, score: 0 };
+    }
+    
+    try {
+        const payload = {
+            systemInstruction: {
+                parts: [{
+                    text: "You are a duplicate detection system. Compare the new market title with existing markets and determine if it's a duplicate. Return a similarity score from 0 to 1, where 1 means identical and 0 means completely different."
+                }]
+            },
+            contents: [{
+                parts: [{
+                    text: `New market: "${title}"\n\nExisting markets:\n${existingMarkets.slice(0, 50).map((m, i) => `${i + 1}. ${m.title}`).join('\n')}\n\nAnalyze if this is a duplicate. Return JSON with: { "isDuplicate": boolean, "score": number (0-1), "similarTo": "title of most similar market or null" }`
+                }]
+            }],
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "object",
+                    properties: {
+                        isDuplicate: { type: "boolean" },
+                        score: { type: "number" },
+                        similarTo: { type: ["string", "null"] }
+                    }
+                }
+            }
+        };
+        
+        const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        const result = JSON.parse(data.candidates[0].content.parts[0].text);
+        return result;
+    } catch (error) {
+        console.error('Error checking duplicate:', error);
+        return { isDuplicate: false, score: 0 };
+    }
+}
+
+async function checkMarketQuality(title, description) {
+    if (!GEMINI_API_KEY) {
+        return { isLowQuality: false, score: 1, reason: '' };
+    }
+    
+    try {
+        const payload = {
+            systemInstruction: {
+                parts: [{
+                    text: "You are a content quality analyzer. Evaluate if a prediction market is high quality, clear, verifiable, and interesting. Low quality includes: spam, unclear questions, unverifiable outcomes, offensive content, or extremely trivial topics."
+                }]
+            },
+            contents: [{
+                parts: [{
+                    text: `Market title: "${title}"\nDescription: "${description || 'None'}"\n\nEvaluate quality. Return JSON with: { "isLowQuality": boolean, "score": number (0-1, where 1 is high quality), "reason": "explanation if low quality" }`
+                }]
+            }],
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "object",
+                    properties: {
+                        isLowQuality: { type: "boolean" },
+                        score: { type: "number" },
+                        reason: { type: "string" }
+                    }
+                }
+            }
+        };
+        
+        const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        const result = JSON.parse(data.candidates[0].content.parts[0].text);
+        return result;
+    } catch (error) {
+        console.error('Error checking quality:', error);
+        return { isLowQuality: false, score: 1, reason: '' };
+    }
+}
+
+async function checkSybilBehavior(userId, userMarkets, timeWindow = 3600000) {
+    if (!userMarkets || userMarkets.length === 0) {
+        return { isSybil: false, score: 0, reason: '' };
+    }
+    
+    const recentMarkets = userMarkets.filter(m => {
+        const createdAt = new Date(m.createdAt).getTime();
+        return Date.now() - createdAt < timeWindow;
+    });
+    
+    const isSybil = recentMarkets.length >= 10;
+    const score = Math.min(recentMarkets.length / 10, 1);
+    
+    return {
+        isSybil,
+        score,
+        reason: isSybil ? `User created ${recentMarkets.length} markets in the last hour` : ''
+    };
+}
+
 // --- ROUTES ---
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'index.html'));
@@ -580,7 +691,7 @@ app.post('/api/get-source-link', async (req, res) => {
 // === ADMIN ENDPOINTS ===
 
 function isAdmin(req) {
-    const adminSecret = req.headers['x-admin-secret'] || req.body.adminSecret;
+    const adminSecret = req.headers['x-admin-secret'];
     const configuredAdminSecret = process.env.ADMIN_SECRET;
     
     if (!configuredAdminSecret) {
@@ -591,10 +702,14 @@ function isAdmin(req) {
     return adminSecret === configuredAdminSecret;
 }
 
-app.post('/api/admin/disputed-markets', async (req, res) => {
+function requireAdmin(req, res, next) {
     if (!isAdmin(req)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
+    next();
+}
+
+app.post('/api/admin/disputed-markets', requireAdmin, async (req, res) => {
     
     if (!db) {
         return res.status(503).json({ error: 'Firebase Admin not initialized' });
@@ -736,6 +851,323 @@ app.post('/api/admin/stats', async (req, res) => {
         
     } catch (error) {
         console.error('Error fetching admin stats:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/admin/verify', requireAdmin, async (req, res) => {
+    res.status(200).json({ valid: true, message: 'Admin authenticated successfully' });
+});
+
+app.post('/api/admin/normal-markets', requireAdmin, async (req, res) => {
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    try {
+        const { filter } = req.body;
+        const marketsRef = db.collection(`artifacts/${APP_ID}/public/data/standard_markets`);
+        
+        let query = marketsRef;
+        if (filter === 'active') {
+            query = marketsRef.where('isResolved', '==', false);
+        } else if (filter === 'disputed') {
+            query = marketsRef.where('status', '==', 'disputed');
+        }
+        
+        const snapshot = await query.get();
+        const markets = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        res.status(200).json({ markets });
+    } catch (error) {
+        console.error('Error fetching normal markets:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/admin/quick-plays', async (req, res) => {
+    if (!isAdmin(req)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    try {
+        const quickPlaysRef = db.collection(`artifacts/${APP_ID}/public/data/quick_plays`);
+        const snapshot = await quickPlaysRef.get();
+        const quickPlays = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        res.status(200).json({ quickPlays });
+    } catch (error) {
+        console.error('Error fetching quick plays:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/admin/resolve-quick-play', async (req, res) => {
+    if (!isAdmin(req)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    const { quickPlayId, outcome } = req.body;
+    
+    try {
+        const quickPlayRef = db.collection(`artifacts/${APP_ID}/public/data/quick_plays`).doc(quickPlayId);
+        await quickPlayRef.update({
+            status: 'resolved',
+            outcome,
+            resolvedAt: new Date().toISOString(),
+            resolvedBy: 'admin'
+        });
+        
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error('Error resolving quick play:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/admin/quick-polls', async (req, res) => {
+    if (!isAdmin(req)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    try {
+        const quickPollsRef = db.collection(`artifacts/${APP_ID}/public/data/quick_polls`);
+        const snapshot = await quickPollsRef.get();
+        const quickPolls = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        res.status(200).json({ quickPolls });
+    } catch (error) {
+        console.error('Error fetching quick polls:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/admin/resolve-quick-poll', async (req, res) => {
+    if (!isAdmin(req)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    const { quickPollId, outcome } = req.body;
+    
+    try {
+        const quickPollRef = db.collection(`artifacts/${APP_ID}/public/data/quick_polls`).doc(quickPollId);
+        await quickPollRef.update({
+            status: 'resolved',
+            outcome,
+            resolvedAt: new Date().toISOString(),
+            resolvedBy: 'admin'
+        });
+        
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error('Error resolving quick poll:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/admin/guardrails', async (req, res) => {
+    if (!isAdmin(req)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    try {
+        const flaggedRef = db.collection(`artifacts/${APP_ID}/public/data/flagged_items`);
+        const snapshot = await flaggedRef.get();
+        const flaggedItems = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        const stats = {
+            duplicatesBlocked: flaggedItems.filter(i => i.type === 'duplicate').length,
+            lowQualityBlocked: flaggedItems.filter(i => i.type === 'low-quality').length,
+            sybilDetected: flaggedItems.filter(i => i.type === 'sybil').length,
+            suspiciousCreators: flaggedItems.filter(i => i.type === 'suspicious-creator').length,
+        };
+        
+        res.status(200).json({ stats, flaggedItems });
+    } catch (error) {
+        console.error('Error fetching guardrails:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/admin/guardrails/settings', async (req, res) => {
+    if (!isAdmin(req)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    const { settings } = req.body;
+    
+    try {
+        const settingsRef = db.collection(`artifacts/${APP_ID}/config`).doc('guardrails');
+        await settingsRef.set(settings, { merge: true });
+        
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error('Error updating guardrail settings:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/admin/guardrails/unflag', async (req, res) => {
+    if (!isAdmin(req)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    const { itemId } = req.body;
+    
+    try {
+        const flaggedRef = db.collection(`artifacts/${APP_ID}/public/data/flagged_items`).doc(itemId);
+        await flaggedRef.delete();
+        
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error('Error unflagging item:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/admin/account-abstraction/config', async (req, res) => {
+    if (!isAdmin(req)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    const { config } = req.body;
+    
+    try {
+        const configRef = db.collection(`artifacts/${APP_ID}/config`).doc('account_abstraction');
+        await configRef.set(config, { merge: true });
+        
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error('Error saving account abstraction config:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/validate-market', async (req, res) => {
+    const { title, description, userId } = req.body;
+    
+    if (!title) {
+        return res.status(400).json({ error: 'Title is required' });
+    }
+    
+    try {
+        let warnings = [];
+        let blocked = false;
+        let blockReason = '';
+        
+        if (db) {
+            const marketsRef = db.collection(`artifacts/${APP_ID}/public/data/standard_markets`);
+            const snapshot = await marketsRef.get();
+            const existingMarkets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            const duplicateCheck = await checkDuplicateMarket(title, existingMarkets);
+            if (duplicateCheck.isDuplicate && duplicateCheck.score > 0.85) {
+                blocked = true;
+                blockReason = `Duplicate market detected. Too similar to: "${duplicateCheck.similarTo}"`;
+                
+                await db.collection(`artifacts/${APP_ID}/public/data/flagged_items`).add({
+                    type: 'duplicate',
+                    title,
+                    reason: blockReason,
+                    createdAt: new Date().toISOString(),
+                    creatorId: userId,
+                    similarTo: duplicateCheck.similarTo,
+                    score: duplicateCheck.score
+                });
+            }
+            
+            if (!blocked) {
+                const qualityCheck = await checkMarketQuality(title, description);
+                if (qualityCheck.isLowQuality || qualityCheck.score < 0.6) {
+                    blocked = true;
+                    blockReason = qualityCheck.reason;
+                    
+                    await db.collection(`artifacts/${APP_ID}/public/data/flagged_items`).add({
+                        type: 'low-quality',
+                        title,
+                        reason: blockReason,
+                        createdAt: new Date().toISOString(),
+                        creatorId: userId,
+                        score: qualityCheck.score
+                    });
+                }
+            }
+            
+            if (!blocked && userId) {
+                const userMarketsSnapshot = await marketsRef.where('creatorId', '==', userId).get();
+                const userMarkets = userMarketsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                const sybilCheck = await checkSybilBehavior(userId, userMarkets);
+                if (sybilCheck.isSybil) {
+                    blocked = true;
+                    blockReason = sybilCheck.reason;
+                    
+                    await db.collection(`artifacts/${APP_ID}/public/data/flagged_items`).add({
+                        type: 'sybil',
+                        title,
+                        reason: blockReason,
+                        createdAt: new Date().toISOString(),
+                        creatorId: userId,
+                        score: sybilCheck.score
+                    });
+                }
+            }
+        }
+        
+        res.status(200).json({
+            valid: !blocked,
+            blocked,
+            blockReason,
+            warnings
+        });
+        
+    } catch (error) {
+        console.error('Error validating market:', error);
         res.status(500).json({ error: error.message });
     }
 });

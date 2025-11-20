@@ -236,7 +236,25 @@ Once API keys are provided by user:
 
 ## Recent Changes (Nov 20, 2025)
 
-### Project Import to Replit (Latest)
+### Multi-Page Admin Panel & AI Guardrails (Latest)
+- ✅ Created comprehensive admin panel with 5 dedicated pages:
+  - **Normal Markets Resolve**: Paginated list (10/page) with filters (all/active/disputed), manual YES/NO resolution
+  - **Quick Play Resolve**: Paginated quick play questions with manual resolution
+  - **Quick Poll Resolve**: Multi-option poll resolution with vote tracking
+  - **AI Guardrails**: Duplicate detection, quality filtering, Sybil detection with configurable thresholds
+  - **Account Abstraction**: Google/Apple login configuration, gas sponsorship settings, Biconomy integration
+- ✅ Implemented AI-powered content moderation:
+  - Duplicate market detection using Gemini AI (similarity scoring)
+  - Quality analysis to block spam and low-quality markets
+  - Sybil behavior detection (rate limiting, suspicious patterns)
+  - Automatic flagging system with admin review workflow
+- ✅ Added `/api/validate-market` endpoint that runs all guardrails before market creation
+- ✅ All admin endpoints secured with `x-admin-secret` header authentication
+- ✅ Proper API routing from Next.js (port 5000) to Express backend (port 3001)
+- ✅ Pagination for all admin lists to handle thousands of markets efficiently
+- ✅ Account Abstraction page includes Replit Auth integration documentation
+
+### Project Import to Replit
 - ✅ Successfully imported Predora project to Replit environment
 - ✅ Installed all dependencies for both client and server
 - ✅ Configured dual-workflow architecture:
