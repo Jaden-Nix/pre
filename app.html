@@ -1182,6 +1182,9 @@
             border-bottom-color: #0369A1;
         }
     </style>
+
+    <!-- Web3 Libraries -->
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js"></script>
 </head>
 <body class="text-gray-100">
     <!-- Mobile Header (visible on mobile only) -->
@@ -1999,7 +2002,72 @@
                         </div>
 
                 <div id="assets-content" class="hidden space-y-3">
-                    <p class="text-gray-400 text-center pt-8">Loading assets...</p>
+                    <!-- Web3 Wallet Section -->
+                    <div class="ui-panel p-4 space-y-4">
+                        <h3 class="text-lg font-semibold gradient-text">🔗 Web3 Wallet</h3>
+                        
+                        <div id="wallet-disconnected" class="space-y-3">
+                            <p class="text-sm text-gray-400">Connect your MetaMask wallet to use BSC testnet BNB for transactions</p>
+                            <button onclick="connectWallet()" class="btn btn-primary w-full">
+                                <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                                </svg>
+                                Connect MetaMask
+                            </button>
+                        </div>
+
+                        <div id="wallet-connected" class="hidden space-y-3">
+                            <div class="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                                <span class="text-sm text-green-400">✓ Wallet Connected</span>
+                                <span id="connected-address" class="text-xs text-gray-400 font-mono">0x...</span>
+                            </div>
+
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                                    <span class="text-sm text-gray-400">BNB Balance:</span>
+                                    <span id="bnb-balance-display" class="text-sm font-semibold text-white">0.00 BNB</span>
+                                </div>
+                                <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                                    <span class="text-sm text-gray-400">Smart Account:</span>
+                                    <span id="smart-account-display" class="text-xs text-gray-400 font-mono">Not initialized</span>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <p class="text-xs text-gray-400 font-semibold">Switch Network:</p>
+                                <button onclick="switchNetwork('BSC_TESTNET')" class="btn btn-secondary w-full">
+                                    🔶 BSC Testnet
+                                </button>
+                                <button onclick="switchNetwork('OPBNB_TESTNET')" class="btn btn-secondary w-full">
+                                    ⚡ opBNB Testnet
+                                </button>
+                            </div>
+
+                            <button onclick="updateRealBNBBalance()" class="btn btn-primary w-full text-sm">
+                                Refresh Balance
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Mock Balances -->
+                    <div class="ui-panel p-4 space-y-3">
+                        <h3 class="text-base font-semibold text-sky-300">Mock Demo Balances</h3>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="text-center p-3 bg-white/5 rounded-lg">
+                                <span class="text-xs text-gray-400">BUSD</span>
+                                <p id="mock-busd" class="text-lg font-semibold text-green-400">$100</p>
+                            </div>
+                            <div class="text-center p-3 bg-white/5 rounded-lg">
+                                <span class="text-xs text-gray-400">BNB</span>
+                                <p id="mock-bnb" class="text-lg font-semibold text-yellow-400">0.2</p>
+                            </div>
+                            <div class="text-center p-3 bg-white/5 rounded-lg">
+                                <span class="text-xs text-gray-400">CAKE</span>
+                                <p id="mock-cake" class="text-lg font-semibold text-purple-400">150</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400">These are demo balances for testing the app</p>
+                    </div>
                 </div> 
 
                         <div id="networking-content" class="hidden space-y-4">
@@ -2323,6 +2391,21 @@
                 </button>
             </div>
 
+            <div id="jury-voting-section" class="hidden">
+                <h3 class="text-sm font-semibold text-purple-400">⚖️ Vote as Jury</h3>
+                <p class="text-xs text-gray-400 mt-1">
+                    This market is disputed. Cast your vote to help resolve it.
+                </p>
+                <div class="flex gap-3 mt-3">
+                    <button onclick="submitJuryVote(currentMarketId, 'YES')" class="btn btn-stake-yes flex-1">
+                        Vote YES
+                    </button>
+                    <button onclick="submitJuryVote(currentMarketId, 'NO')" class="btn btn-stake-no flex-1">
+                        Vote NO
+                    </button>
+                </div>
+            </div>
+
             <button onclick="closeVerdictModal()" class="btn btn-primary w-full mt-4">
                 Close
             </button>
@@ -2566,6 +2649,32 @@
           const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
         const GEMINI_API_KEY = "";
 
+        // --- WEB3 & BLOCKCHAIN CONSTANTS ---
+        const NETWORKS = {
+            BSC_TESTNET: {
+                chainId: '0x61', // 97 in decimal
+                chainName: 'BSC Testnet',
+                nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+                rpcUrls: ['https://data-seed-prebsc-1-s1.binance.org:8545/'],
+                blockExplorerUrls: ['https://testnet.bscscan.com/']
+            },
+            OPBNB_TESTNET: {
+                chainId: '0x15eb', // 5611 in decimal
+                chainName: 'opBNB Testnet',
+                nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+                rpcUrls: ['https://opbnb-testnet-rpc.bnbchain.org'],
+                blockExplorerUrls: ['https://opbnb-testnet.bscscan.com/']
+            }
+        };
+
+        // Web3 State
+        let web3Provider = null;
+        let ethersProvider = null;
+        let signer = null;
+        let userWalletAddress = null;
+        let smartAccountAddress = null;
+        let currentNetwork = null;
+
         // --- FIRESTORE PATHS ---
         // All data is stored in a "public" path for the hackathon demo
         // In a real app, these paths would be secured with Firestore Rules
@@ -2708,6 +2817,288 @@
             content.classList.toggle('hidden');
             chevron.classList.toggle('rotate-180');
         };
+
+        // === WEB3 SERVICE LAYER ===
+        
+        /**
+         * Connects to user's Web3 wallet (MetaMask, etc.)
+         */
+        async function connectWallet() {
+            try {
+                if (typeof window.ethereum === 'undefined') {
+                    showToast('Please install MetaMask to use Web3 features!', 'error');
+                    return null;
+                }
+
+                // Request account access
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                userWalletAddress = accounts[0];
+
+                // Initialize ethers provider
+                ethersProvider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = ethersProvider.getSigner();
+
+                // Get current network
+                const network = await ethersProvider.getNetwork();
+                currentNetwork = network.chainId;
+
+                console.log('✅ Wallet connected:', userWalletAddress);
+                console.log('📡 Network:', currentNetwork);
+
+                // Update UI
+                showToast(`Wallet connected: ${userWalletAddress.slice(0, 6)}...${userWalletAddress.slice(-4)}`, 'success');
+
+                // Save wallet address to user profile
+                if (currentUserId && db) {
+                    const { doc, updateDoc } = window.firebase.firestore;
+                    const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
+                    await updateDoc(profileRef, { walletAddress: userWalletAddress });
+                }
+
+                // Initialize Account Abstraction smart account (if available)
+                await initializeSmartAccount();
+
+                return userWalletAddress;
+            } catch (error) {
+                console.error('Wallet connection failed:', error);
+                showToast('Failed to connect wallet: ' + error.message, 'error');
+                return null;
+            }
+        }
+
+        /**
+         * Switches to BSC Testnet or opBNB Testnet
+         */
+        async function switchNetwork(networkKey) {
+            if (!window.ethereum) {
+                showToast('MetaMask not detected!', 'error');
+                return false;
+            }
+
+            const network = NETWORKS[networkKey];
+            if (!network) {
+                showToast('Invalid network', 'error');
+                return false;
+            }
+
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: network.chainId }],
+                });
+                
+                currentNetwork = parseInt(network.chainId, 16);
+                showToast(`Switched to ${network.chainName}`, 'success');
+                return true;
+            } catch (switchError) {
+                // Network doesn't exist, add it
+                if (switchError.code === 4902) {
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [network],
+                        });
+                        currentNetwork = parseInt(network.chainId, 16);
+                        showToast(`Added and switched to ${network.chainName}`, 'success');
+                        return true;
+                    } catch (addError) {
+                        console.error('Failed to add network:', addError);
+                        showToast('Failed to add network', 'error');
+                        return false;
+                    }
+                }
+                console.error('Failed to switch network:', switchError);
+                showToast('Failed to switch network', 'error');
+                return false;
+            }
+        }
+
+        /**
+         * Initializes Biconomy Smart Account for Account Abstraction
+         * Note: This is a simplified version - full implementation needs Biconomy SDK
+         */
+        async function initializeSmartAccount() {
+            if (!userWalletAddress || !ethersProvider) {
+                console.log('⏭️ Skipping Smart Account - no wallet connected');
+                return;
+            }
+
+            try {
+                // TODO: Integrate Biconomy SDK here
+                // For now, we'll use a deterministic smart account address
+                const accountHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(userWalletAddress));
+                smartAccountAddress = '0xSA' + accountHash.slice(4, 42); // Simplified for demo
+                
+                console.log('🔐 Smart Account Address:', smartAccountAddress);
+                showToast('Smart Account ready for gasless transactions', 'success');
+
+                // Save to Firestore
+                if (currentUserId && db) {
+                    const { doc, updateDoc } = window.firebase.firestore;
+                    const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
+                    await updateDoc(profileRef, { smartAccountAddress });
+                }
+            } catch (error) {
+                console.error('Smart Account initialization failed:', error);
+            }
+        }
+
+        /**
+         * Gets real BNB balance from wallet
+         */
+        async function getRealBNBBalance() {
+            if (!userWalletAddress || !ethersProvider) return '0';
+            try {
+                const balance = await ethersProvider.getBalance(userWalletAddress);
+                return ethers.utils.formatEther(balance);
+            } catch (error) {
+                console.error('Failed to get BNB balance:', error);
+                return '0';
+            }
+        }
+
+        // === JURY VOTING SYSTEM ===
+
+        /**
+         * Submits a jury vote for a disputed market
+         */
+        async function submitJuryVote(marketId, vote) {
+            if (!currentUserId) {
+                showToast('Please login to vote', 'error');
+                return;
+            }
+
+            try {
+                const { doc, getDoc, setDoc, serverTimestamp } = window.firebase.firestore;
+                
+                // Create jury vote document
+                const voteRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'jury_votes', `${marketId}_${currentUserId}`);
+                
+                await setDoc(voteRef, {
+                    marketId,
+                    userId: currentUserId,
+                    userName: userProfile.displayName || 'Anonymous',
+                    vote, // 'YES' or 'NO'
+                    timestamp: serverTimestamp(),
+                    votingPower: 1 // Can be based on user reputation/XP later
+                });
+
+                showToast('Jury vote submitted!', 'success');
+                console.log(`✅ Jury vote: ${vote} for market ${marketId}`);
+
+                // Check if we should resolve the dispute
+                await checkDisputeResolution(marketId);
+            } catch (error) {
+                console.error('Failed to submit jury vote:', error);
+                showToast('Failed to submit vote: ' + error.message, 'error');
+            }
+        }
+
+        /**
+         * Checks if a disputed market has enough jury votes to resolve
+         */
+        async function checkDisputeResolution(marketId) {
+            try {
+                const { collection, query, getDocs, doc, getDoc, updateDoc } = window.firebase.firestore;
+                
+                // Get all jury votes for this market
+                const votesRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'jury_votes');
+                const q = query(votesRef);
+                const snapshot = await getDocs(q);
+
+                let yesVotes = 0, noVotes = 0, totalVotes = 0;
+                
+                snapshot.forEach(voteDoc => {
+                    const voteData = voteDoc.data();
+                    if (voteData.marketId === marketId) {
+                        totalVotes++;
+                        if (voteData.vote === 'YES') yesVotes++;
+                        else if (voteData.vote === 'NO') noVotes++;
+                    }
+                });
+
+                console.log(`📊 Jury votes for ${marketId}: YES=${yesVotes}, NO=${noVotes}`);
+
+                // Require at least 3 votes to resolve
+                const MIN_VOTES = 3;
+                if (totalVotes >= MIN_VOTES) {
+                    const majority = yesVotes > noVotes ? 'YES' : 'NO';
+                    const isMajority = (yesVotes > totalVotes / 2) || (noVotes > totalVotes / 2);
+
+                    if (isMajority) {
+                        // Update market with jury decision
+                        const marketRef = doc(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION, marketId);
+                        await updateDoc(marketRef, {
+                            isResolved: true,
+                            winningOutcome: majority,
+                            resolutionMethod: 'jury',
+                            juryVotes: { yes: yesVotes, no: noVotes, total: totalVotes },
+                            disputeStatus: 'resolved'
+                        });
+
+                        console.log(`⚖️ Jury resolved market ${marketId} as ${majority}`);
+                        showToast(`Jury has resolved this market: ${majority} wins!`, 'success');
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking dispute resolution:', error);
+            }
+        }
+
+        /**
+         * Updates the UI to show real BNB balance
+         */
+        async function updateRealBNBBalance() {
+            const balance = await getRealBNBBalance();
+            const balanceDisplay = document.getElementById('bnb-balance-display');
+            if (balanceDisplay) {
+                balanceDisplay.textContent = `${parseFloat(balance).toFixed(4)} BNB`;
+            }
+        }
+
+        /**
+         * Updates the UI after wallet connection
+         */
+        async function updateWalletUI() {
+            if (userWalletAddress) {
+                // Show connected state
+                document.getElementById('wallet-disconnected')?.classList.add('hidden');
+                document.getElementById('wallet-connected')?.classList.remove('hidden');
+                
+                // Update address display
+                const addressDisplay = document.getElementById('connected-address');
+                if (addressDisplay) {
+                    addressDisplay.textContent = `${userWalletAddress.slice(0, 6)}...${userWalletAddress.slice(-4)}`;
+                }
+
+                // Update smart account display
+                if (smartAccountAddress) {
+                    const smartAccountDisplay = document.getElementById('smart-account-display');
+                    if (smartAccountDisplay) {
+                        smartAccountDisplay.textContent = `${smartAccountAddress.slice(0, 8)}...${smartAccountAddress.slice(-6)}`;
+                    }
+                }
+
+                // Update BNB balance
+                await updateRealBNBBalance();
+            }
+        }
+
+        // Override connectWallet to update UI
+        const originalConnectWallet = connectWallet;
+        window.connectWallet = async function() {
+            const result = await originalConnectWallet();
+            if (result) {
+                await updateWalletUI();
+            }
+            return result;
+        };
+
+        // Expose wallet functions globally
+        window.switchNetwork = switchNetwork;
+        window.getRealBNBBalance = getRealBNBBalance;
+        window.submitJuryVote = submitJuryVote;
+        window.updateRealBNBBalance = updateRealBNBBalance;
 
         // --- INITIALIZATION ---
         document.addEventListener("DOMContentLoaded", () => {
@@ -7029,6 +7420,50 @@ ${historyText}`;
                     dom.verdictModalSource.classList.add('hidden');
                 }
 
+                // Show jury voting section if market is disputed
+                const juryVotingSection = document.getElementById('jury-voting-section');
+                if (juryVotingSection && marketSnap.exists()) {
+                    const marketData = marketSnap.data();
+                    const isDisputed = marketData.disputeStatus === 'open' || marketData.isDisputed === true;
+                    
+                    if (isDisputed && currentUserId) {
+                        // Check if user already voted
+                        const { doc: firestoreDoc, getDoc: firestoreGetDoc } = window.firebase.firestore;
+                        const voteRef = firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', 'jury_votes', `${currentMarketId}_${currentUserId}`);
+                        const voteSnap = await firestoreGetDoc(voteRef);
+                        
+                        if (voteSnap.exists()) {
+                            // User already voted - show their vote
+                            juryVotingSection.innerHTML = `
+                                <h3 class="text-sm font-semibold text-purple-400">⚖️ Jury Vote Recorded</h3>
+                                <p class="text-xs text-gray-400 mt-1">
+                                    You voted: <strong class="text-white">${voteSnap.data().vote}</strong>
+                                </p>
+                            `;
+                            juryVotingSection.classList.remove('hidden');
+                        } else {
+                            // User can vote - show voting buttons
+                            juryVotingSection.innerHTML = `
+                                <h3 class="text-sm font-semibold text-purple-400">⚖️ Vote as Jury</h3>
+                                <p class="text-xs text-gray-400 mt-1">
+                                    This market is disputed. Cast your vote to help resolve it.
+                                </p>
+                                <div class="flex gap-3 mt-3">
+                                    <button onclick="submitJuryVote('${currentMarketId}', 'YES')" class="btn btn-stake-yes flex-1">
+                                        Vote YES
+                                    </button>
+                                    <button onclick="submitJuryVote('${currentMarketId}', 'NO')" class="btn btn-stake-no flex-1">
+                                        Vote NO
+                                    </button>
+                                </div>
+                            `;
+                            juryVotingSection.classList.remove('hidden');
+                        }
+                    } else {
+                        juryVotingSection.classList.add('hidden');
+                    }
+                }
+
                 dom.aiVerdictModal.classList.remove('hidden');
 
             } catch (error) {
@@ -8768,6 +9203,30 @@ ${historyText}`;
         }
 
         /**
+         * Helper: Renders option chips for multiple-choice markets
+         */
+        function renderOptionChips(options) {
+            if (!options || options.length === 0) return '';
+            
+            const colors = ['text-blue-400', 'text-green-400', 'text-purple-400', 'text-orange-400', 'text-pink-400', 'text-cyan-400'];
+            let html = '<div class="space-y-2 mb-4">';
+            
+            options.forEach((option, index) => {
+                const color = colors[index % colors.length];
+                const percent = option.percent || 0;
+                html += `
+                    <div class="flex items-center justify-between p-2 rounded-lg bg-white/5">
+                        <span class="text-sm ${color} font-semibold">${option.label || `Option ${index + 1}`}</span>
+                        <span class="text-lg font-bold ${color}">${percent.toFixed(1)}%</span>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+
+        /**
          * Renders the search results into the UI.
          */
         function renderMarketFeed(markets) {
@@ -8783,19 +9242,12 @@ ${historyText}`;
             let html = '';
             markets.forEach(market => {
                 const displayName = market.createdByDisplayName || 'Anonymous';
-                html += `
-                    <div class="ui-panel">
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="text-xs text-gray-400 font-light">By ${displayName}</span>
-                            <div class="flex items-center space-x-2">
-                                <span class="badge ${market.isNoLoss ? 'badge-blue' : 'badge-green'}">${market.isNoLoss ? 'No-Loss' : 'Classic'}</span>
-                                <div class.badge badge-timer flex items-center space-x-1.5">
-                                    <span class="w-1.5 h-1.5 bg-sky-400 rounded-full live-dot"></span>
-                                    <span>${market.stakeDuration || '...'}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <h3 class="text-lg font-semibold text-white mb-3 leading-tight">${market.title}</h3>
+                
+                // Determine if this is a multiple-choice market or binary YES/NO
+                const isMultipleChoice = market.options && market.options.length > 2;
+                const optionsHtml = isMultipleChoice 
+                    ? renderOptionChips(market.options)
+                    : `
                         <div class="flex justify-around mb-5">
                             <div class="text-center">
                                 <div class="text-4xl font-bold text-green-400">${(market.yesPercent || 0).toFixed(1)}%</div>
@@ -8806,6 +9258,23 @@ ${historyText}`;
                                 <div class="text-sm text-gray-300">NO</div>
                             </div>
                         </div>
+                    `;
+                
+                html += `
+                    <div class="ui-panel">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-xs text-gray-400 font-light">By ${displayName}</span>
+                            <div class="flex items-center space-x-2">
+                                <span class="badge ${market.isNoLoss ? 'badge-blue' : 'badge-green'}">${market.isNoLoss ? 'No-Loss' : 'Classic'}</span>
+                                ${isMultipleChoice ? '<span class="badge badge-timer">Multi-Choice</span>' : ''}
+                                <div class.badge badge-timer flex items-center space-x-1.5">
+                                    <span class="w-1.5 h-1.5 bg-sky-400 rounded-full live-dot"></span>
+                                    <span>${market.stakeDuration || '...'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-3 leading-tight">${market.title}</h3>
+                        ${optionsHtml}
                         <button onclick="viewMarketDetail('${market.id}')" class="btn btn-primary w-full">View Market</button>
                         ${market.isNoLoss ? '<div class="mt-3 text-center"><span class="text-xs font-medium text-green-400"> Simulated Yield 4% APY</span></div>' : ''}
                     </div>

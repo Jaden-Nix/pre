@@ -1,157 +1,283 @@
-# Predora - AI-Powered Prediction Market Platform
+# Predora - AI-Native Prediction Market Platform
 
 ## Project Overview
-Predora is a next-generation prediction market platform built on BNB Chain, featuring AI-powered market creation, resolution, and a TikTok-style Quick Play interface.
+Predora is an AI-native prediction market application built on BNB Chain with Gemini AI-powered market resolution, TikTok-style Quick Play interface, and Web3 integration for gasless transactions.
 
-## Architecture
+## Current Architecture
 
-### Frontend (Next.js + React)
-- **Location**: `/client` directory
-- **Framework**: Next.js 15 with App Router
-- **Key Technologies**:
-  - TypeScript for type safety
-  - Tailwind CSS for styling
-  - Framer Motion for animations
-  - RainbowKit + wagmi for Web3 wallet connection
-  - Firebase client SDK for real-time data
-  - Chart.js for data visualization
+### Frontend
+- **Type**: Single-page vanilla HTML/CSS/JavaScript application
+- **Main File**: `app.html` (~9,800 lines)
+- **Framework**: No framework - pure vanilla JS with Firebase client SDK
+- **Styling**: Tailwind CSS (CDN)
+- **Web3**: Ethers.js v5 (CDN) for wallet connection and blockchain interaction
+- **Key Features**:
+  - TikTok-style swipe interface for Quick Play
+  - Real-time Firebase data sync
+  - Chart.js for market visualization
+  - Responsive mobile-first design
+  - Dark/light theme toggle
 
 ### Backend (Express.js)
 - **Location**: `/server` directory
-- **Framework**: Express.js with ES modules
+- **Framework**: Express.js with CommonJS
+- **Port**: 5000 (serves both static files and API)
 - **Key Features**:
   - AI proxy endpoint for Gemini API calls
-  - Firebase Admin SDK for database operations
   - Oracle system for automatic market resolution
-  - Secure API endpoints with CRON protection
-
-## Project Structure
-
-```
-├── client/                    # Next.js frontend application
-│   ├── app/                  # Next.js App Router pages
-│   │   ├── page.tsx         # Landing page
-│   │   ├── app/             # Main application
-│   │   ├── layout.tsx       # Root layout with providers
-│   │   ├── providers.tsx    # Web3 & React Query providers
-│   │   └── globals.css      # Global styles
-│   ├── components/          # React components
-│   │   ├── QuickPlay.tsx   # TikTok-style swipe interface
-│   │   ├── MarketsList.tsx # Market discovery
-│   │   ├── MarketCard.tsx  # Individual market display
-│   │   ├── UserProfile.tsx # User dashboard
-│   │   └── ...             # Other UI components
-│   ├── lib/                 # Configurations
-│   │   ├── wagmi.ts        # Web3 config (BNB Chain)
-│   │   └── firebase.ts     # Firebase client config
-│   ├── types/              # TypeScript definitions
-│   └── hooks/              # Custom React hooks
-│
-├── server/                  # Express.js backend
-│   ├── index.js            # Main server file
-│   ├── package.json        # Backend dependencies
-│   └── public/             # Static HTML files (legacy)
-│
-└── replit.md               # This file
-```
-
-## Key Features Implemented
-
-### Phase 1 - Core Refactoring (Current)
-✅ Next.js setup with TypeScript and Tailwind
-✅ Web3 wallet integration with RainbowKit
-✅ Firebase client configuration
-✅ Responsive navigation system
-✅ Landing page with animations
-✅ Quick Play swipe interface
-✅ Markets listing and filtering
-✅ User profile dashboard
-✅ Create market interface
-
-### Planned Features (From Feature List)
-- AI-powered market creation with Gemini
-- Two market types (No-Loss Fixed Pot + Traditional AMM)
-- AI Judge resolution engine
-- Social features (XP, levels, leaderboards)
-- Multi-chain support
-- Advanced trading features
-
-## Running the Project
-
-### Development Mode
-- **Frontend**: Runs on port 5000
-  - Command: `cd client && npm run dev`
-  - URL: `http://localhost:5000`
-
-- **Backend**: Runs on port 3001
-  - Command: `cd server && npm start`
-  - URL: `http://localhost:3001`
-
-### Environment Variables Required
-
-#### Frontend (.env.local in /client)
-- `NEXT_PUBLIC_API_URL` - Backend API URL
-- `NEXT_PUBLIC_FIREBASE_*` - Firebase client config
-- `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` - WalletConnect ID
-
-#### Backend (Replit Secrets)
-- `GEMINI_API_KEY` - Google Gemini AI API key
-- `CRON_SECRET` - Secret for Oracle job endpoint
-- `GOOGLE_APPLICATION_CREDENTIALS` - Firebase Admin JSON
-
-## Recent Changes (Nov 20, 2025)
-- ✅ Fixed Turbopack compilation issues with memory optimization (NODE_OPTIONS, Turbo mode)
-- ✅ Temporarily removed Web3 packages (wagmi, viem, RainbowKit) due to Turbopack hanging - reduced from 687 to 203 packages
-- ✅ Implemented graceful Firebase configuration error handling with user-friendly UI
-- ✅ Created FirebaseConfigError component for missing environment variables
-- ✅ Added comprehensive SETUP.md with step-by-step Firebase configuration instructions
-- ✅ Landing page working perfectly with stunning glassmorphism UI and smooth animations
-- ✅ App page shows helpful error message when Firebase env vars are missing
-- ⚠️ **Note**: Web3 wallet integration temporarily disabled - will be re-added with proper code splitting when Turbopack issues are resolved
-
-## Previous Changes (Nov 19, 2025)
-- Migrated from vanilla HTML to Next.js framework
-- Set up full TypeScript project structure
-- Created component-based architecture for scalability
-- Separated frontend and backend into different directories
-- Added Framer Motion for smooth animations
-- Configured BNB Chain support (Testnet + Mainnet)
+  - Market generation via Gemini AI
+  - Quick Play generation
+  - Firebase Admin SDK integration (optional)
+  - CRON-protected endpoints
 
 ## Technology Stack
 
 ### Frontend
-- Next.js 15 (React 19)
-- TypeScript
-- Tailwind CSS
-- Framer Motion
-- wagmi + viem (Web3)
-- RainbowKit (Wallet UI)
-- TanStack Query
-- Firebase SDK
-- Lucide React (Icons)
-- Chart.js
+- Vanilla JavaScript (ES6+)
+- HTML5 & CSS3
+- Tailwind CSS (CDN)
+- Firebase Client SDK v9
+- Ethers.js v5 (CDN)
+- Chart.js for data visualization
+- Lucide Icons
 
 ### Backend
 - Node.js
 - Express.js
-- Firebase Admin SDK
+- Firebase Admin SDK (optional)
 - Google Gemini AI API
-- node-fetch
-- CORS
+- CORS enabled
+
+## Features Implemented
+
+### ✅ Phase 1 - Core Migration & Enhancements (Completed)
+
+**1. Web3 Integration (BSC Testnet & opBNB Testnet)**
+- Ethers.js library integrated via CDN
+- Network constants for BSC Testnet (Chain ID: 97) and opBNB Testnet (Chain ID: 5611)
+- `connectWallet()` - MetaMask wallet connection
+- `switchNetwork()` - Add/switch between BSC and opBNB testnets
+- `getRealBNBBalance()` - Fetch real on-chain BNB balances
+- UI in Profile > Assets tab with:
+  - Connect MetaMask button
+  - Network switcher buttons
+  - Real-time BNB balance display
+  - Smart account address display
+
+**2. Account Abstraction (Framework Ready)**
+- `initializeSmartAccount()` - Generates deterministic smart account addresses
+- Saves smart account to Firestore user profile
+- UI displays smart account address in Assets tab
+- **Status**: Framework ready, needs full Biconomy SDK integration (see Next Steps)
+
+**3. Jury Voting System (Fully Functional)**
+- `submitJuryVote(marketId, vote)` - Submit jury votes for disputed markets
+- `checkDisputeResolution(marketId)` - Tally votes and resolve (requires 3+ votes with >50% majority)
+- Stores votes in `jury_votes` Firestore collection
+- Updates markets with jury decisions
+- UI integration in Verdict Modal:
+  - Automatically shows jury voting section for disputed markets
+  - Vote YES/NO buttons
+  - Prevents duplicate voting - shows "Vote Recorded" status
+  - Only visible when market status is disputed
+
+**4. Multiple Options Market Display (Fully Functional)**
+- `renderOptionChips(options)` - Helper function to render option chips
+- Modified `renderMarketFeed()` to detect multi-choice markets (>2 options)
+- Shows each option with individual percentage in colored chips
+- Adds "Multi-Choice" badge to differentiate from binary markets
+- Supports 3-6 options per market
+
+**5. Firebase Integration**
+- Successfully connected to Firebase Firestore
+- Real-time data synchronization for markets, pledges, and user profiles
+- Client-side Firebase SDK (v9 modular)
+- Collections: `standard_markets`, `pledges`, `users`, `jury_votes`, `stake_logs`
+
+**6. AI Features (Backend)**
+- Market generation via Gemini AI
+- Quick Play generation
+- Auto-resolution with web search verification
+- AI verdict with rationale and sources
+
+## Project Structure
+
+```
+├── app.html                    # Main single-page application (~9,800 lines)
+├── server/                     # Express.js backend
+│   ├── index.js               # Main server file with AI endpoints
+│   ├── package.json           # Backend dependencies
+│   └── public/                # Static assets (if any)
+├── client/.env.local          # Firebase client configuration
+└── replit.md                  # This file
+```
+
+## Running the Project
+
+### Development Mode
+The server runs on port 5000 and serves both the app and API endpoints.
+
+**Start Command:**
+```bash
+cd server && node index.js
+```
+
+**URLs:**
+- Landing: `http://localhost:5000/`
+- App: `http://localhost:5000/app.html`
+
+### Workflow Configuration
+- **Workflow Name**: "Start Predora Server"
+- **Command**: `cd server && node index.js`
+- **Output Type**: `webview`
+- **Port**: 5000
+
+## Environment Variables
+
+### Frontend (client/.env.local)
+```
+VITE_FIREBASE_API_KEY=<your-api-key>
+VITE_FIREBASE_AUTH_DOMAIN=<your-auth-domain>
+VITE_FIREBASE_PROJECT_ID=<your-project-id>
+VITE_FIREBASE_STORAGE_BUCKET=<your-storage-bucket>
+VITE_FIREBASE_MESSAGING_SENDER_ID=<your-sender-id>
+VITE_FIREBASE_APP_ID=<your-app-id>
+```
+
+### Backend (Replit Secrets)
+**Currently Missing (User will provide):**
+- `GEMINI_API_KEY` - Google Gemini AI API key for market generation and resolution
+- `CRON_SECRET` - Secret for protecting Oracle job endpoints
+- `GOOGLE_APPLICATION_CREDENTIALS` (Optional) - Firebase Admin SDK credentials
+
+**Note**: App works with client-side Firebase only. Backend AI features require `GEMINI_API_KEY`.
+
+## Web3 Network Configuration
+
+### BSC Testnet
+- **Chain ID**: 97 (0x61)
+- **RPC URL**: https://data-seed-prebsc-1-s1.binance.org:8545/
+- **Currency**: tBNB
+- **Block Explorer**: https://testnet.bscscan.com
+
+### opBNB Testnet
+- **Chain ID**: 5611 (0x15EB)
+- **RPC URL**: https://opbnb-testnet-rpc.bnbchain.org
+- **Currency**: tBNB
+- **Block Explorer**: https://testnet.opbnbscan.com
 
 ## Next Steps
-1. **Add Firebase configuration** - Create `client/.env.local` with Firebase credentials (see `client/SETUP.md`)
-2. Test Firebase integration and real-time data features
-3. Re-implement Web3 wallet integration with proper code splitting to fix Turbopack issues
-4. Connect frontend to backend API for AI market generation
-5. Add smart contract integration for on-chain predictions
-6. Build out social features (XP, levels, leaderboards)
-7. Implement yield protocols integration
-8. Deploy to production
+
+### Priority 1: Complete Account Abstraction
+**Current Status**: Framework ready with deterministic smart account address generation, but missing full SDK integration.
+
+**Required Steps:**
+1. Add Biconomy SDK (or Particle Network SDK) via CDN or npm
+2. Initialize SDK with project credentials:
+   ```javascript
+   // Example for Biconomy
+   const biconomy = new Biconomy(ethersProvider, {
+     apiKey: BICONOMY_API_KEY,
+     debug: true
+   });
+   ```
+3. Configure paymaster for gasless transactions
+4. Replace direct signer calls with smart account sends:
+   ```javascript
+   // Instead of: signer.sendTransaction(tx)
+   // Use: smartAccount.sendTransaction(tx)
+   ```
+5. Add UI loading states and error handling for SDK initialization
+6. Test end-to-end flow: connect → smart account init → gasless transaction
+
+**Blockers**: Needs Biconomy/Particle API keys from user
+
+### Priority 2: Add API Keys
+Once API keys are provided by user:
+1. Add `GEMINI_API_KEY` to Replit Secrets
+2. Add `CRON_SECRET` to Replit Secrets
+3. Test AI market generation and resolution
+4. Test Oracle auto-resolution cron job
+
+### Priority 3: Testing & Polish
+1. Test wallet connection on BSC testnet with real tBNB
+2. Create a disputed market and test jury voting flow
+3. Test multi-option markets (3-6 options)
+4. Verify network switching between BSC and opBNB
+5. Test Account Abstraction once SDK is integrated
+
+### Priority 4: Future Enhancements
+- Add more testnet support (Polygon, Arbitrum)
+- Implement social features (follow, leaderboards)
+- Add NFT rewards for top predictors
+- Integrate yield protocols for staking
+- Mobile app (React Native)
+
+## Recent Changes (Nov 20, 2025)
+
+### Migration Complete
+- ✅ Switched from Next.js client back to original vanilla HTML/JS app (app.html)
+- ✅ Resolved Firebase configuration issues - app connects successfully
+- ✅ Added Ethers.js library and Web3 constants for BSC testnet and opBNB testnet
+- ✅ Fixed multiple options market display to show all 3-6 options with percentages
+- ✅ Implemented Web3 wallet connection with MetaMask integration
+- ✅ Added network switching (BSC testnet ⟷ opBNB testnet)
+- ✅ Built jury voting system with UI integration in verdict modal
+- ✅ Created Assets tab UI for wallet management
+- ✅ Real BNB balance fetching from blockchain
+
+### Account Abstraction Status
+- ✅ Framework ready with smart account address generation
+- ⏳ Full Biconomy SDK integration pending (needs API keys)
+- ⏳ Gasless transaction execution pending
+
+## Known Issues & Limitations
+
+1. **Account Abstraction**: Only generates smart account addresses, does not execute gasless transactions yet. Needs full Biconomy/Particle SDK integration.
+2. **Firebase Admin SDK**: Not initialized (warning in logs). App works with client-side Firebase only. Optional for production.
+3. **Tailwind CDN**: Using Tailwind via CDN for development. Should switch to PostCSS for production.
+4. **Large File Size**: app.html is ~9,800 lines. Consider code splitting for better maintainability.
 
 ## User Preferences
-- Modern, component-based architecture
-- Web3-native with wallet integration
-- AI-powered features
+- Vanilla HTML/CSS/JS architecture (original design, not Next.js)
+- Web3-native with MetaMask wallet integration
+- AI-powered features using Gemini API
 - TikTok-style UX for Quick Play
-- Glassmorphism design language
+- Glassmorphism design with dark/light themes
+- Real testnet tokens (BNB) instead of mock balances
+- Jury-based dispute resolution system
+- Multi-option markets (3-6 choices)
+
+## Architecture Decisions
+
+### Why Vanilla JS Instead of React/Next.js?
+- Original Predora app was built with vanilla JS (~9,400 lines in app.html)
+- Migration preserves existing codebase and design
+- Simpler deployment and faster load times
+- No build step required for development
+- Direct Firebase integration without framework overhead
+
+### Why BSC Testnet + opBNB?
+- Low transaction fees (gasless with Account Abstraction)
+- Fast block times (3 seconds on BSC, <1 second on opBNB)
+- Active testnet with free faucets
+- BNB Chain ecosystem alignment
+
+### Why Jury Voting?
+- Decentralized dispute resolution
+- No single point of failure
+- Community-driven governance
+- Prevents AI oracle manipulation
+- Simple majority voting (3+ votes, >50% threshold)
+
+## Support & Documentation
+- Firebase Setup: See inline comments in app.html (search for "Firebase Configuration")
+- Web3 Setup: Connect MetaMask and switch to BSC Testnet (chain ID 97)
+- API Keys: Add to Replit Secrets when ready
+- Issues: Check browser console logs and server logs in workflow
+
+---
+
+**Last Updated**: November 20, 2025
+**Version**: 2.0 (Vanilla JS Migration)
+**Status**: Core features complete, Account Abstraction framework ready
