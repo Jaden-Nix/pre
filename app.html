@@ -8627,6 +8627,13 @@ ${historyText}`;
             document.getElementById('admin-logout-btn').addEventListener('click', () => showScreen('home-screen'));
             document.getElementById('admin-generate-btn').addEventListener('click', adminGenerateQuickPlay);
             document.getElementById('admin-publish-btn').addEventListener('click', adminPublishQuickPlay);
+            
+            // AI Guardrails Event Listeners
+            if (document.getElementById('test-guardrails-btn')) {
+                document.getElementById('test-guardrails-btn').addEventListener('click', testGuardrails);
+                document.getElementById('refresh-flagged-btn').addEventListener('click', loadFlaggedItems);
+                document.getElementById('save-guardrail-settings-btn').addEventListener('click', saveGuardrailSettings);
+            }
         }
 
         /**
