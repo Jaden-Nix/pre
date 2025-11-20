@@ -775,12 +775,9 @@ app.post('/api/admin/disputed-markets', requireAdmin, async (req, res) => {
     }
 });
 
-app.post('/api/admin/override-market', async (req, res) => {
+app.post('/api/admin/override-market', requireAdmin, async (req, res) => {
     const { marketId, outcome, reason } = req.body;
     
-    if (!isAdmin(req)) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
     
     if (!db) {
         return res.status(503).json({ error: 'Firebase Admin not initialized' });
@@ -817,10 +814,7 @@ app.post('/api/admin/override-market', async (req, res) => {
     }
 });
 
-app.post('/api/admin/stats', async (req, res) => {
-    if (!isAdmin(req)) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+app.post('/api/admin/stats', requireAdmin, async (req, res) => {
     
     if (!db) {
         return res.status(503).json({ error: 'Firebase Admin not initialized' });
@@ -889,10 +883,7 @@ app.post('/api/admin/normal-markets', requireAdmin, async (req, res) => {
     }
 });
 
-app.post('/api/admin/quick-plays', async (req, res) => {
-    if (!isAdmin(req)) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+app.post('/api/admin/quick-plays', requireAdmin, async (req, res) => {
     
     if (!db) {
         return res.status(503).json({ error: 'Firebase Admin not initialized' });
@@ -913,10 +904,7 @@ app.post('/api/admin/quick-plays', async (req, res) => {
     }
 });
 
-app.post('/api/admin/resolve-quick-play', async (req, res) => {
-    if (!isAdmin(req)) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+app.post('/api/admin/resolve-quick-play', requireAdmin, async (req, res) => {
     
     if (!db) {
         return res.status(503).json({ error: 'Firebase Admin not initialized' });
@@ -940,10 +928,7 @@ app.post('/api/admin/resolve-quick-play', async (req, res) => {
     }
 });
 
-app.post('/api/admin/quick-polls', async (req, res) => {
-    if (!isAdmin(req)) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+app.post('/api/admin/quick-polls', requireAdmin, async (req, res) => {
     
     if (!db) {
         return res.status(503).json({ error: 'Firebase Admin not initialized' });
@@ -964,10 +949,7 @@ app.post('/api/admin/quick-polls', async (req, res) => {
     }
 });
 
-app.post('/api/admin/resolve-quick-poll', async (req, res) => {
-    if (!isAdmin(req)) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+app.post('/api/admin/resolve-quick-poll', requireAdmin, async (req, res) => {
     
     if (!db) {
         return res.status(503).json({ error: 'Firebase Admin not initialized' });
@@ -991,10 +973,7 @@ app.post('/api/admin/resolve-quick-poll', async (req, res) => {
     }
 });
 
-app.post('/api/admin/guardrails', async (req, res) => {
-    if (!isAdmin(req)) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+app.post('/api/admin/guardrails', requireAdmin, async (req, res) => {
     
     if (!db) {
         return res.status(503).json({ error: 'Firebase Admin not initialized' });
@@ -1022,10 +1001,7 @@ app.post('/api/admin/guardrails', async (req, res) => {
     }
 });
 
-app.post('/api/admin/guardrails/settings', async (req, res) => {
-    if (!isAdmin(req)) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+app.post('/api/admin/guardrails/settings', requireAdmin, async (req, res) => {
     
     if (!db) {
         return res.status(503).json({ error: 'Firebase Admin not initialized' });
@@ -1044,10 +1020,7 @@ app.post('/api/admin/guardrails/settings', async (req, res) => {
     }
 });
 
-app.post('/api/admin/guardrails/unflag', async (req, res) => {
-    if (!isAdmin(req)) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+app.post('/api/admin/guardrails/unflag', requireAdmin, async (req, res) => {
     
     if (!db) {
         return res.status(503).json({ error: 'Firebase Admin not initialized' });
@@ -1066,10 +1039,7 @@ app.post('/api/admin/guardrails/unflag', async (req, res) => {
     }
 });
 
-app.post('/api/admin/account-abstraction/config', async (req, res) => {
-    if (!isAdmin(req)) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+app.post('/api/admin/account-abstraction/config', requireAdmin, async (req, res) => {
     
     if (!db) {
         return res.status(503).json({ error: 'Firebase Admin not initialized' });
