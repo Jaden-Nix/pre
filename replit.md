@@ -75,11 +75,19 @@ Predora is an AI-native prediction market application built on BNB Chain with Ge
 - `checkDisputeResolution(marketId)` - Tally votes and resolve (requires 3+ votes with >50% majority)
 - Stores votes in `jury_votes` Firestore collection
 - Updates markets with jury decisions
+- Jury code system with 24-hour expiry tracking
 - UI integration in Verdict Modal:
   - Automatically shows jury voting section for disputed markets
   - Vote YES/NO buttons
   - Prevents duplicate voting - shows "Vote Recorded" status
   - Only visible when market status is disputed
+- **Admin Dashboard** (New!):
+  - Secure admin panel with ADMIN_SECRET authentication
+  - View all disputed markets with jury voting progress
+  - Manual outcome override capability for edge cases
+  - Real-time statistics (total markets, disputed, resolved)
+  - Backend API endpoints: `/api/admin/disputed-markets`, `/api/admin/override-market`, `/api/admin/stats`
+  - Access via Profile screen "Admin Panel" button (requires admin secret)
 
 **4. Multiple Options Market Display (Fully Functional)**
 - `renderOptionChips(options)` - Helper function to render option chips
@@ -214,6 +222,16 @@ Once API keys are provided by user:
 - Mobile app (React Native)
 
 ## Recent Changes (Nov 20, 2025)
+
+### Admin Dashboard Implementation (Latest)
+- ✅ Created secure admin dashboard with ADMIN_SECRET authentication
+- ✅ Added 3 protected backend API endpoints for admin operations
+- ✅ Built admin panel UI with disputed markets monitoring
+- ✅ Implemented manual outcome override for edge cases
+- ✅ Added real-time jury voting progress display on market cards
+- ✅ Enhanced market feed with "🚨 DISPUTED - Jury Reviewing" badges
+- ✅ Integrated admin stats (total markets, disputed, resolved counts)
+- ✅ Architect-verified security implementation
 
 ### Migration Complete
 - ✅ Switched from Next.js client back to original vanilla HTML/JS app (app.html)
