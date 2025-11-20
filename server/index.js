@@ -493,7 +493,19 @@ async function createDailyMarkets() {
     console.log("ORACLE: Running createDailyMarkets...");
     
     try {
-        const systemPrompt = `You are a prediction market question generator. Create 3 interesting, verifiable prediction market questions for today. Focus on technology, crypto, AI, business, or current events. Each question should be answerable with YES/NO in 7 days.`;
+        const today = new Date().toISOString().split('T')[0];
+        const systemPrompt = `You are a prediction market question generator for Predora. Today's date is ${today}.
+
+CRITICAL RULES:
+1. ONLY create markets about FUTURE events (events that will happen AFTER today)
+2. NEVER create markets about past events or historical questions
+3. AVOID obvious outcomes - no markets about pre-scheduled events like "Will X conference happen on date Y?"
+4. Focus on UNCERTAIN outcomes with genuine debate potential
+5. Questions should have real uncertainty - avoid 90%+ probability outcomes
+6. Good examples: "Will Bitcoin reach $100K by end of month?", "Will OpenAI release GPT-6 this quarter?"
+7. Bad examples: "Will scheduled Apple event happen tomorrow?", "Did Bitcoin crash yesterday?"
+
+Create 3 interesting, verifiable prediction market questions. Focus on technology, crypto, AI, business, or current events. Each question should be answerable with YES/NO in 7 days and have genuine uncertainty.`;
         
         const jsonSchema = {
             type: "object",
@@ -547,7 +559,18 @@ async function autoGenerateQuickPlays() {
     console.log("ORACLE: Running autoGenerateQuickPlays...");
     
     try {
-        const systemPrompt = `Generate 5 quick, fun YES/NO prediction questions about events in the next 24 hours. Make them engaging and fast-paced.`;
+        const today = new Date().toISOString().split('T')[0];
+        const systemPrompt = `You are generating Quick Play prediction questions for Predora. Today's date is ${today}.
+
+CRITICAL RULES:
+1. ONLY questions about FUTURE events in the next 24 hours
+2. AVOID obvious outcomes or pre-scheduled events
+3. Focus on UNCERTAIN, exciting events with genuine debate
+4. NO past events, NO historical questions
+5. Good: "Will Bitcoin break $95K in next 24h?", "Will a major tech company announce layoffs today?"
+6. Bad: "Will scheduled earnings call happen?", "Did stock market close yesterday?"
+
+Generate 5 quick, fun YES/NO prediction questions about uncertain events in the next 24 hours. Make them engaging, fast-paced, and genuinely debatable.`;
         
         const jsonSchema = {
             type: "object",

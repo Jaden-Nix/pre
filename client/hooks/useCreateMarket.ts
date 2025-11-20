@@ -33,7 +33,18 @@ export function useCreateMarket() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          systemPrompt: `You are a prediction market generator. Create a JSON object for a binary (YES/NO) prediction market based on the user's request. Include: title, description, category, resolutionDate (future date), and suggestedOdds (initial YES/NO probabilities). Keep titles under 100 characters.`,
+          systemPrompt: `You are a prediction market generator for Predora. Today's date is ${new Date().toISOString().split('T')[0]}.
+
+CRITICAL RULES:
+1. ONLY create markets about FUTURE events (after today's date)
+2. AVOID obvious outcomes (e.g., "Will X happen on scheduled date Y?")
+3. Focus on UNCERTAIN events with genuine debate potential
+4. NO past events, NO historical questions, NO retrospective markets
+5. Avoid markets about confirmed/scheduled events unless asking about their SUCCESS/FAILURE/IMPACT
+6. Good: "Will Bitcoin reach $100K in 2025?" Bad: "Will Bitcoin conference happen on March 15?"
+7. Good: "Will the new iPhone be delayed past its launch date?" Bad: "Will Apple announce iPhone on scheduled date?"
+
+Create a JSON object for a binary (YES/NO) prediction market. Include: title (under 100 chars), description, category, resolutionDate (future date at least 7 days from today), yesOdds and noOdds (should reflect genuine uncertainty, typically 40-60% range unless there's a reason for skew).`,
           userPrompt: userPrompt || '',
           jsonSchema: {
             type: 'object',
