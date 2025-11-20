@@ -7,6 +7,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import admin from 'firebase-admin';
+import OpenAI from 'openai';
 
 // --- Constants ---
 const __filename = fileURLToPath(import.meta.url);
@@ -14,8 +15,12 @@ const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 5000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const CRON_SECRET = process.env.CRON_SECRET;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
 const APP_ID = 'predora-app';
+
+// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 // --- Firebase Admin SDK Initialization ---
 let db = null;
@@ -313,6 +318,257 @@ app.post('/api/run-jobs', async (req, res) => {
 // --- HELPER FUNCTIONS ---
 function getMockPrice(asset) { return asset === 'BNB' ? 500 : asset === 'CAKE' ? 3.5 : 1; }
 function getBalanceField(asset) { return asset === 'BNB' ? 'bnbBalance' : asset === 'CAKE' ? 'cakeBalance' : 'balance'; }
+
+// --- JURY SYSTEM ENDPOINTS ---
+
+function generateJuryCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
+app.post('/api/dispute-market', async (req, res) => {
+    const { marketId, marketTitle, authToken } = req.body;
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    try {
+        let callerUserId;
+        if (authToken) {
+            try {
+                const decodedToken = await admin.auth().verifyIdToken(authToken);
+                callerUserId = decodedToken.uid;
+            } catch (authError) {
+                console.warn('Auth token verification failed, allowing for client-side flow:', authError.message);
+            }
+        }
+        
+        const marketRef = db.collection(`artifacts/${APP_ID}/public/data/standard_markets`).doc(marketId);
+        const marketSnap = await marketRef.get();
+        
+        if (!marketSnap.exists) {
+            return res.status(404).json({ error: 'Market not found' });
+        }
+        
+        const marketData = marketSnap.data();
+        
+        if (marketData.status === 'disputed') {
+            return res.status(400).json({ error: 'Market is already disputed' });
+        }
+        
+        await marketRef.update({
+            status: 'disputed',
+            disputedAt: new Date().toISOString()
+        });
+        
+        const leaderboardRef = db.collection(`artifacts/${APP_ID}/public/data/leaderboard`);
+        const snapshot = await leaderboardRef.orderBy('xp', 'desc').limit(10).get();
+        
+        if (snapshot.empty) {
+            await marketRef.update({ status: marketData.status || null });
+            return res.status(404).json({ error: 'No users found for jury' });
+        }
+        
+        const selectedJurors = [];
+        const numJurors = Math.min(5, snapshot.docs.length);
+        
+        const shuffled = snapshot.docs.sort(() => 0.5 - Math.random());
+        const selected = shuffled.slice(0, numJurors);
+        
+        const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        
+        for (const doc of selected) {
+            const jurorData = doc.data();
+            const code = generateJuryCode();
+            
+            const codeData = {
+                code: code,
+                userId: doc.id,
+                marketId: marketId,
+                marketTitle: marketTitle,
+                createdAt: new Date().toISOString(),
+                expiresAt: expiryTime.toISOString(),
+                used: false,
+                usedAt: null
+            };
+            
+            await db.collection(`artifacts/${APP_ID}/public/data/jury_codes`).doc(code).set(codeData);
+            
+            const notificationData = {
+                userId: doc.id,
+                type: 'jury_invite',
+                marketId: marketId,
+                marketTitle: marketTitle,
+                juryCode: code,
+                message: `You've been selected as a juror for: "${marketTitle}"`,
+                createdAt: new Date().toISOString(),
+                read: false,
+                expiresAt: expiryTime.toISOString()
+            };
+            
+            await db.collection(`artifacts/${APP_ID}/public/data/notifications`).add(notificationData);
+            
+            selectedJurors.push({
+                userId: doc.id,
+                displayName: jurorData.displayName || 'Anonymous',
+                code: code
+            });
+        }
+        
+        res.status(200).json({ 
+            success: true, 
+            jurors: selectedJurors,
+            message: `${selectedJurors.length} jurors have been notified`
+        });
+        
+    } catch (error) {
+        console.error('Error creating jury invites:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/verify-jury-code', async (req, res) => {
+    const { code, authToken } = req.body;
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    try {
+        let userId;
+        if (authToken) {
+            try {
+                const decodedToken = await admin.auth().verifyIdToken(authToken);
+                userId = decodedToken.uid;
+            } catch (authError) {
+                return res.status(401).json({ error: 'Invalid or expired auth token', valid: false });
+            }
+        } else {
+            return res.status(401).json({ error: 'Authentication required', valid: false });
+        }
+        
+        const codeRef = db.collection(`artifacts/${APP_ID}/public/data/jury_codes`).doc(code);
+        const codeSnap = await codeRef.get();
+        
+        if (!codeSnap.exists) {
+            return res.status(404).json({ error: 'Invalid code', valid: false });
+        }
+        
+        const codeData = codeSnap.data();
+        
+        if (codeData.used) {
+            return res.status(400).json({ error: 'Code already used', valid: false });
+        }
+        
+        if (new Date(codeData.expiresAt) < new Date()) {
+            return res.status(400).json({ error: 'Code expired', valid: false });
+        }
+        
+        if (codeData.userId !== userId) {
+            return res.status(403).json({ error: 'Code not assigned to you', valid: false });
+        }
+        
+        res.status(200).json({ 
+            valid: true, 
+            marketId: codeData.marketId,
+            marketTitle: codeData.marketTitle
+        });
+        
+    } catch (error) {
+        console.error('Error verifying jury code:', error);
+        res.status(500).json({ error: error.message, valid: false });
+    }
+});
+
+app.post('/api/use-jury-code', async (req, res) => {
+    const { code, authToken } = req.body;
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    try {
+        let userId;
+        if (authToken) {
+            try {
+                const decodedToken = await admin.auth().verifyIdToken(authToken);
+                userId = decodedToken.uid;
+            } catch (authError) {
+                return res.status(401).json({ error: 'Invalid or expired auth token' });
+            }
+        } else {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+        
+        const codeRef = db.collection(`artifacts/${APP_ID}/public/data/jury_codes`).doc(code);
+        const codeSnap = await codeRef.get();
+        
+        if (!codeSnap.exists) {
+            return res.status(404).json({ error: 'Invalid code' });
+        }
+        
+        const codeData = codeSnap.data();
+        
+        if (codeData.userId !== userId) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+        
+        if (codeData.used) {
+            return res.status(400).json({ error: 'Code already used' });
+        }
+        
+        await codeRef.update({
+            used: true,
+            usedAt: new Date().toISOString()
+        });
+        
+        res.status(200).json({ success: true });
+        
+    } catch (error) {
+        console.error('Error marking code as used:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/get-source-link', async (req, res) => {
+    const { marketTitle } = req.body;
+    
+    if (!OPENAI_API_KEY) {
+        return res.status(500).json({ error: 'OpenAI API key not configured' });
+    }
+    
+    try {
+        const response = await openai.chat.completions.create({
+            model: 'gpt-5',
+            messages: [
+                {
+                    role: 'system',
+                    content: 'You are a fact-checker. Given a prediction market question, provide a credible news source URL that could verify the outcome. Return only a valid URL from a reputable news source (Reuters, Bloomberg, AP News, BBC, etc.). If you cannot find a specific source, return a search URL for the topic.'
+                },
+                {
+                    role: 'user',
+                    content: `Find a verifiable source link for this prediction market: "${marketTitle}"`
+                }
+            ]
+        });
+        
+        const sourceLink = response.choices[0].message.content.trim();
+        
+        res.status(200).json({ 
+            sourceLink: sourceLink,
+            success: true
+        });
+        
+    } catch (error) {
+        console.error('Error getting source link:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Predora Backend Server is live on port ${PORT}`);
