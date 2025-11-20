@@ -12,7 +12,7 @@ import OpenAI from 'openai';
 // --- Constants ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const CRON_SECRET = process.env.CRON_SECRET;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -178,6 +178,10 @@ app.get('/', (req, res) => {
 });
 
 app.get('/app.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'app.html'));
+});
+
+app.get('/app', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'app.html'));
 });
 
