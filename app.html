@@ -10677,22 +10677,11 @@ ${historyText}`;
             }
 
             try {
-                const { collection, getDocs, limit, query } = window.firebase.firestore;
-                
-                // Search in markets collection
-                const marketsRef = collection(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION);
-                const snapshot = await getDocs(query(marketsRef, limit(100)));
-                
-                let markets = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (data.title && data.title.toLowerCase().includes(searchQuery.toLowerCase())) {
-                        markets.push({
-                            ...data,
-                            marketId: doc.id
-                        });
-                    }
-                });
+                // Search through the in-memory markets (same as what's displayed on home screen)
+                const searchLower = searchQuery.toLowerCase();
+                let markets = allStandardMarkets.filter(market => 
+                    market.title && market.title.toLowerCase().includes(searchLower)
+                );
 
                 if (markets.length === 0) {
                     resultsContainer.innerHTML = '<p class="text-gray-400 text-center py-8">No markets found. Try different keywords.</p>';
@@ -10701,7 +10690,17 @@ ${historyText}`;
 
                 let html = '';
                 markets.forEach(market => {
-                    const resolveDate = market.resolveAt ? new Date(market.resolveAt.seconds * 1000).toLocaleDateString() : 'Not set';
+                    let resolveDate = 'Not set';
+                    if (market.resolutionDate) {
+                        resolveDate = new Date(market.resolutionDate).toLocaleDateString();
+                    } else if (market.resolveAt) {
+                        resolveDate = market.resolveAt.seconds 
+                            ? new Date(market.resolveAt.seconds * 1000).toLocaleDateString() 
+                            : new Date(market.resolveAt).toLocaleDateString();
+                    } else if (market.stakeDuration) {
+                        resolveDate = market.stakeDuration;
+                    }
+                    
                     html += `
                         <button onclick='selectMarket(${JSON.stringify(market)})' class="w-full text-left p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-sky-400/50 transition-all">
                             <p class="font-medium text-white mb-1">${sanitizeHTML(market.title)}</p>
