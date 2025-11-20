@@ -12,10 +12,6 @@ externalPort = 80
 localPort = 41045
 externalPort = 3000
 
-[[ports]]
-localPort = 45301
-externalPort = 3002
-
 [agent]
 expertMode = true
 integrations = ["sendgrid:1.0.0"]

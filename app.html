@@ -684,92 +684,114 @@
             }
         }
 
-        /* Enhanced Social Feed Styles */
+        /* Clean Social Feed Styles */
         .social-post-card {
-            position: relative;
-            overflow: hidden;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .social-post-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 40px rgba(56, 189, 248, 0.15), 0 4px 16px rgba(0, 0, 0, 0.2);
-        }
-
-        .social-post-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(to right, #38BDF8, #6366F1, #8B5CF6);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .social-post-card:hover::before {
-            opacity: 1;
+            background: rgba(22, 27, 34, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
         }
 
         .social-avatar {
-            border: 2px solid transparent;
-            background: linear-gradient(#161B22, #161B22) padding-box,
-                        linear-gradient(135deg, #38BDF8, #6366F1) border-box;
+            border: 2px solid rgba(91, 124, 255, 0.3);
             transition: all 0.3s ease;
         }
 
-        .social-post-card:hover .social-avatar {
-            border-color: #38BDF8;
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
-        }
-
-        .reaction-btn {
-            padding: 0.375rem 0.75rem;
-            border-radius: 0.5rem;
+        .reaction-btn-clean {
+            padding: 6px 12px;
+            border-radius: 12px;
             font-size: 0.875rem;
             transition: all 0.2s ease;
             cursor: pointer;
+            background: transparent;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .reaction-btn-clean:hover {
+            background: rgba(91, 124, 255, 0.1);
+            transform: scale(1.05);
+        }
+
+        .filter-pill-clean {
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.05);
             border: 1px solid transparent;
+            color: #9CA3AF;
         }
 
-        .reaction-btn:hover {
-            background: rgba(56, 189, 248, 0.1);
-            border-color: rgba(56, 189, 248, 0.3);
-            transform: scale(1.1);
+        .filter-pill-clean:hover {
+            background: rgba(91, 124, 255, 0.1);
+            color: #E6EDF3;
         }
 
-        .social-tab-btn {
-            position: relative;
-            transition: all 0.3s ease;
+        .filter-pill-clean.active {
+            background: #5B7CFF;
+            color: white;
+            border: none;
         }
 
-        .social-tab-btn:hover {
-            transform: translateY(-2px);
+        .leaderboard-card-clean {
+            background: rgba(22, 27, 34, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
         }
 
-        /* Light mode enhancements for social feed */
-        :root.light-mode .social-post-card:hover,
-        body.light-mode .social-post-card:hover {
-            box-shadow: 0 12px 40px rgba(92, 198, 255, 0.2), 0 4px 16px rgba(15, 23, 42, 0.1);
+        .border-b-3 {
+            border-bottom-width: 3px;
+        }
+
+        /* Light mode clean styles */
+        :root.light-mode .social-post-card,
+        body.light-mode .social-post-card {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(203, 213, 245, 0.5);
+            box-shadow: 0 2px 8px rgba(91, 124, 255, 0.08);
         }
 
         :root.light-mode .social-avatar,
         body.light-mode .social-avatar {
-            background: linear-gradient(#FFFFFF, #FFFFFF) padding-box,
-                        linear-gradient(135deg, #5CC6FF, #7B8CFF) border-box;
+            border-color: rgba(91, 124, 255, 0.2);
         }
 
-        :root.light-mode .social-post-card:hover .social-avatar,
-        body.light-mode .social-post-card:hover .social-avatar {
-            border-color: #5CC6FF;
-            box-shadow: 0 0 20px rgba(92, 198, 255, 0.5);
+        :root.light-mode .filter-pill-clean,
+        body.light-mode .filter-pill-clean {
+            background: rgba(91, 124, 255, 0.08);
+            color: #475569;
         }
 
-        :root.light-mode .reaction-btn:hover,
-        body.light-mode .reaction-btn:hover {
-            background: rgba(92, 198, 255, 0.15);
-            border-color: rgba(92, 198, 255, 0.4);
+        :root.light-mode .filter-pill-clean:hover,
+        body.light-mode .filter-pill-clean:hover {
+            background: rgba(91, 124, 255, 0.15);
+            color: #0F172A;
+        }
+
+        :root.light-mode .filter-pill-clean.active,
+        body.light-mode .filter-pill-clean.active {
+            background: #5B7CFF;
+            color: white;
+        }
+
+        :root.light-mode .leaderboard-card-clean,
+        body.light-mode .leaderboard-card-clean {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(203, 213, 245, 0.5);
+            box-shadow: 0 2px 8px rgba(91, 124, 255, 0.08);
+        }
+
+        :root.light-mode .reaction-btn-clean:hover,
+        body.light-mode .reaction-btn-clean:hover {
+            background: rgba(91, 124, 255, 0.12);
         }
 
         /* Fix Light Mode Text Contrast - Targeted Coverage */
@@ -2308,55 +2330,58 @@
             </div>
 
             <!-- Social Feed Screen -->
-            <div id="social-feed-screen" class="screen screen-inactive space-y-6 max-w-2xl mx-auto">
-                <div class="flex items-center justify-between">
-                    <h1 class="text-2xl lg:text-3xl font-bold gradient-text">Social</h1>
-                    <button onclick="openCreatePost()" id="create-post-btn" class="btn btn-primary">
-                        <svg class="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        Create Post
-                    </button>
-                </div>
-
-                <!-- Feed / Leaderboard Toggle -->
-                <div class="flex gap-4 border-b-2 border-white/10 pb-0">
-                    <button onclick="switchSocialTab('feed')" id="social-tab-feed" class="social-tab-btn px-6 py-3 font-semibold text-lg border-b-4 border-sky-400 text-sky-400 transition-all">
-                        Feed
-                    </button>
-                    <button onclick="switchSocialTab('leaderboard')" id="social-tab-leaderboard" class="social-tab-btn px-6 py-3 font-semibold text-lg border-b-4 border-transparent text-gray-400 hover:text-white transition-all">
-                        Leaderboard
-                    </button>
-                </div>
-
-                <!-- Feed Section -->
-                <div id="social-feed-section" class="space-y-4">
-                    <!-- Filter Tabs -->
-                    <div class="flex space-x-2 overflow-x-auto pb-2">
-                        <button onclick="filterSocialFeed('all')" id="feed-filter-all" class="filter-pill active">All Posts</button>
-                        <button onclick="filterSocialFeed('following')" id="feed-filter-following" class="filter-pill">Following</button>
-                        <button onclick="filterSocialFeed('trending')" id="feed-filter-trending" class="filter-pill">Trending</button>
+            <div id="social-feed-screen" class="screen screen-inactive">
+                <div class="max-w-md mx-auto space-y-6 px-4 pb-6">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between pt-4">
+                        <h1 class="text-3xl font-bold gradient-text">Social</h1>
+                        <button onclick="openCreatePost()" id="create-post-btn" class="btn btn-primary px-6 py-3 rounded-full shadow-lg">
+                            <svg class="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Create Post
+                        </button>
                     </div>
 
-                    <!-- Posts Feed -->
-                    <div id="social-feed-container" class="space-y-5">
-                        <p class="text-gray-400 text-center py-8">Loading feed...</p>
+                    <!-- Feed / Leaderboard Toggle -->
+                    <div class="flex gap-8 border-b border-white/10">
+                        <button onclick="switchSocialTab('feed')" id="social-tab-feed" class="social-tab-btn pb-3 font-semibold border-b-3 border-sky-400 text-sky-400 transition-all">
+                            Feed
+                        </button>
+                        <button onclick="switchSocialTab('leaderboard')" id="social-tab-leaderboard" class="social-tab-btn pb-3 font-semibold border-b-3 border-transparent text-gray-400 hover:text-white transition-all">
+                            Leaderboard
+                        </button>
                     </div>
-                </div>
 
-                <!-- Leaderboard Section -->
-                <div id="social-leaderboard-section" class="hidden space-y-4">
-                    <!-- Leaderboard Tabs -->
-                    <div class="flex gap-2 border-b border-white/10">
-                        <button class="leaderboard-tab-social px-4 py-2 font-medium border-b-2 border-sky-400 text-sky-400" data-timeframe="all" onclick="switchLeaderboardTimeframeSocial('all')">All-Time</button>
-                        <button class="leaderboard-tab-social px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-white" data-timeframe="weekly" onclick="switchLeaderboardTimeframeSocial('weekly')">Weekly</button>
-                        <button class="leaderboard-tab-social px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-white" data-timeframe="daily" onclick="switchLeaderboardTimeframeSocial('daily')">Daily</button>
+                    <!-- Feed Section -->
+                    <div id="social-feed-section" class="space-y-5">
+                        <!-- Filter Tabs -->
+                        <div class="flex space-x-2 overflow-x-auto">
+                            <button onclick="filterSocialFeed('all')" id="feed-filter-all" class="filter-pill-clean active">All Posts</button>
+                            <button onclick="filterSocialFeed('following')" id="feed-filter-following" class="filter-pill-clean">Following</button>
+                            <button onclick="filterSocialFeed('trending')" id="feed-filter-trending" class="filter-pill-clean">Trending</button>
+                        </div>
+
+                        <!-- Posts Feed -->
+                        <div id="social-feed-container" class="space-y-4">
+                            <p class="text-gray-400 text-center py-8">Loading feed...</p>
+                        </div>
                     </div>
-                    <div id="social-user-rank-panel" class="ui-panel text-center p-6 lg:p-8 border-l-4 border-sky-400">
-                        <p class="text-gray-400 lg:text-lg">Loading your rank...</p>
-                    </div>
-                    <div id="social-ranking-list" class="space-y-2 lg:space-y-3">
-                        <p class="text-gray-400 text-center pt-8 lg:text-lg">Fetching top players...</p>
+
+                    <!-- Leaderboard Section -->
+                    <div id="social-leaderboard-section" class="hidden space-y-5">
+                        <!-- Leaderboard Tabs -->
+                        <div class="flex gap-6 border-b border-white/10">
+                            <button class="leaderboard-tab-social pb-3 font-medium border-b-3 border-sky-400 text-sky-400" data-timeframe="all" onclick="switchLeaderboardTimeframeSocial('all')">All-Time</button>
+                            <button class="leaderboard-tab-social pb-3 font-medium border-b-3 border-transparent text-gray-400 hover:text-white" data-timeframe="weekly" onclick="switchLeaderboardTimeframeSocial('weekly')">Weekly</button>
+                            <button class="leaderboard-tab-social pb-3 font-medium border-b-3 border-transparent text-gray-400 hover:text-white" data-timeframe="daily" onclick="switchLeaderboardTimeframeSocial('daily')">Daily</button>
+                        </div>
+                        <div id="social-user-rank-panel" class="leaderboard-card-clean p-6">
+                            <p class="text-gray-400">Loading your rank...</p>
+                        </div>
+                        <div id="social-ranking-list" class="space-y-3">
+                            <p class="text-gray-400 text-center pt-8">Fetching top players...</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -9672,47 +9697,47 @@ ${historyText}`;
                     const safeContent = sanitizeHTML(post.content);
 
                     html += `
-                        <div class="ui-panel social-post-card p-5 space-y-4">
-                            <div class="flex items-start space-x-4">
-                                <img src="${avatarUrl}" class="social-avatar w-14 h-14 rounded-full object-cover" alt="Avatar">
+                        <div class="social-post-card">
+                            <div class="flex items-start gap-3 mb-4">
+                                <img src="${avatarUrl}" class="social-avatar w-12 h-12 rounded-full object-cover flex-shrink-0" alt="Avatar">
                                 <div class="flex-grow min-w-0">
-                                    <div class="flex items-center space-x-2 flex-wrap">
+                                    <div class="flex items-center gap-2 mb-1">
                                         ${post.userId === currentUserId ? `
-                                            <span class="font-bold text-white text-base">${safeDisplayName}</span>
+                                            <span class="font-semibold text-white">${safeDisplayName}</span>
                                         ` : `
-                                            <button onclick="viewUserProfile('${post.userId}')" class="font-bold text-white text-base hover:text-sky-400 transition-colors">${safeDisplayName}</button>
+                                            <button onclick="viewUserProfile('${post.userId}')" class="font-semibold text-white hover:text-sky-400 transition-colors">${safeDisplayName}</button>
                                         `}
-                                        <span class="text-xs text-gray-400 font-medium">${timeAgo}</span>
+                                        <span class="text-xs text-gray-500">${timeAgo}</span>
                                     </div>
-                                    <p class="text-gray-200 mt-3 text-base leading-relaxed whitespace-pre-wrap">${safeContent}</p>
+                                    <p class="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">${safeContent}</p>
                                 </div>
                             </div>
 
-                            <!-- Reactions & Actions -->
-                            <div class="flex items-center justify-between border-t border-white/10 pt-4">
-                                <div class="flex space-x-1 flex-wrap">
-                                    <button onclick="toggleReaction('${post.postId}', 'like')" class="reaction-btn ${userLiked ? 'text-sky-400 bg-sky-400/10' : 'text-gray-400'} hover:text-sky-400 font-medium">
-                                        👍 ${reactionCounts.like > 0 ? `<span class="ml-1">${reactionCounts.like}</span>` : ''}
+                            <!-- Reactions Row -->
+                            <div class="flex items-center justify-between pt-3 border-t border-white/5">
+                                <div class="flex items-center gap-1">
+                                    <button onclick="toggleReaction('${post.postId}', 'like')" class="reaction-btn-clean ${userLiked ? 'text-sky-400' : 'text-gray-500'}">
+                                        👍 ${reactionCounts.like > 0 ? reactionCounts.like : ''}
                                     </button>
-                                    <button onclick="toggleReaction('${post.postId}', 'heart')" class="reaction-btn ${userHearted ? 'text-pink-400 bg-pink-400/10' : 'text-gray-400'} hover:text-pink-400 font-medium">
-                                        ❤️ ${reactionCounts.heart > 0 ? `<span class="ml-1">${reactionCounts.heart}</span>` : ''}
+                                    <button onclick="toggleReaction('${post.postId}', 'heart')" class="reaction-btn-clean ${userHearted ? 'text-pink-400' : 'text-gray-500'}">
+                                        ❤️ ${reactionCounts.heart > 0 ? reactionCounts.heart : ''}
                                     </button>
-                                    <button onclick="toggleReaction('${post.postId}', 'fire')" class="reaction-btn ${userFired ? 'text-orange-400 bg-orange-400/10' : 'text-gray-400'} hover:text-orange-400 font-medium">
-                                        🔥 ${reactionCounts.fire > 0 ? `<span class="ml-1">${reactionCounts.fire}</span>` : ''}
+                                    <button onclick="toggleReaction('${post.postId}', 'fire')" class="reaction-btn-clean ${userFired ? 'text-orange-400' : 'text-gray-500'}">
+                                        🔥 ${reactionCounts.fire > 0 ? reactionCounts.fire : ''}
                                     </button>
-                                    <button onclick="toggleReaction('${post.postId}', 'rocket')" class="reaction-btn ${userRocketed ? 'text-green-400 bg-green-400/10' : 'text-gray-400'} hover:text-green-400 font-medium">
-                                        🚀 ${reactionCounts.rocket > 0 ? `<span class="ml-1">${reactionCounts.rocket}</span>` : ''}
+                                    <button onclick="toggleReaction('${post.postId}', 'rocket')" class="reaction-btn-clean ${userRocketed ? 'text-green-400' : 'text-gray-500'}">
+                                        🚀 ${reactionCounts.rocket > 0 ? reactionCounts.rocket : ''}
                                     </button>
                                 </div>
-                                <div class="flex space-x-4 text-sm">
-                                    <button onclick="openCommentsModal('${post.postId}')" class="flex items-center text-gray-400 hover:text-sky-400 transition-all hover:scale-110">
-                                        <svg class="w-5 h-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="flex items-center gap-3">
+                                    <button onclick="openCommentsModal('${post.postId}')" class="flex items-center gap-1.5 text-gray-500 hover:text-sky-400 transition-colors text-sm">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                                         </svg>
-                                        <span class="font-medium">${post.commentCount || 0}</span>
+                                        ${post.commentCount || 0}
                                     </button>
-                                    <button onclick="sharePostToX('${post.postId}')" class="flex items-center text-gray-400 hover:text-sky-400 transition-all hover:scale-110">
-                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                    <button onclick="sharePostToX('${post.postId}')" class="text-gray-500 hover:text-sky-400 transition-colors">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
                                         </svg>
                                     </button>
@@ -9800,22 +9825,28 @@ ${historyText}`;
                 
                 if (userRank > 0) {
                     const userData = rankings[userRank - 1];
+                    const medal = userRank === 1 ? '🥇' : userRank === 2 ? '🥈' : userRank === 3 ? '🥉' : '';
                     userRankPanel.innerHTML = `
-                        <div class="flex items-center justify-center space-x-4">
-                            <div class="text-center">
-                                <p class="text-3xl font-bold gradient-text">#${userRank}</p>
-                                <p class="text-sm text-gray-400 mt-1">Your Rank</p>
+                        <div class="flex items-center justify-between border-2 border-sky-400/30 rounded-2xl">
+                            <div class="flex items-center gap-3">
+                                <div class="text-2xl font-bold ${userRank <= 3 ? 'text-yellow-400' : 'text-sky-400'} w-12 text-center">
+                                    ${medal || '#' + userRank}
+                                </div>
+                                <img src="${userData.avatarUrl || LOGO_URL}" class="w-12 h-12 rounded-full border-2 border-sky-400" alt="Your Avatar">
+                                <div>
+                                    <p class="text-sm text-gray-400">Your Rank</p>
+                                    <p class="font-semibold text-white">${sanitizeHTML(userData.displayName)}</p>
+                                </div>
                             </div>
-                            <div class="h-12 w-px bg-white/20"></div>
-                            <div class="text-center">
+                            <div class="text-right pr-4">
                                 <p class="text-2xl font-bold text-yellow-400">${userData.xp || 0} XP</p>
-                                <p class="text-sm text-gray-400 mt-1">Total Points</p>
+                                <p class="text-xs text-gray-500">Total Points</p>
                             </div>
                         </div>
                     `;
                 } else {
                     userRankPanel.innerHTML = `
-                        <p class="text-gray-400">Participate in predictions to join the leaderboard!</p>
+                        <p class="text-gray-400 text-center">Participate in predictions to join the leaderboard!</p>
                     `;
                 }
 
@@ -9833,24 +9864,24 @@ ${historyText}`;
                     const isCurrentUser = user.userId === currentUserId;
                     
                     html += `
-                        <div class="ui-panel p-4 ${isCurrentUser ? 'border-l-4 border-sky-400 bg-sky-400/5' : ''}">
+                        <div class="leaderboard-card-clean p-4 ${isCurrentUser ? 'border-l-4 border-sky-400' : ''}">
                             <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-4">
-                                    <div class="text-2xl font-bold ${rank <= 3 ? 'text-yellow-400' : 'text-gray-400'} w-12 text-center">
+                                <div class="flex items-center gap-3">
+                                    <div class="text-xl font-bold ${rank <= 3 ? 'text-yellow-400' : 'text-gray-400'} w-10 text-center flex-shrink-0">
                                         ${medal || rank}
                                     </div>
-                                    <img src="${user.avatarUrl || LOGO_URL}" class="w-12 h-12 rounded-full" alt="Avatar">
-                                    <div>
-                                        <p class="font-semibold text-white ${isCurrentUser ? 'text-sky-400' : ''}">${sanitizeHTML(user.displayName)}</p>
-                                        <p class="text-sm text-gray-400">${user.xp || 0} XP</p>
+                                    <img src="${user.avatarUrl || LOGO_URL}" class="w-11 h-11 rounded-full border-2 border-${isCurrentUser ? 'sky-400' : 'gray-700'}" alt="Avatar">
+                                    <div class="min-w-0">
+                                        <p class="font-semibold text-white ${isCurrentUser ? 'text-sky-400' : ''} truncate">${sanitizeHTML(user.displayName)}</p>
+                                        <p class="text-xs text-gray-500">${user.xp || 0} XP</p>
                                     </div>
                                 </div>
                                 ${!isCurrentUser ? `
-                                    <button onclick="viewUserProfile('${user.userId}')" class="btn btn-secondary text-sm px-4 py-2">
+                                    <button onclick="viewUserProfile('${user.userId}')" class="px-4 py-2 text-xs font-medium text-sky-400 hover:bg-sky-400/10 rounded-full transition-colors border border-sky-400/30">
                                         View Profile
                                     </button>
                                 ` : `
-                                    <span class="badge badge-blue">You</span>
+                                    <span class="px-3 py-1 text-xs font-medium bg-sky-400/20 text-sky-400 rounded-full border border-sky-400/30">You</span>
                                 `}
                             </div>
                         </div>
