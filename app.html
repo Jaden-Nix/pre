@@ -3246,12 +3246,18 @@
             </div>
             
             <div class="flex items-center justify-between mt-5 pt-4 border-t border-gray-700">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 flex-wrap">
                     <button onclick="openMarketSearch()" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sky-400 hover:text-sky-300 bg-sky-400/10 hover:bg-sky-400/20 transition-all border border-sky-400/30 font-medium">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                         </svg>
                         <span class="text-sm">📎 Attach Bet</span>
+                    </button>
+                    <button onclick="uploadPostImage()" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-purple-400 hover:text-purple-300 bg-purple-400/10 hover:bg-purple-400/20 transition-all border border-purple-400/30 font-medium">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <span class="text-sm">📷 Add Image</span>
                     </button>
                     <div class="text-xs text-gray-400 font-medium">
                         <span id="post-char-count">0</span>/500
@@ -9817,6 +9823,9 @@ ${historyText}`;
                     return;
                 }
 
+                // Fetch leaderboard data once for all posts
+                const leaderboardData = await getLeaderboardData();
+
                 let html = '';
                 for (const post of posts) {
                     const reactions = post.reactions || {};
@@ -9837,6 +9846,47 @@ ${historyText}`;
                     const safeDisplayName = sanitizeHTML(post.displayName);
                     const safeContent = sanitizeHTML(post.content);
 
+                    // Get user rank badge from cached leaderboard data
+                    const rankBadge = getUserRankBadge(post.userId, leaderboardData);
+
+                    // Check if user is author
+                    const isAuthor = post.userId === currentUserId;
+
+                    // Build edit/delete buttons for author
+                    let authorActionsHtml = '';
+                    if (isAuthor) {
+                        authorActionsHtml = `
+                            <button onclick="editPost('${post.postId}', '${post.userId}', \`${safeContent.replace(/`/g, '\\`')}\`)" class="text-xs text-gray-400 hover:text-sky-400 transition-colors">
+                                Edit
+                            </button>
+                            <button onclick="deletePost('${post.postId}', '${post.userId}')" class="text-xs text-gray-400 hover:text-red-400 transition-colors ml-2">
+                                Delete
+                            </button>
+                        `;
+                    }
+
+                    // Build attached image if present
+                    let imageHtml = '';
+                    if (post.imageUrl) {
+                        imageHtml = `
+                            <div class="mt-3">
+                                <img src="${post.imageUrl}" class="w-full rounded-xl max-h-96 object-cover border border-white/10" alt="Posted image">
+                            </div>
+                        `;
+                    }
+
+                    // Build P/L Flex card styling if it's a flex post
+                    let flexCardClass = '';
+                    let flexBadgeHtml = '';
+                    if (post.isFlexPost && post.flexData) {
+                        flexCardClass = ' border-2 border-green-500/30 bg-gradient-to-br from-green-500/5 to-emerald-500/5';
+                        flexBadgeHtml = `
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/20 border border-green-500/40 text-green-400 text-xs font-bold mb-2">
+                                💰 Win Flex
+                            </div>
+                        `;
+                    }
+
                     // Build attached market card if present
                     let attachedMarketHtml = '';
                     if (post.attachedMarket) {
@@ -9844,39 +9894,49 @@ ${historyText}`;
                         const stanceColor = market.stance === 'YES' ? 'text-green-400' : 'text-red-400';
                         const stanceIcon = market.stance === 'YES' ? '✅' : '❌';
                         
+                        // TODO: Check for Skin in the Game badge (requires bet verification)
+                        const skinBadge = ''; // await checkSkinInTheGame(post.userId, market.marketId) ? '<span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-400/30">✅ Bet Placed</span>' : '';
+                        
                         attachedMarketHtml = `
                             <div class="mt-3 p-4 rounded-2xl bg-gradient-to-br from-sky-500/10 to-purple-500/10 border border-sky-400/30">
                                 <div class="flex items-start gap-3 mb-3">
                                     <div class="text-2xl">${stanceIcon}</div>
                                     <div class="flex-grow min-w-0">
-                                        <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">${safeDisplayName} is betting ${market.stance}</p>
+                                        <div class="flex items-center gap-2 flex-wrap mb-1">
+                                            <p class="text-xs text-gray-400 uppercase tracking-wide">${safeDisplayName} is betting ${market.stance}</p>
+                                            ${skinBadge}
+                                        </div>
                                         <p class="font-semibold text-white text-sm">${sanitizeHTML(market.title)}</p>
                                     </div>
                                 </div>
                                 <button onclick="betWithUser('${market.marketId}', '${market.stance}')" class="w-full btn btn-primary py-2 text-sm">
-                                    Bet with ${safeDisplayName}
+                                    🎯 Bet on This Market
                                 </button>
                             </div>
                         `;
                     }
 
                     html += `
-                        <div class="social-post-card">
+                        <div class="social-post-card${flexCardClass}">
+                            ${flexBadgeHtml}
                             <div class="flex items-start gap-3 mb-4">
                                 <img src="${avatarUrl}" class="social-avatar w-12 h-12 rounded-full object-cover flex-shrink-0" alt="Avatar">
                                 <div class="flex-grow min-w-0">
-                                    <div class="flex items-center gap-2 mb-1">
+                                    <div class="flex items-center gap-2 mb-1 flex-wrap">
                                         ${post.userId === currentUserId ? `
                                             <span class="font-semibold text-white">${safeDisplayName}</span>
                                         ` : `
                                             <button onclick="viewUserProfile('${post.userId}')" class="font-semibold text-white hover:text-sky-400 transition-colors">${safeDisplayName}</button>
                                         `}
-                                        <span class="text-xs text-gray-500">${timeAgo}</span>
+                                        ${rankBadge}
+                                        <span class="text-xs text-gray-500">${timeAgo}${post.edited ? ' <span class="text-gray-600">(edited)</span>' : ''}</span>
+                                        ${authorActionsHtml}
                                     </div>
                                     <p class="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">${safeContent}</p>
                                 </div>
                             </div>
 
+                            ${imageHtml}
                             ${attachedMarketHtml}
 
                             <!-- Reactions Row -->
@@ -10278,8 +10338,8 @@ ${historyText}`;
          */
         window.submitPost = async () => {
             const content = document.getElementById('post-content-input').value.trim();
-            if (content.length < 1) {
-                showToast('Please write something to post.', 'error');
+            if (content.length < 1 && !attachedImage) {
+                showToast('Please write something or attach an image to post.', 'error');
                 return;
             }
 
@@ -10313,10 +10373,16 @@ ${historyText}`;
                     postData.attachedMarket = attachedMarket;
                 }
 
+                // Add attached image if present
+                if (attachedImage) {
+                    postData.imageUrl = attachedImage;
+                }
+
                 await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION), postData);
 
                 showToast('Post created successfully!', 'success');
                 closeCreatePost();
+                removePostImage();
                 loadSocialFeed();
             } catch (error) {
                 console.error('Error creating post:', error);
@@ -10383,25 +10449,100 @@ ${historyText}`;
                     return;
                 }
 
-                let html = '';
+                // Organize comments into threaded structure
+                const allComments = [];
+                const repliesMap = {};
+                
                 snapshot.forEach(doc => {
-                    const comment = doc.data();
+                    const comment = { ...doc.data(), commentId: doc.id };
+                    allComments.push(comment);
+                    
+                    // Group replies
+                    if (comment.replyTo) {
+                        if (!repliesMap[comment.replyTo]) {
+                            repliesMap[comment.replyTo] = [];
+                        }
+                        repliesMap[comment.replyTo].push(comment);
+                    }
+                });
+
+                // Render comments with threading
+                let html = '';
+                allComments.forEach(comment => {
+                    // Skip if this is a reply (will be rendered under parent)
+                    if (comment.replyTo) return;
+
                     const timeAgo = comment.timestamp ? getTimeAgo(comment.timestamp.seconds) : 'just now';
                     const safeDisplayName = sanitizeHTML(comment.displayName);
                     const safeContent = sanitizeHTML(comment.content);
+                    const isAuthor = comment.userId === currentUserId;
+                    
+                    // Build action buttons
+                    let actionBtns = '';
+                    if (isAuthor) {
+                        actionBtns = `
+                            <button onclick="deleteComment('${currentPostId}', '${comment.commentId}', '${comment.userId}')" class="text-xs text-gray-400 hover:text-red-400 transition-colors ml-2">
+                                Delete
+                            </button>
+                        `;
+                    }
                     
                     html += `
-                        <div class="flex space-x-3 pb-3 border-b border-white/5">
-                            <img src="${comment.avatarUrl || LOGO_URL}" class="w-10 h-10 rounded-full" alt="Avatar">
-                            <div class="flex-grow">
-                                <div class="flex items-center space-x-2">
-                                    <span class="font-semibold text-white">${safeDisplayName}</span>
-                                    <span class="text-xs text-gray-400">${timeAgo}</span>
+                        <div class="pb-3 border-b border-white/5">
+                            <div class="flex space-x-3">
+                                <img src="${comment.avatarUrl || LOGO_URL}" class="w-10 h-10 rounded-full flex-shrink-0" alt="Avatar">
+                                <div class="flex-grow min-w-0">
+                                    <div class="flex items-center space-x-2 flex-wrap">
+                                        <span class="font-semibold text-white">${safeDisplayName}</span>
+                                        <span class="text-xs text-gray-400">${timeAgo}</span>
+                                        ${actionBtns}
+                                    </div>
+                                    <p class="text-gray-300 text-sm mt-1 break-words">${safeContent}</p>
+                                    <button onclick="startReply('${comment.commentId}', '${safeDisplayName}')" class="text-xs text-sky-400 hover:text-sky-300 mt-1.5">
+                                        Reply
+                                    </button>
                                 </div>
-                                <p class="text-gray-300 text-sm mt-1">${safeContent}</p>
                             </div>
-                        </div>
                     `;
+                    
+                    // Render replies if any
+                    const replies = repliesMap[comment.commentId] || [];
+                    if (replies.length > 0) {
+                        html += '<div class="ml-12 mt-3 space-y-3 border-l-2 border-sky-500/20 pl-4">';
+                        replies.forEach(reply => {
+                            const replyTimeAgo = reply.timestamp ? getTimeAgo(reply.timestamp.seconds) : 'just now';
+                            const safeReplyDisplayName = sanitizeHTML(reply.displayName);
+                            const safeReplyContent = sanitizeHTML(reply.content);
+                            const isReplyAuthor = reply.userId === currentUserId;
+                            
+                            let replyActionBtns = '';
+                            if (isReplyAuthor) {
+                                replyActionBtns = `
+                                    <button onclick="deleteComment('${currentPostId}', '${reply.commentId}', '${reply.userId}')" class="text-xs text-gray-400 hover:text-red-400 transition-colors ml-2">
+                                        Delete
+                                    </button>
+                                `;
+                            }
+                            
+                            html += `
+                                <div class="flex space-x-2">
+                                    <img src="${reply.avatarUrl || LOGO_URL}" class="w-8 h-8 rounded-full flex-shrink-0" alt="Avatar">
+                                    <div class="flex-grow min-w-0">
+                                        <div class="flex items-center space-x-2 flex-wrap">
+                                            <span class="font-semibold text-white text-sm">${safeReplyDisplayName}</span>
+                                            <span class="text-xs text-gray-500">→ ${sanitizeHTML(reply.replyToUser)}</span>
+                                            <span class="text-xs text-gray-400">${replyTimeAgo}</span>
+                                            ${replyActionBtns}
+                                        </div>
+                                        <p class="text-gray-300 text-sm mt-0.5 break-words">${safeReplyContent}</p>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                    }
+                    
+                    html += '</div>';
                 });
 
                 feedContent.innerHTML = html;
@@ -10439,13 +10580,21 @@ ${historyText}`;
 
                 const commentsRef = collection(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION, currentPostId, POST_COMMENTS_COLLECTION);
                 
-                await addDoc(commentsRef, {
+                const commentData = {
                     userId: currentUserId,
                     displayName: userProfile.displayName,
                     avatarUrl: userProfile.avatarUrl || LOGO_URL,
                     content: content,
                     timestamp: serverTimestamp()
-                });
+                };
+
+                // Add reply info if replying to another comment
+                if (replyingToCommentId) {
+                    commentData.replyTo = replyingToCommentId;
+                    commentData.replyToUser = replyingToUserName;
+                }
+
+                await addDoc(commentsRef, commentData);
 
                 // Increment comment count on post
                 const postRef = firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION, currentPostId);
@@ -10454,7 +10603,10 @@ ${historyText}`;
                 });
 
                 document.getElementById('comment-input').value = '';
-                showToast('Comment added!', 'success');
+                showToast(replyingToCommentId ? 'Reply added!' : 'Comment added!', 'success');
+                
+                // Reset reply state
+                cancelReply();
                 
                 // Reload comments
                 openCommentsModal(currentPostId);
@@ -10491,6 +10643,351 @@ ${historyText}`;
             } catch (error) {
                 console.error('Error sharing post:', error);
                 showToast('Failed to share post', 'error');
+            }
+        }
+
+        // =====================================================================
+        // --- PHASE 1: EDIT & DELETE FUNCTIONALITY ---
+        // =====================================================================
+
+        let editingPostId = null;
+        let editingCommentId = null;
+
+        /**
+         * Delete a post (author or admin only)
+         */
+        window.deletePost = async (postId, authorId) => {
+            if (currentUserId !== authorId && !await isUserAdmin()) {
+                showToast('You can only delete your own posts', 'error');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete this post?')) return;
+
+            try {
+                const { doc: firestoreDoc, deleteDoc } = window.firebase.firestore;
+                const postRef = firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION, postId);
+                await deleteDoc(postRef);
+                showToast('Post deleted successfully', 'success');
+                loadSocialFeed();
+            } catch (error) {
+                console.error('Error deleting post:', error);
+                showToast('Failed to delete post', 'error');
+            }
+        }
+
+        /**
+         * Edit a post (author only)
+         */
+        window.editPost = async (postId, authorId, currentContent) => {
+            if (currentUserId !== authorId) {
+                showToast('You can only edit your own posts', 'error');
+                return;
+            }
+
+            const newContent = prompt('Edit your post:', currentContent);
+            if (!newContent || newContent.trim() === '' || newContent === currentContent) return;
+
+            try {
+                const { doc: firestoreDoc, updateDoc } = window.firebase.firestore;
+                const postRef = firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION, postId);
+                await updateDoc(postRef, {
+                    content: newContent.trim(),
+                    edited: true,
+                    editedAt: new Date().toISOString()
+                });
+                showToast('Post updated successfully', 'success');
+                loadSocialFeed();
+            } catch (error) {
+                console.error('Error editing post:', error);
+                showToast('Failed to edit post', 'error');
+            }
+        }
+
+        /**
+         * Delete a comment (author or admin only)
+         */
+        window.deleteComment = async (postId, commentId, authorId) => {
+            if (currentUserId !== authorId && !await isUserAdmin()) {
+                showToast('You can only delete your own comments', 'error');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete this comment?')) return;
+
+            try {
+                const { doc: firestoreDoc, deleteDoc, updateDoc, increment } = window.firebase.firestore;
+                const commentRef = firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION, postId, POST_COMMENTS_COLLECTION, commentId);
+                await deleteDoc(commentRef);
+
+                // Decrement comment count
+                const postRef = firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION, postId);
+                await updateDoc(postRef, {
+                    commentCount: increment(-1)
+                });
+
+                showToast('Comment deleted successfully', 'success');
+                openCommentsModal(postId);
+            } catch (error) {
+                console.error('Error deleting comment:', error);
+                showToast('Failed to delete comment', 'error');
+            }
+        }
+
+        /**
+         * Check if current user is admin
+         */
+        async function isUserAdmin() {
+            // Simple check - you can enhance this with proper admin role verification
+            return false; // Set to true or implement proper admin check
+        }
+
+        // =====================================================================
+        // --- PHASE 1: THREADED REPLIES ---
+        // =====================================================================
+
+        let replyingToCommentId = null;
+        let replyingToUserName = null;
+
+        /**
+         * Start replying to a comment
+         */
+        window.startReply = (commentId, userName) => {
+            replyingToCommentId = commentId;
+            replyingToUserName = userName;
+            
+            const input = document.getElementById('comment-input');
+            input.placeholder = `Replying to ${userName}...`;
+            input.focus();
+            
+            // Show cancel button
+            const submitBtn = document.getElementById('submit-comment-btn');
+            submitBtn.textContent = 'Reply';
+        }
+
+        /**
+         * Cancel reply
+         */
+        window.cancelReply = () => {
+            replyingToCommentId = null;
+            replyingToUserName = null;
+            
+            const input = document.getElementById('comment-input');
+            input.placeholder = 'Add a comment...';
+            
+            const submitBtn = document.getElementById('submit-comment-btn');
+            submitBtn.textContent = 'Comment';
+        }
+
+        // =====================================================================
+        // --- PHASE 1: RICH MEDIA SUPPORT ---
+        // =====================================================================
+
+        let attachedImage = null;
+
+        /**
+         * Upload image for post
+         */
+        window.uploadPostImage = () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*,image/gif';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                if (file.size > 5 * 1024 * 1024) {
+                    showToast('Image must be smaller than 5MB', 'error');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    attachedImage = event.target.result;
+                    showImagePreview(event.target.result);
+                    showToast('Image attached! Post to share it.', 'success');
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        }
+
+        /**
+         * Show image preview in create post modal
+         */
+        function showImagePreview(imageData) {
+            const existingPreview = document.getElementById('post-image-preview');
+            if (existingPreview) existingPreview.remove();
+            
+            const preview = document.createElement('div');
+            preview.id = 'post-image-preview';
+            preview.className = 'mt-3 relative';
+            preview.innerHTML = `
+                <img src="${imageData}" class="w-full rounded-xl max-h-64 object-cover border border-sky-400/30">
+                <button onclick="removePostImage()" class="absolute top-2 right-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full p-2 transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            `;
+            
+            const textarea = document.getElementById('post-content-input');
+            textarea.parentElement.insertBefore(preview, textarea.nextSibling);
+        }
+
+        /**
+         * Remove attached image
+         */
+        window.removePostImage = () => {
+            attachedImage = null;
+            const preview = document.getElementById('post-image-preview');
+            if (preview) preview.remove();
+        }
+
+        // =====================================================================
+        // --- PHASE 2: USER RANK & REPUTATION SYSTEM ---
+        // =====================================================================
+
+        let leaderboardCache = null;
+        let leaderboardCacheTime = 0;
+        const LEADERBOARD_CACHE_DURATION = 60000; // 1 minute
+
+        /**
+         * Get cached leaderboard data
+         */
+        async function getLeaderboardData() {
+            const now = Date.now();
+            
+            // Return cached data if fresh
+            if (leaderboardCache && (now - leaderboardCacheTime) < LEADERBOARD_CACHE_DURATION) {
+                return leaderboardCache;
+            }
+            
+            try {
+                const { collection, query, orderBy, limit, getDocs } = window.firebase.firestore;
+                
+                const q = query(
+                    collection(db, 'artifacts', APP_ID, 'public', 'data', PUBLIC_LEADERBOARD_COLLECTION),
+                    orderBy('xp', 'desc'),
+                    limit(100)
+                );
+                
+                const snapshot = await getDocs(q);
+                const data = {};
+                
+                snapshot.forEach((doc, index) => {
+                    data[doc.id] = {
+                        rank: index + 1,
+                        xp: doc.data().xp || 0
+                    };
+                });
+                
+                leaderboardCache = data;
+                leaderboardCacheTime = now;
+                
+                return data;
+            } catch (error) {
+                console.error('Error fetching leaderboard:', error);
+                return {};
+            }
+        }
+
+        /**
+         * Get user rank badge HTML based on leaderboard position and XP
+         */
+        function getUserRankBadge(userId, leaderboardData) {
+            const userData = leaderboardData[userId];
+            if (!userData) return ''; // User not ranked
+            
+            const rank = userData.rank;
+            const userXP = userData.xp;
+            
+            // Determine badge
+            if (rank === 1) {
+                return '<span class="text-xs font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-black">🏆 Rank #1</span>';
+            } else if (rank <= 3) {
+                return `<span class="text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-400/30">🥇 Top 3</span>`;
+            } else if (rank <= 10) {
+                return `<span class="text-xs font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-400 border border-sky-400/30">⭐ Top 10</span>`;
+            } else if (userXP >= 10000) {
+                return '<span class="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-400/30">🐋 Whale</span>';
+            } else if (userXP >= 5000) {
+                return '<span class="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-400/30">💎 Pro Trader</span>';
+            }
+            
+            return '';
+        }
+
+        // =====================================================================
+        // --- PHASE 2: SKIN IN THE GAME BADGE ---
+        // =====================================================================
+
+        /**
+         * Check if user has active bet on a market (Skin in the Game)
+         */
+        async function checkSkinInTheGame(userId, marketId) {
+            if (!marketId) return false;
+            
+            try {
+                // This would check the smart contract or Firebase for active bets
+                // For now, return false as placeholder - implement based on your bet tracking
+                // You'd query the user's bets and check if they have an active position on this market
+                
+                // Example implementation:
+                // const userBets = await getUserBets(userId);
+                // return userBets.some(bet => bet.marketId === marketId && !bet.claimed);
+                
+                return false;
+            } catch (error) {
+                console.error('Error checking skin in the game:', error);
+                return false;
+            }
+        }
+
+        // =====================================================================
+        // --- PHASE 3: P/L FLEX CARD ---
+        // =====================================================================
+
+        /**
+         * Create a P/L Flex post after winning a bet
+         */
+        window.createWinFlexPost = async (betData) => {
+            try {
+                const { collection, addDoc, serverTimestamp, doc: firestoreDoc, getDoc } = window.firebase.firestore;
+                
+                const userDoc = await getDoc(firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId));
+                const userProfile = userDoc.data();
+                
+                const profitPercent = ((betData.payout - betData.amount) / betData.amount * 100).toFixed(0);
+                const profitAmount = (betData.payout - betData.amount).toFixed(2);
+                
+                const flexContent = `🎉 Just won +${profitPercent}% on "${betData.marketTitle}"! 💰 Profit: +$${profitAmount} BUSD`;
+                
+                const postData = {
+                    userId: currentUserId,
+                    displayName: userProfile.displayName,
+                    avatarUrl: userProfile.avatarUrl || LOGO_URL,
+                    content: flexContent,
+                    reactions: { like: [], heart: [], fire: [], rocket: [] },
+                    commentCount: 0,
+                    timestamp: serverTimestamp(),
+                    isFlexPost: true,
+                    flexData: {
+                        type: 'win',
+                        marketId: betData.marketId,
+                        marketTitle: betData.marketTitle,
+                        profitPercent: parseFloat(profitPercent),
+                        profitAmount: parseFloat(profitAmount),
+                        betAmount: betData.amount,
+                        payout: betData.payout
+                    }
+                };
+                
+                await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION), postData);
+                showToast('Win shared to feed! 🎉', 'success');
+            } catch (error) {
+                console.error('Error creating flex post:', error);
+                showToast('Failed to share win', 'error');
             }
         }
 
