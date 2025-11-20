@@ -1,0 +1,28 @@
+Predora Social Feed: Feature Upgrade Plan
+Phase 1: The "Essentials" (Do these first)
+These are the features users expect from any modern app.
+1. Edit & Delete:
+• Logic: Only the author (or you, the Admin) can see these buttons.
+• Visual: If a post is edited, add a tiny (edited) gray text next to the timestamp.
+2. Threaded Replies:
+• Logic: Don't just make it a flat list. Allow users to reply to a specific comment.
+• Design: Indent replies slightly so it looks like a conversation (like Reddit or Twitter).
+3. Rich Media (Images/GIFs):
+• Why: Crypto culture IS meme culture. A feed with only text is boring.
+• Easy Win: Add a simple "Upload Image" button. If you can't build a full GIF picker yet, just let people upload memes from their phone gallery.
+Phase 2: The "Trust" Layer (Crucial for Betting)
+This is what separates "Predora" from "Twitter". On Twitter, anyone can lie. On Predora, the blockchain proves the truth.
+1. "Skin in the Game" Badge (The Anti-Shill Feature):
+• Concept: If a user posts about "ETH hitting $5k", your system checks their wallet.
+• Visual: If they actually have an open bet on that market, put a ✅ Verified Holder or ✅ Bet Placed badge on their post.
+• Impact: This proves they put their money where their mouth is. Judges LOVE this.
+2. User Rank / Reputation:
+• Visual: Next to "Alice Founder", show her Global Rank (e.g., 🏆 Rank #4 or 🐋 Whale).
+• Impact: When a "Rank #1" user speaks, everyone listens (and copies their bets).
+Phase 3: The "Hype" Layer (Viral Growth)
+1. The "P/L Flex" Card:
+• Concept: When a user wins a bet, give them a button that says "Share to Feed".
+• Visual: It automatically creates a post that says "I just made +400% on the Election Market!" with a cool green graphic.
+• Impact: This triggers greed/FOMO in other users and makes them want to bet too.
+2. "Bet on This" Button (The God Tier Feature):
+• Recap: As discussed, allow users to attach a specific market to their post so others can bet instantly. This is your revenue generator.
