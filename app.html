@@ -10677,11 +10677,11 @@ ${historyText}`;
             }
 
             try {
-                const { collection, query, where, getDocs, orderBy, limit } = window.firebase.firestore;
+                const { collection, getDocs, limit, query } = window.firebase.firestore;
                 
                 // Search in markets collection
                 const marketsRef = collection(db, 'artifacts', APP_ID, 'public', 'data', MARKETS_COLLECTION);
-                const snapshot = await getDocs(query(marketsRef, orderBy('timestamp', 'desc'), limit(20)));
+                const snapshot = await getDocs(query(marketsRef, limit(100)));
                 
                 let markets = [];
                 snapshot.forEach(doc => {
