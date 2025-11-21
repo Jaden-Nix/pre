@@ -13,7 +13,6 @@ import sgMail from '@sendgrid/mail';
 import { AutoPayoutJob } from './auto-payout-job.js';
 import { CustodialWalletService } from './custodial-wallet-service.js';
 import { BiconomyAAService } from './biconomy-aa-service.js';
-import { privyClient, verifyPrivyToken, getPrivyUser } from './privy-service.js';
 
 // --- Constants ---
 const __filename = fileURLToPath(import.meta.url);
@@ -296,119 +295,6 @@ app.get('/', (req, res) => {
 app.get('/pitch-deck', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'pitch-deck', 'index.html'));
 });
-
-// --- PRIVY AUTHENTICATION ENDPOINTS ---
-app.get('/api/privy/config', (req, res) => {
-    const PRIVY_APP_ID = process.env.PRIVY_APP_ID;
-    if (!PRIVY_APP_ID) {
-        return res.status(500).json({ error: 'Privy not configured' });
-    }
-    res.json({ appId: PRIVY_APP_ID });
-});
-
-// Rate limiting store for Privy verify endpoint
-const privyVerifyAttempts = new Map();
-const PRIVY_RATE_LIMIT = 10; // Max 10 verifications per minute per IP
-const PRIVY_RATE_WINDOW = 60000; // 1 minute
-
-// Periodic cleanup to prevent unbounded growth
-setInterval(() => {
-    const now = Date.now();
-    for (const [ip, attempts] of privyVerifyAttempts.entries()) {
-        const recentAttempts = attempts.filter(time => now - time < PRIVY_RATE_WINDOW);
-        if (recentAttempts.length === 0) {
-            privyVerifyAttempts.delete(ip);
-        } else {
-            privyVerifyAttempts.set(ip, recentAttempts);
-        }
-    }
-}, PRIVY_RATE_WINDOW); // Clean up every minute
-
-app.post('/api/privy/verify', async (req, res) => {
-    const { accessToken } = req.body;
-    const authHeader = req.headers.authorization;
-    
-    if (!accessToken || !authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(400).json({ error: 'Access token and Authorization header required' });
-    }
-    
-    const headerToken = authHeader.substring(7);
-    if (headerToken !== accessToken) {
-        return res.status(401).json({ error: 'Token mismatch' });
-    }
-    
-    // Rate limiting by IP
-    const clientIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const now = Date.now();
-    const userAttempts = privyVerifyAttempts.get(clientIP) || [];
-    const recentAttempts = userAttempts.filter(time => now - time < PRIVY_RATE_WINDOW);
-    
-    if (recentAttempts.length >= PRIVY_RATE_LIMIT) {
-        return res.status(429).json({ error: 'Too many verification attempts. Please try again later.' });
-    }
-    
-    recentAttempts.push(now);
-    privyVerifyAttempts.set(clientIP, recentAttempts);
-    
-    try {
-        const { userId, user } = await verifyPrivyToken(accessToken);
-        
-        if (!db) {
-            return res.json({ userId, user, userData: null });
-        }
-        
-        const userDoc = await db.collection('users').doc(userId).get();
-        let userData = userDoc.exists ? userDoc.data() : null;
-        
-        if (!userDoc.exists) {
-            const email = user.email?.address || null;
-            
-            // Always create custodial wallet server-side (never trust client-provided addresses)
-            let custodialWalletAddress = null;
-            if (custodialWalletService) {
-                try {
-                    const wallet = await custodialWalletService.createWallet(userId);
-                    custodialWalletAddress = wallet.address;
-                    console.log(`✅ Custodial wallet created for Privy user ${userId}: ${custodialWalletAddress}`);
-                } catch (walletError) {
-                    console.error('Error creating custodial wallet:', walletError);
-                }
-            }
-            
-            userData = {
-                uid: userId,
-                email,
-                walletAddress: custodialWalletAddress || null,
-                displayName: email ? email.split('@')[0] : `User${userId.slice(-4)}`,
-                avatar: '',
-                xp: 0,
-                balance: 100,
-                bnbBalance: 0,
-                cakeBalance: 0,
-                isApproved: false,
-                createdAt: new Date().toISOString(),
-                lastLoginAt: new Date().toISOString()
-            };
-            
-            await db.collection('users').doc(userId).set(userData);
-            console.log(`✅ Created new user profile for Privy user: ${userId}`);
-        } else {
-            await db.collection('users').doc(userId).update({
-                lastLoginAt: new Date().toISOString()
-            });
-        }
-        
-        res.json({ userId, user, userData });
-    } catch (error) {
-        console.error('Privy verification error:', error);
-        res.status(401).json({ error: error.message });
-    }
-});
-
-// --- BICONOMY ACCOUNT ABSTRACTION ENDPOINTS ---
-// Note: Biconomy integration requires client-side SDK loading with Privy embedded wallet as owner
-// for true self-custody. Server-side session keys violate the self-custody model.
-// TODO: Implement client-side Biconomy SDK integration using ESM modules
 
 // --- EMAIL OTP AUTHENTICATION ENDPOINTS ---
 app.post('/api/send-otp', async (req, res) => {

@@ -27,8 +27,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.0/dist/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.1/dist/ethers.umd.min.js"></script>
-    
-    <!-- Biconomy SDK (loaded as ESM module in separate script) -->
 
     <!-- WALLETCONNECT_PROJECT_ID_PLACEHOLDER -->
 
@@ -1509,17 +1507,17 @@
 
                 <!-- Social Login (Firebase) -->
                 <div class="space-y-4 lg:space-y-4">
-                    <button onclick="openPrivyModal('google')" class="w-full flex items-center justify-center gap-4 px-8 py-4 rounded-xl border-2 border-gray-700/50 bg-white/5 hover:bg-white/10 hover:border-gray-600 hover:shadow-2xl hover:shadow-blue-500/20 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] group">
+                    <button onclick="signInWithGoogle()" class="w-full flex items-center justify-center gap-4 px-8 py-4 rounded-xl border-2 border-gray-700/50 bg-white/5 hover:bg-white/10 hover:border-gray-600 hover:shadow-2xl hover:shadow-blue-500/20 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] group">
                         <svg class="w-6 h-6 group-hover:scale-110 transition-transform" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                         <span class="font-semibold text-white text-base">Continue with Google</span>
                     </button>
 
-                    <button onclick="openPrivyModal('twitter')" class="w-full flex items-center justify-center gap-4 px-8 py-4 rounded-xl border-2 border-gray-700/50 bg-white/5 hover:bg-white/10 hover:border-gray-600 hover:shadow-2xl hover:shadow-gray-500/20 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] group">
+                    <button onclick="signInWithX()" class="w-full flex items-center justify-center gap-4 px-8 py-4 rounded-xl border-2 border-gray-700/50 bg-white/5 hover:bg-white/10 hover:border-gray-600 hover:shadow-2xl hover:shadow-gray-500/20 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] group">
                         <svg class="w-6 h-6 text-white group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
                         <span class="font-semibold text-white text-base">Continue with X</span>
                     </button>
 
-                    <button onclick="openPrivyModal('email')" class="w-full flex items-center justify-center gap-4 px-8 py-4 rounded-xl border-2 border-gray-700/50 bg-white/5 hover:bg-white/10 hover:border-gray-600 hover:shadow-2xl hover:shadow-sky-500/20 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] group">
+                    <button onclick="signInWithEmail()" class="w-full flex items-center justify-center gap-4 px-8 py-4 rounded-xl border-2 border-gray-700/50 bg-white/5 hover:bg-white/10 hover:border-gray-600 hover:shadow-2xl hover:shadow-sky-500/20 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] group">
                         <svg class="w-6 h-6 text-sky-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                         <span class="font-semibold text-white text-base">Continue with Email</span>
                     </button>
@@ -1602,94 +1600,6 @@
                     <p class="text-sm text-gray-300 text-center">
                         💡 Demo accounts have pre-loaded balances and full access to all features
                     </p>
-                </div>
-            </div>
-
-            <!-- Privy Login Modal (Bottom Sheet) -->
-            <div id="privy-modal" class="fixed inset-0 z-50 hidden">
-                <!-- Backdrop -->
-                <div class="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-300" onclick="closePrivyModal()"></div>
-                
-                <!-- Modal Content (Slides from bottom) -->
-                <div id="privy-modal-content" class="absolute bottom-0 left-0 right-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-t-3xl shadow-2xl transform translate-y-full transition-transform duration-500 ease-out max-h-[90vh] overflow-y-auto">
-                    <!-- Handle Bar -->
-                    <div class="flex justify-center pt-3 pb-2">
-                        <div class="w-12 h-1.5 bg-gray-600 rounded-full"></div>
-                    </div>
-                    
-                    <!-- Modal Header -->
-                    <div class="px-6 py-4 border-b border-gray-700/50">
-                        <div class="flex items-center justify-between">
-                            <h2 id="privy-modal-title" class="text-xl font-bold text-white">Sign in to Predora</h2>
-                            <button onclick="closePrivyModal()" class="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors">
-                                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Modal Body -->
-                    <div class="px-6 py-6 space-y-6">
-                        <!-- Email Login Step -->
-                        <div id="privy-email-step" class="space-y-4 hidden">
-                            <div>
-                                <label class="text-sm font-medium text-gray-300 mb-2 block">Email address</label>
-                                <input id="privy-email-input" type="email" class="ui-input" placeholder="your-email@example.com" autocomplete="email">
-                            </div>
-                            <button onclick="sendPrivyEmailCode()" class="btn btn-primary w-full">Send verification code</button>
-                            <p class="text-xs text-center text-gray-400">We'll send you a 6-digit code to verify your email</p>
-                        </div>
-                        
-                        <!-- Email OTP Verification Step -->
-                        <div id="privy-otp-step" class="space-y-4 hidden">
-                            <div class="text-center mb-4">
-                                <p class="text-gray-300">Enter the code sent to</p>
-                                <p id="privy-email-display" class="text-sky-400 font-medium"></p>
-                            </div>
-                            <div>
-                                <label class="text-sm font-medium text-gray-300 mb-2 block">Verification code</label>
-                                <input id="privy-otp-input" type="text" class="ui-input text-center text-2xl tracking-widest" placeholder="000000" maxlength="6" inputmode="numeric">
-                            </div>
-                            <button onclick="verifyPrivyOTP()" class="btn btn-primary w-full">Verify & Continue</button>
-                            <button onclick="showPrivyStep('email')" class="text-sm text-sky-400 hover:text-sky-300 text-center w-full">Use a different email</button>
-                        </div>
-                        
-                        <!-- Social Login (OAuth) -->
-                        <div id="privy-oauth-step" class="space-y-4 hidden">
-                            <div class="text-center mb-2">
-                                <p class="text-gray-300">Securely connect with</p>
-                            </div>
-                            <button id="privy-oauth-button" onclick="initiatePrivyOAuth()" class="w-full flex items-center justify-center gap-4 px-8 py-5 rounded-xl border-2 border-gray-700 bg-white/5 hover:bg-white/10 hover:border-gray-600 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]">
-                                <div id="privy-oauth-icon"></div>
-                                <span id="privy-oauth-text" class="font-semibold text-white text-lg"></span>
-                            </button>
-                            <p class="text-xs text-center text-gray-400">
-                                We'll redirect you to sign in securely. You'll be brought back here after authentication.
-                            </p>
-                        </div>
-                        
-                        <!-- Loading State -->
-                        <div id="privy-loading-step" class="space-y-4 hidden text-center py-8">
-                            <div class="flex justify-center">
-                                <div class="w-16 h-16 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
-                            </div>
-                            <p id="privy-loading-text" class="text-gray-300 font-medium">Processing...</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Security Notice -->
-                    <div class="px-6 py-4 bg-gray-800/50 border-t border-gray-700/50">
-                        <div class="flex items-start gap-3">
-                            <svg class="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                            </svg>
-                            <div class="flex-1">
-                                <p class="text-sm text-gray-300 font-medium">Secure Authentication</p>
-                                <p class="text-xs text-gray-400 mt-1">Your login is protected by Privy's enterprise-grade security</p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -3918,8 +3828,21 @@
 
 
     <script type="module">
-        // --- Import Firebase Firestore (keeping for database) ---
+        // --- Import Firebase modules ---
+        // These are imported from the web to make the HTML file self-contained
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            onAuthStateChanged,
+            signInWithCustomToken,
+            GoogleAuthProvider,
+            TwitterAuthProvider,
+            signInWithPopup,
+            signInWithEmailAndPassword,
+            createUserWithEmailAndPassword
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
         import { 
             getFirestore, 
             doc, getDoc, setDoc, 
@@ -3934,10 +3857,14 @@
             limit,
             arrayUnion
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        // --- Pass imports to global window object ---
+        // --- Pass all imports to a global window object for convenience ---
         window.firebase = {
             app: { initializeApp },
+            auth: { 
+                getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken,
+                GoogleAuthProvider, TwitterAuthProvider, signInWithPopup,
+                signInWithEmailAndPassword, createUserWithEmailAndPassword
+            },
             firestore: { 
                 getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, 
                 onSnapshot, collection, query, where, increment, addDoc, 
@@ -3946,15 +3873,10 @@
             }
         };
 
-        // --- Initialize Privy Client ---
-        window.privyClient = null;
-        window.privyUser = null;
-        window.privyAccessToken = null;
-
         // --- GLOBAL APP LOGIC ---
 
         // --- GLOBAL STATE & CONSTANTS ---
-        let db;
+        let db, auth;
         let currentScreenId = 'login-screen'; 
         let currentUserId = null;
         let userProfile = { 
@@ -4708,7 +4630,7 @@
                         smartAccountDisplay.classList.remove('text-gray-400');
                         smartAccountDisplay.classList.add('text-green-400');
                     } else {
-                        smartAccountDisplay.textContent = 'Pending client-side SDK';
+                        smartAccountDisplay.textContent = 'Not configured (needs Biconomy SDK)';
                         smartAccountDisplay.classList.remove('text-green-400');
                         smartAccountDisplay.classList.add('text-gray-400');
                     }
@@ -4771,14 +4693,15 @@
         });
 
         /**
-         * Initializes Privy, Firebase Firestore, caches DOM, and checks for a saved session.
+         * Initializes the Firebase app, caches DOM, and checks for a saved session.
          */
-        async function startApp() {
+        function startApp() {
             const { initializeApp } = window.firebase.app;
+            const { getAuth } = window.firebase.auth;
             const { getFirestore, setLogLevel } = window.firebase.firestore;
 
             try {
-                // Initialize Firebase Firestore (for database only)
+
                 const firebaseConfig = {
                     apiKey: "AIzaSyCr36OARwTBJduV9PJI6FfhDKRVwxarBBM",
                     authDomain: "predora-app.firebaseapp.com",
@@ -4788,85 +4711,9 @@
                     appId: "1:264141669177:web:e650746b9ed7ce2a1fdee8",
                 };
                 const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
 
-                // Initialize Privy Client - get app ID from backend
-                try {
-                    const response = await fetch('/api/privy/config');
-                    const { appId } = await response.json();
-                    
-                    // Import Privy SDK from CDN (Privy is default export, LocalStorage is named export)
-                    const privyModule = await import('https://cdn.jsdelivr.net/npm/@privy-io/js-sdk-core@0.54.2/+esm');
-                    const Privy = privyModule.default;
-                    const { LocalStorage } = privyModule;
-                    
-                    window.privyClient = new Privy({
-                        appId: appId,
-                        storage: new LocalStorage()
-                    });
-                    
-                    // Setup embedded wallet iframe with secure message handling
-                    const iframeUrl = window.privyClient.embeddedWallet.getURL();
-                    const iframe = document.createElement('iframe');
-                    iframe.src = iframeUrl;
-                    iframe.style.display = 'none';
-                    document.body.appendChild(iframe);
-                    
-                    iframe.onload = () => {
-                        // Set message poster for Privy to communicate with iframe
-                        window.privyClient.setMessagePoster(iframe.contentWindow);
-                        
-                        // Secure message handler with origin and source validation
-                        const secureMessageHandler = (event) => {
-                            // Validate source matches our iframe
-                            if (event.source !== iframe.contentWindow) {
-                                return; // Silently ignore messages from other sources
-                            }
-                            
-                            // Process message from Privy iframe
-                            window.privyClient.embeddedWallet.onMessage(event.data);
-                        };
-                        
-                        window.addEventListener('message', secureMessageHandler);
-                        
-                        // Store handler reference for cleanup if needed
-                        window._privyMessageHandler = secureMessageHandler;
-                    };
-                    
-                    console.log('✅ Privy initialized');
-                    
-                    // Handle OAuth callback
-                    const urlParams = new URLSearchParams(window.location.search);
-                    if (urlParams.get('oauth') === 'callback') {
-                        const authMethod = localStorage.getItem('privyOAuthMethod') || 'oauth';
-                        showLoadingOverlay(true, `Completing ${authMethod} login...`);
-                        
-                        // The OAuth flow completion will be handled by Privy SDK automatically
-                        // We need to get the user session after redirect
-                        setTimeout(async () => {
-                            try {
-                                // Try to get current user session
-                                const user = window.privyClient.user;
-                                if (user) {
-                                    const accessToken = await window.privyClient.getAccessToken();
-                                    await completePrivyAuthentication(user, accessToken, authMethod);
-                                } else {
-                                    showLoadingOverlay(false);
-                                    showToast('OAuth login incomplete', 'error');
-                                    window.location.href = '/app.html';
-                                }
-                            } catch (error) {
-                                console.error('OAuth callback error:', error);
-                                showLoadingOverlay(false);
-                                showToast('OAuth login failed', 'error');
-                                window.location.href = '/app.html';
-                            }
-                        }, 1000);
-                    }
-                } catch (error) {
-                    console.error('Failed to initialize Privy:', error);
-                    showToast('Failed to initialize authentication', 'error');
-                }
+                db = getFirestore(app);
+                auth = getAuth(app);
 
                 // setLogLevel('debug'); // Uncomment for verbose Firestore logs
                 cacheDomElements();
@@ -4913,199 +4760,6 @@
             } catch (error) {
                 console.error("Error during Firebase initialization:", error);
                 alert(`Firebase Init Error: ${error.message}`);
-            }
-        }
-
-        // ===========================
-        // PRIVY MODAL FUNCTIONS
-        // ===========================
-        
-        let currentPrivyProvider = null;
-        let currentPrivyEmail = null;
-        
-        /**
-         * Opens the Privy login modal with slide-up animation
-         */
-        window.openPrivyModal = function openPrivyModal(provider) {
-            if (!window.privyClient) {
-                showToast('Authentication service not ready. Please refresh the page.', 'error');
-                return;
-            }
-            
-            currentPrivyProvider = provider;
-            const modal = document.getElementById('privy-modal');
-            const modalContent = document.getElementById('privy-modal-content');
-            
-            // Show modal
-            modal.classList.remove('hidden');
-            
-            // Trigger slide-up animation
-            setTimeout(() => {
-                modalContent.classList.remove('translate-y-full');
-                modalContent.classList.add('translate-y-0');
-            }, 10);
-            
-            // Show appropriate step based on provider
-            if (provider === 'email') {
-                showPrivyStep('email');
-                document.getElementById('privy-modal-title').textContent = 'Sign in with Email';
-            } else if (provider === 'google' || provider === 'twitter') {
-                showPrivyStep('oauth');
-                setupOAuthButton(provider);
-                document.getElementById('privy-modal-title').textContent = `Sign in with ${provider === 'google' ? 'Google' : 'X'} `;
-            }
-        }
-        
-        /**
-         * Closes the Privy modal with slide-down animation
-         */
-        window.closePrivyModal = function closePrivyModal() {
-            const modal = document.getElementById('privy-modal');
-            const modalContent = document.getElementById('privy-modal-content');
-            
-            // Trigger slide-down animation
-            modalContent.classList.remove('translate-y-0');
-            modalContent.classList.add('translate-y-full');
-            
-            // Hide modal after animation
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                // Reset state
-                currentPrivyProvider = null;
-                currentPrivyEmail = null;
-                document.getElementById('privy-email-input').value = '';
-                document.getElementById('privy-otp-input').value = '';
-            }, 500);
-        }
-        
-        /**
-         * Shows specific step in the Privy modal
-         */
-        window.showPrivyStep = function showPrivyStep(step) {
-            // Hide all steps
-            document.getElementById('privy-email-step').classList.add('hidden');
-            document.getElementById('privy-otp-step').classList.add('hidden');
-            document.getElementById('privy-oauth-step').classList.add('hidden');
-            document.getElementById('privy-loading-step').classList.add('hidden');
-            
-            // Show requested step
-            if (step === 'email') {
-                document.getElementById('privy-email-step').classList.remove('hidden');
-            } else if (step === 'otp') {
-                document.getElementById('privy-otp-step').classList.remove('hidden');
-            } else if (step === 'oauth') {
-                document.getElementById('privy-oauth-step').classList.remove('hidden');
-            } else if (step === 'loading') {
-                document.getElementById('privy-loading-step').classList.remove('hidden');
-            }
-        }
-        
-        /**
-         * Setup OAuth button with provider-specific styling
-         */
-        window.setupOAuthButton = function setupOAuthButton(provider) {
-            const button = document.getElementById('privy-oauth-button');
-            const icon = document.getElementById('privy-oauth-icon');
-            const text = document.getElementById('privy-oauth-text');
-            
-            if (provider === 'google') {
-                icon.innerHTML = '<svg class="w-7 h-7" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>';
-                text.textContent = 'Continue with Google';
-            } else if (provider === 'twitter') {
-                icon.innerHTML = '<svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>';
-                text.textContent = 'Continue with X';
-            }
-        }
-        
-        /**
-         * Sends email verification code via Privy
-         */
-        window.sendPrivyEmailCode = async function sendPrivyEmailCode() {
-            const email = document.getElementById('privy-email-input').value.trim();
-            
-            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                showToast('Please enter a valid email address', 'error');
-                return;
-            }
-            
-            currentPrivyEmail = email;
-            showPrivyStep('loading');
-            document.getElementById('privy-loading-text').textContent = 'Sending verification code...';
-            
-            try {
-                // Use Privy SDK to send email code
-                await window.privyClient.auth.email.sendCode(email);
-                
-                // Show OTP step
-                document.getElementById('privy-email-display').textContent = email;
-                showPrivyStep('otp');
-                
-                // Focus on OTP input
-                setTimeout(() => {
-                    document.getElementById('privy-otp-input').focus();
-                }, 100);
-                
-            } catch (error) {
-                console.error('Email sign-in error:', error);
-                showToast(error.message || 'Failed to send verification code', 'error');
-                showPrivyStep('email');
-            }
-        }
-        
-        /**
-         * Verifies OTP and completes email login
-         */
-        window.verifyPrivyOTP = async function verifyPrivyOTP() {
-            const otp = document.getElementById('privy-otp-input').value.trim();
-            
-            if (!otp || otp.length !== 6) {
-                showToast('Please enter the 6-digit code', 'error');
-                return;
-            }
-            
-            showPrivyStep('loading');
-            document.getElementById('privy-loading-text').textContent = 'Verifying code...';
-            
-            try {
-                // Use Privy SDK to verify email code
-                await window.privyClient.auth.email.loginWithCode(currentPrivyEmail, otp);
-                
-                // Get authenticated user and access token
-                const user = window.privyClient.user;
-                const accessToken = await window.privyClient.getAccessToken();
-                
-                // Complete authentication
-                await completePrivyAuthentication(user, accessToken, 'email');
-                closePrivyModal();
-                
-            } catch (error) {
-                console.error('OTP verification error:', error);
-                showToast(error.message || 'Invalid code. Please try again.', 'error');
-                showPrivyStep('otp');
-            }
-        }
-        
-        /**
-         * Initiates OAuth login flow
-         */
-        window.initiatePrivyOAuth = async function initiatePrivyOAuth() {
-            if (!currentPrivyProvider) return;
-            
-            showPrivyStep('loading');
-            document.getElementById('privy-loading-text').textContent = `Redirecting to ${currentPrivyProvider === 'google' ? 'Google' : 'X'}...`;
-            
-            try {
-                // Store provider for callback
-                localStorage.setItem('privyOAuthMethod', currentPrivyProvider);
-                
-                // Use Privy SDK to initiate OAuth
-                const redirectURI = window.location.origin + window.location.pathname + '?oauth=callback';
-                await window.privyClient.auth.oauth.loginWithRedirect(currentPrivyProvider, redirectURI);
-                
-            } catch (error) {
-                console.error(`${currentPrivyProvider} sign-in error:`, error);
-                showToast(error.message || 'Failed to initiate login', 'error');
-                showPrivyStep('oauth');
             }
         }
 
@@ -5285,139 +4939,6 @@
         }
 
         /**
-         * Complete Privy authentication and initialize user with embedded wallet
-         */
-        async function completePrivyAuthentication(privyUser, accessToken, authMethod = 'privy') {
-            try {
-                showLoadingOverlay(true, 'Verifying authentication...');
-
-                // Verify token and get user data from backend
-                const response = await fetch('/api/privy/verify', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${accessToken}`
-                    },
-                    body: JSON.stringify({ accessToken })
-                });
-
-                if (!response.ok) {
-                    throw new Error('Authentication verification failed');
-                }
-
-                const { userId, user, userData } = await response.json();
-                currentUserId = userId;
-
-                // Store auth info
-                window.privyUser = privyUser;
-                window.privyAccessToken = accessToken;
-                localStorage.setItem('privyUserId', userId);
-                localStorage.setItem('privyAccessToken', accessToken);
-                localStorage.setItem('authMethod', authMethod);
-                localStorage.setItem('demoUserId', userId);
-
-                // Get Privy embedded wallet and setup Biconomy
-                showLoadingOverlay(true, 'Creating your embedded wallet...');
-                let walletAddress;
-                let embeddedWallet = null;
-                
-                try {
-                    embeddedWallet = await window.privyClient.embeddedWallet.create();
-                    const accounts = await embeddedWallet.request({ method: 'eth_requestAccounts' });
-                    walletAddress = accounts[0];
-                    
-                    // Store embedded wallet for future use
-                    window.privyEmbeddedWallet = embeddedWallet;
-                    
-                    // Note: Biconomy gasless transactions require client-side SDK integration
-                    // For now, transactions will use direct wallet (user pays gas)
-                    smartAccountAddress = null;
-                    console.log('✅ Privy embedded wallet ready. Gasless transactions pending SDK integration.');
-                    
-                } catch (walletError) {
-                    console.warn('Embedded wallet creation failed, using custodial wallet:', walletError);
-                    // Fallback to custodial wallet from backend
-                    const walletResponse = await fetch('/api/custodial-wallet/info', {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${accessToken}`
-                        },
-                        body: JSON.stringify({ userId })
-                    });
-                    const walletData = await walletResponse.json();
-                    walletAddress = walletData.address;
-                }
-
-                userProfile = {
-                    ...userProfile,
-                    uid: userId,
-                    walletAddress,
-                    displayName: userData?.displayName || user.email?.address?.split('@')[0] || `User${userId.slice(-4)}`,
-                    email: user.email?.address || null,
-                    xp: userData?.xp || 0,
-                    balance: userData?.balance || 100,
-                    bnbBalance: userData?.bnbBalance || 0,
-                    cakeBalance: userData?.cakeBalance || 0,
-                    isApproved: userData?.isApproved || false,
-                    isSmartWallet: false
-                };
-                
-                localStorage.setItem('userWalletAddress', walletAddress);
-
-                // Check if user needs onboarding
-                showLoadingOverlay(true, 'Loading your profile...');
-                const { getDoc, doc } = window.firebase.firestore;
-                const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
-                
-                try {
-                    const profileSnap = await getDoc(profileRef);
-
-                    if (!profileSnap.exists() || !profileSnap.data().displayName) {
-                        // Create initial profile
-                        const { setDoc } = window.firebase.firestore;
-                        await setDoc(profileRef, {
-                            uid: userId,
-                            displayName: userProfile.displayName,
-                            walletAddress: walletAddress,
-                            email: userProfile.email,
-                            avatar: '',
-                            xp: 0,
-                            balance: 100,
-                            bnbBalance: 0,
-                            cakeBalance: 0,
-                            isApproved: false,
-                            createdAt: new Date().toISOString(),
-                            lastLoginAt: new Date().toISOString()
-                        });
-                        
-                        showScreen('onboarding-screen');
-                    } else {
-                        userProfile = { ...userProfile, ...profileSnap.data() };
-                        showScreen('home-screen');
-                    }
-                } catch (firestoreError) {
-                    console.warn('Firestore access limited, using backend data:', firestoreError);
-                    // Fallback to using data from backend if Firestore fails
-                    if (userData && userData.displayName) {
-                        showScreen('home-screen');
-                    } else {
-                        showScreen('onboarding-screen');
-                    }
-                }
-
-                showLoadingOverlay(false);
-                showToast("Welcome to Predora!", "success");
-                console.log('✅ Privy authentication complete. Wallet:', walletAddress);
-
-            } catch (error) {
-                console.error('Error completing Privy authentication:', error);
-                showLoadingOverlay(false);
-                showToast("Authentication failed: " + error.message, "error");
-            }
-        }
-
-        /**
          * Generates a Smart Contract Wallet (Account Abstraction) for Firebase users
          * This creates a wallet ADDRESS that's controlled by the backend for gasless transactions.
          * No private keys are generated or stored on the client.
@@ -5449,69 +4970,52 @@
         }
 
         /**
-         * Sign in with Google (Privy OAuth)
+         * Sign in with Google (Firebase)
          */
         window.signInWithGoogle = async () => {
             try {
                 showLoadingOverlay(true, 'Connecting to Google...');
-                const redirectURI = `${window.location.origin}/app.html?oauth=callback`;
-                const oauthURL = await window.privyClient.auth.oauth.generateURL('google', redirectURI);
-                localStorage.setItem('privyOAuthMethod', 'google');
-                window.location.href = oauthURL;
+                const { GoogleAuthProvider, signInWithPopup } = window.firebase.auth;
+                const provider = new GoogleAuthProvider();
+                
+                const result = await signInWithPopup(auth, provider);
+                await completeAuthentication(result.user, 'google');
+                
             } catch (error) {
                 console.error('Google sign-in error:', error);
                 showLoadingOverlay(false);
-                showToast("Google sign-in failed: " + error.message, "error");
+                if (error.code !== 'auth/popup-closed-by-user') {
+                    showToast("Google sign-in failed: " + error.message, "error");
+                }
             }
         };
 
         /**
-         * Sign in with X (Twitter) (Privy OAuth)
+         * Sign in with X (Twitter) (Firebase)
          */
         window.signInWithX = async () => {
             try {
                 showLoadingOverlay(true, 'Connecting to X...');
-                const redirectURI = `${window.location.origin}/app.html?oauth=callback`;
-                const oauthURL = await window.privyClient.auth.oauth.generateURL('twitter', redirectURI);
-                localStorage.setItem('privyOAuthMethod', 'twitter');
-                window.location.href = oauthURL;
+                const { TwitterAuthProvider, signInWithPopup } = window.firebase.auth;
+                const provider = new TwitterAuthProvider();
+                
+                const result = await signInWithPopup(auth, provider);
+                await completeAuthentication(result.user, 'twitter');
+                
             } catch (error) {
                 console.error('X sign-in error:', error);
                 showLoadingOverlay(false);
-                showToast("X sign-in failed: " + error.message, "error");
+                if (error.code !== 'auth/popup-closed-by-user') {
+                    showToast("X sign-in failed: " + error.message, "error");
+                }
             }
         };
 
         /**
-         * Sign in with Email (Privy OTP)
+         * Navigate to email/password screen
          */
-        window.signInWithEmail = async () => {
-            try {
-                const email = prompt('Enter your email address:');
-                if (!email || !email.includes('@')) {
-                    showToast('Please enter a valid email address', 'error');
-                    return;
-                }
-
-                showLoadingOverlay(true, 'Sending verification code...');
-                await window.privyClient.auth.email.sendCode(email);
-                
-                showLoadingOverlay(false);
-                const otp = prompt('Enter the 6-digit code sent to your email:');
-                if (!otp) {
-                    return;
-                }
-
-                showLoadingOverlay(true, 'Verifying code...');
-                const { user, session } = await window.privyClient.auth.email.loginWithCode(email, otp);
-                
-                const accessToken = session.accessToken || session.token;
-                await completePrivyAuthentication(user, accessToken, 'email');
-            } catch (error) {
-                console.error('Email sign-in error:', error);
-                showLoadingOverlay(false);
-                showToast("Email sign-in failed: " + error.message, "error");
-            }
+        window.signInWithEmail = () => {
+            showScreen('email-password-screen');
         };
 
         /**
@@ -5887,16 +5391,20 @@
 
             showLoadingOverlay(true, `Logging in as ${displayName}...`);
 
-            // Demo mode doesn't need Firebase Auth - just initialize profile
-            initializeUserProfile()
-                .then(() => {
-                    console.log("Demo profile initialized successfully");
-                    showLoadingOverlay(false);
+            const { signInAnonymously } = window.firebase.auth;
+
+            signInAnonymously(auth)
+                .then((userCredential) => {
+                    console.log("Firebase Auth UID (Anonymous):", userCredential.user.uid);
+                    return initializeUserProfile(); 
                 })
                 .catch(err => {
-                    console.error("Demo profile init failed:", err);
+                    console.error("Firebase auth for demo failed:", err);
                     showLoadingOverlay(false);
                     showToast(`Error: ${err.message}`, "error");
+                })
+                .finally(() => {
+                    showLoadingOverlay(false);
                 });
         };
 
