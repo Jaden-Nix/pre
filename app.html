@@ -13419,6 +13419,14 @@ ${historyText}`;
          * Submit a new post
          */
         window.submitPost = async () => {
+            // Check if user is authenticated
+            if (!currentUserId || isGuestMode) {
+                showToast('Please sign in to create posts', 'info');
+                closeCreatePost();
+                showScreen('login-screen');
+                return;
+            }
+            
             const content = document.getElementById('post-content-input').value.trim();
             if (content.length < 1 && !attachedImage) {
                 showToast('Please write something or attach an image to post.', 'error');
@@ -15160,14 +15168,46 @@ ${historyText}`;
                     updateFollowButton(false);
                 } else {
                     // --- FOLLOW Logic ---
-                    // Get the data we need to save for both docs
-                    const targetUserPublicProfile = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', PUBLIC_LEADERBOARD_COLLECTION, targetUserId));
-
-                    if (!userProfile.displayName || !targetUserPublicProfile.exists()) {
-                        throw new Error("Profile data missing, cannot follow.");
+                    if (!userProfile.displayName) {
+                        throw new Error("You need to set up your profile before following others.");
                     }
-
-                    const targetUserData = targetUserPublicProfile.data();
+                    
+                    // Try to get the target user's profile from multiple sources
+                    let targetUserPublicProfile = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', PUBLIC_LEADERBOARD_COLLECTION, targetUserId));
+                    let targetUserData = null;
+                    let needsProfileCreation = false;
+                    
+                    // If found in public leaderboard, use it
+                    if (targetUserPublicProfile.exists()) {
+                        targetUserData = targetUserPublicProfile.data();
+                    } else {
+                        // Fallback to USER_PROFILE_COLLECTION
+                        const userProfileDoc = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, targetUserId));
+                        if (userProfileDoc.exists()) {
+                            const userData = userProfileDoc.data();
+                            targetUserData = {
+                                userId: targetUserId,
+                                displayName: userData.displayName || targetUserName || 'User',
+                                avatarUrl: userData.avatarUrl || userData.avatar || LOGO_URL,
+                                xp: userData.xp || 0
+                            };
+                            needsProfileCreation = true; // Create in PUBLIC_LEADERBOARD for consistency
+                        } else {
+                            // User doesn't exist in either collection - use basic data from context
+                            targetUserData = {
+                                userId: targetUserId,
+                                displayName: targetUserName || 'User',
+                                avatarUrl: LOGO_URL,
+                                xp: 0
+                            };
+                            needsProfileCreation = true;
+                        }
+                    }
+                    
+                    // Ensure we have the minimum required fields
+                    if (!targetUserData.userId) targetUserData.userId = targetUserId;
+                    if (!targetUserData.displayName) targetUserData.displayName = targetUserName || 'User';
+                    if (!targetUserData.avatarUrl) targetUserData.avatarUrl = LOGO_URL;
 
                     const batch = writeBatch(db);
                     // Add to *my* 'following' list
@@ -15184,6 +15224,15 @@ ${historyText}`;
                         avatarUrl: userProfile.avatarUrl || LOGO_URL,
                         followedAt: serverTimestamp()
                     });
+                    
+                    // If target user profile doesn't exist in PUBLIC_LEADERBOARD, create it
+                    if (needsProfileCreation) {
+                        const { setDoc } = window.firebase.firestore;
+                        const publicProfileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', PUBLIC_LEADERBOARD_COLLECTION, targetUserId);
+                        await setDoc(publicProfileRef, targetUserData, { merge: true });
+                        console.log('Created public profile for user:', targetUserId);
+                    }
+                    
                     await batch.commit();
 
                     // Create notification for the person being followed
