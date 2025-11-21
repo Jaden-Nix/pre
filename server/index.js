@@ -312,8 +312,8 @@ async function checkSybilBehavior(userId, userMarkets, timeWindow = 3600000) {
 
 // --- ROUTES ---
 app.get('/', (req, res) => {
-    // Redirect to app.html (main frontend)
-    res.redirect('/app');
+    // Serve the landing page
+    res.sendFile(path.join(__dirname, '..', 'index.html'));
 });
 
 app.get('/pitch-deck', (req, res) => {
