@@ -8,6 +8,11 @@
     "start": "node index.js"
   },
   "dependencies": {
+    "@biconomy/account": "^4.5.7",
+    "@biconomy/bundler": "^3.1.4",
+    "@biconomy/core-types": "^3.1.4",
+    "@biconomy/modules": "^3.1.4",
+    "@biconomy/paymaster": "^3.1.4",
     "@sendgrid/mail": "^8.1.6",
     "cors": "^2.8.5",
     "ethers": "^5.7.2",
