@@ -23,6 +23,11 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <!-- Web3 & Wallet Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.0/dist/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.1/dist/ethers.umd.min.js"></script>
+
     <style>
         /* === THEME VARIABLES === */
         :root {
@@ -5171,37 +5176,40 @@
                         break;
 
                     case 'walletconnect':
-                        if (typeof WalletConnectProvider === 'undefined') {
-                            showToast("WalletConnect not loaded properly", "error");
+                        if (typeof Web3Modal === 'undefined') {
+                            showToast("Web3Modal not loaded properly", "error");
                             showLoadingOverlay(false);
                             return;
                         }
 
-                        web3Provider = new WalletConnectProvider.default({
-                            rpc: {
-                                97: 'https://data-seed-prebsc-1-s1.binance.org:8545/',
-                                56: 'https://bsc-dataseed.binance.org/'
-                            },
-                            chainId: 97,
-                            qrcode: true,
-                            qrcodeModalOptions: {
-                                mobileLinks: [
-                                    "rainbow",
-                                    "metamask",
-                                    "argent",
-                                    "trust",
-                                    "imtoken",
-                                    "pillar",
-                                ],
-                            },
+                        // Initialize Web3Modal with WalletConnect provider
+                        const web3Modal = new Web3Modal({
+                            cacheProvider: false,
+                            providerOptions: {
+                                walletconnect: {
+                                    package: WalletConnectProvider.default,
+                                    options: {
+                                        rpc: {
+                                            97: 'https://data-seed-prebsc-1-s1.binance.org:8545/',
+                                            56: 'https://bsc-dataseed.binance.org/'
+                                        },
+                                        chainId: 97,
+                                    }
+                                }
+                            }
                         });
 
-                        await web3Provider.enable();
-                        accounts = web3Provider.accounts;
+                        // Show wallet selection modal
+                        web3Provider = await web3Modal.connect();
+                        
+                        // Wrap provider with ethers if needed
+                        const tempProvider = new ethers.providers.Web3Provider(web3Provider);
+                        const tempSigner = tempProvider.getSigner();
+                        accounts = await tempProvider.listAccounts();
                         walletAddress = accounts[0];
                         
-                        // Store WalletConnect provider for later use
-                        window.walletConnectProvider = web3Provider;
+                        // Store Web3Modal instance for later disconnection if needed
+                        window.web3Modal = web3Modal;
                         break;
 
                     default:
