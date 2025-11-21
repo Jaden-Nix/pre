@@ -9,8 +9,8 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 39207
-externalPort = 6800
+localPort = 38347
+externalPort = 3002
 
 [[ports]]
 localPort = 39619
@@ -73,7 +73,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx http-server -p 5000 -a 0.0.0.0"
+args = "npx http-server -p 5000 -a 0.0.0.0 -c-1"
 waitForPort = 5000
 
 
