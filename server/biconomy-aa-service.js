@@ -84,7 +84,7 @@ export class BiconomyAAService {
             const transaction = {
                 to,
                 data,
-                value: ethers.utils.parseEther(value.toString()),
+                value: ethers.BigNumber.from(value),  // ✅ Parse from wei string, don't use parseEther
             };
 
             const userOp = await smartAccount.buildUserOp([transaction], {

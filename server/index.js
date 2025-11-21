@@ -447,6 +447,65 @@ app.post('/api/custodial-wallet/balance', async (req, res) => {
     }
 });
 
+app.post('/api/custodial-wallet/execute-transaction', async (req, res) => {
+    try {
+        const { userId, to, data, value } = req.body;
+        
+        if (!userId || !to || !data) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Missing required fields' 
+            });
+        }
+        
+        if (!custodialWalletService) {
+            return res.status(503).json({ 
+                success: false, 
+                error: 'Custodial wallet service unavailable' 
+            });
+        }
+        
+        const wallet = await custodialWalletService.getWallet(userId);
+        if (!wallet.success) {
+            return res.status(404).json({ 
+                success: false, 
+                error: 'Custodial wallet not found' 
+            });
+        }
+        
+        const provider = new ethers.providers.JsonRpcProvider('https://bsc-testnet-dataseed.bnbchain.org');
+        const signer = new ethers.Wallet(wallet.privateKey, provider);
+        
+        const tx = await signer.sendTransaction({
+            to,
+            data,
+            value: ethers.BigNumber.from(value || '0'),
+            gasLimit: 300000
+        });
+        
+        console.log(`📤 Custodial transaction hash: ${tx.hash}`);
+        
+        const receipt = await tx.wait();
+        
+        console.log(`✅ Custodial transaction confirmed: ${tx.hash}`);
+        
+        res.json({
+            success: true,
+            txHash: tx.hash,
+            blockNumber: receipt.blockNumber,
+            gasUsed: receipt.gasUsed.toString(),
+            sponsored: false
+        });
+        
+    } catch (error) {
+        console.error('Custodial transaction error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
 app.post('/api/aa/place-bet', async (req, res) => {
     const { userId, marketId, pick, amount } = req.body;
     
@@ -515,6 +574,126 @@ app.post('/api/aa/smart-account-address', async (req, res) => {
     } catch (error) {
         console.error('Error getting smart account address:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// Biconomy gasless transaction endpoint for custodial wallets
+app.post('/api/biconomy/execute-transaction', async (req, res) => {
+    try {
+        const { userId, to, data, value } = req.body;
+        
+        if (!userId || !to || !data) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Missing required fields: userId, to, data' 
+            });
+        }
+        
+        // CHECK IF BICONOMY SERVICE IS AVAILABLE
+        if (!biconomyAAService) {
+            return res.status(503).json({ 
+                success: false, 
+                error: 'Biconomy service not available. Please configure BICONOMY_PAYMASTER_API_KEY or use external wallet.',
+                fallbackRequired: true
+            });
+        }
+        
+        if (!custodialWalletService) {
+            return res.status(503).json({ 
+                success: false, 
+                error: 'Custodial wallet service unavailable',
+                fallbackRequired: true
+            });
+        }
+        
+        // Get custodial wallet private key
+        const wallet = await custodialWalletService.getWallet(userId);
+        if (!wallet.success) {
+            return res.status(404).json({ 
+                success: false, 
+                error: 'Custodial wallet not found' 
+            });
+        }
+        
+        // Execute gasless transaction via Biconomy
+        const result = await biconomyAAService.sendSponsoredTransaction(
+            wallet.privateKey,
+            to,
+            data,
+            value || '0'
+        );
+        
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+        
+        res.json({
+            success: true,
+            txHash: result.txHash,
+            blockNumber: result.blockNumber,
+            gasUsed: result.gasUsed,
+            sponsored: true
+        });
+        
+    } catch (error) {
+        console.error('Biconomy transaction error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+app.post('/api/biconomy/get-smart-account', async (req, res) => {
+    try {
+        const { userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'User ID is required' 
+            });
+        }
+        
+        // CHECK IF BICONOMY SERVICE IS AVAILABLE
+        if (!biconomyAAService) {
+            return res.status(503).json({ 
+                success: false, 
+                error: 'Biconomy service not available',
+                fallbackRequired: true
+            });
+        }
+        
+        if (!custodialWalletService) {
+            return res.status(503).json({ 
+                success: false, 
+                error: 'Custodial wallet service unavailable',
+                fallbackRequired: true
+            });
+        }
+        
+        const wallet = await custodialWalletService.getWallet(userId);
+        if (!wallet.success) {
+            return res.status(404).json({ 
+                success: false, 
+                error: 'Custodial wallet not found' 
+            });
+        }
+        
+        const result = await biconomyAAService.getSmartAccountAddress(wallet.privateKey);
+        
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+        
+        res.json({
+            success: true,
+            address: result.address
+        });
+        
+    } catch (error) {
+        console.error('Error getting smart account:', error);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 

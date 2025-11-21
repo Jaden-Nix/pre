@@ -23,7 +23,7 @@ The platform uses a dual-workflow architecture:
 - **Frontend**: Vanilla JavaScript (`app.html`) integrating Firebase Client SDK, Ethers.js for Web3, and Chart.js.
 - **Backend**: Express.js server (`/server`) handling AI proxying, market generation, oracle resolution, and jury system endpoints. It also serves the frontend and APIs. Includes an automated payout job that finalizes and distributes winnings after the 30-minute dispute window.
 - **Data Storage**: Firebase Firestore for real-time data synchronization of markets, pledges, users, and votes.
-- **Web3 Integration**: Ethers.js for MetaMask wallet connection, network switching (BSC Testnet and opBNB Testnet), and on-chain balance fetching. Smart contract deployed on BSC Testnet at `0x7AB69aA7543e9ae43b5D01c5622868392252EAAd` handles all on-chain betting and payouts.
+- **Web3 Integration**: Ethers.js for MetaMask wallet connection, network switching (BSC Testnet and opBNB Testnet), and on-chain balance fetching. Smart contract deployed on BSC Testnet at `0xdaAf91610e33355c9Cd9258219C6A4822E693f55` handles all on-chain betting and payouts.
 - **Smart Contract**: PredictionMarket.sol includes automatic payout distribution with duplicate prevention via `hasReceivedPayout` mapping, platform fee collection, and 30-minute dispute window before finalization.
 - **Auto-Payout System**: Backend job (`server/auto-payout-job.js`) monitors resolved markets and automatically calls `autoFinalizeAndPayout()` after 30 minutes, distributing winnings to all winners and collecting platform fees.
 - **AI Features**: Google Gemini AI is used for market generation, "Quick Play" generation, and auto-resolution with web search verification, providing rationale and sources. AI guardrails are implemented for duplicate detection, quality filtering, and Sybil detection.
@@ -48,6 +48,15 @@ The platform uses a dual-workflow architecture:
 - **Custodial Wallet System**: Auto-generated encrypted wallets for seamless user onboarding.
 - **Express.js**: Backend framework.
 - **Node.js**: Backend runtime.
+
+## Contract Deployment
+
+**BSC Testnet Deployment:**
+- Contract Address: `0xdaAf91610e33355c9Cd9258219C6A4822E693f55`
+- Deployer: `0xe47Dce1b7e31333329734E24089C0472c030d95B`
+- Deployed: November 21, 2025
+- Network: BSC Testnet (Chain ID: 97)
+- BSCScan: https://testnet.bscscan.com/address/0xdaAf91610e33355c9Cd9258219C6A4822E693f55
 
 ## Security & Secrets
 - **WALLETCONNECT_PROJECT_ID**: Stored securely in Replit Secrets, dynamically injected into app.html at runtime.
