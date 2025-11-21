@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { Home, BarChart2, Plus, Zap, User } from 'lucide-react';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { QuickPlay } from '@/components/QuickPlay';
 import { MarketsList } from '@/components/MarketsList';
 import { UserProfile } from '@/components/UserProfile';
 import { CreateMarket } from '@/components/CreateMarket';
 import { FirebaseConfigError } from '@/components/FirebaseConfigError';
 import { getFirebaseErrorMessage } from '@/lib/firebase';
+import { ConnectWallet } from '@/components/ConnectWallet';
 
 export default function AppPage() {
   const firebaseError = getFirebaseErrorMessage();
@@ -29,7 +29,7 @@ export default function AppPage() {
           </div>
           
           <div className="flex items-center gap-4">
-            <ConnectButton />
+            <ConnectWallet />
           </div>
         </div>
       </nav>

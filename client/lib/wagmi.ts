@@ -1,9 +1,16 @@
-import { getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { http, createConfig } from 'wagmi';
 import { bscTestnet } from 'wagmi/chains';
+import { injected } from 'wagmi/connectors';
 
-export const config = getDefaultConfig({
-  appName: 'Predora',
-  projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || 'c5e1e2f4d6b7c3a8d9e0f1a2b3c4d5e6',
+// Simple config without WalletConnect - just browser wallets (MetaMask, etc)
+// This avoids 403 errors from WalletConnect API
+export const config = createConfig({
   chains: [bscTestnet],
+  connectors: [
+    injected({ target: 'metaMask' }),
+  ],
+  transports: {
+    [bscTestnet.id]: http(),
+  },
   ssr: true,
 });

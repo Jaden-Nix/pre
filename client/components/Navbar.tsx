@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight } from 'lucide-react';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { ConnectWallet } from './ConnectWallet';
 
 export function Navbar() {
   return (
@@ -27,7 +27,7 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-4">
-          <ConnectButton />
+          <ConnectWallet />
           <Link 
             href="/app" 
             className="group relative inline-flex items-center justify-center px-6 py-2.5 font-bold text-white transition-all duration-200 bg-white/10 font-sans rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 hover:bg-white/20 border border-white/10"
