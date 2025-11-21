@@ -12,6 +12,7 @@ import OpenAI from 'openai';
 import sgMail from '@sendgrid/mail';
 import { AutoPayoutJob } from './auto-payout-job.js';
 import { CustodialWalletService } from './custodial-wallet-service.js';
+import { BiconomyAAService } from './biconomy-aa-service.js';
 
 // --- Constants ---
 const __filename = fileURLToPath(import.meta.url);
@@ -114,6 +115,15 @@ if (db) {
     console.log("✅ Custodial Wallet Service initialized");
 } else {
     console.warn("⚠️  Custodial Wallet Service not available (Firebase required)");
+}
+
+// Initialize Biconomy AA service
+let biconomyAAService = null;
+const BICONOMY_PAYMASTER_API_KEY = process.env.BICONOMY_PAYMASTER_API_KEY;
+if (BICONOMY_PAYMASTER_API_KEY) {
+    biconomyAAService = new BiconomyAAService(BICONOMY_PAYMASTER_API_KEY);
+} else {
+    console.warn("⚠️  Biconomy AA Service not available (missing BICONOMY_PAYMASTER_API_KEY)");
 }
 
 const app = express();
@@ -434,6 +444,77 @@ app.post('/api/custodial-wallet/balance', async (req, res) => {
         res.status(200).json(result);
     } else {
         res.status(400).json(result);
+    }
+});
+
+app.post('/api/aa/place-bet', async (req, res) => {
+    const { userId, marketId, pick, amount } = req.body;
+    
+    if (!userId || !marketId || pick === undefined || !amount) {
+        return res.status(400).json({ error: 'Missing required fields: userId, marketId, pick, amount' });
+    }
+    
+    if (!custodialWalletService || !biconomyAAService) {
+        return res.status(503).json({ error: 'Required services unavailable' });
+    }
+    
+    try {
+        const wallet = await custodialWalletService.loadWalletSigner(userId);
+        
+        const contractAddress = '0x7AB69aA7543e9ae43b5D01c5622868392252EAAd';
+        const abi = [
+            'function placeBet(uint256 _marketId, bool _pick) external payable'
+        ];
+        
+        const result = await biconomyAAService.buildContractTransaction(
+            wallet.privateKey,
+            contractAddress,
+            abi,
+            'placeBet',
+            [marketId, pick],
+            amount
+        );
+        
+        if (result.success) {
+            await db.collection('custodialTransactions').add({
+                userId,
+                type: 'bet',
+                marketId,
+                pick,
+                amount,
+                txHash: result.txHash,
+                blockNumber: result.blockNumber,
+                sponsored: true,
+                createdAt: new Date().toISOString()
+            });
+        }
+        
+        res.status(result.success ? 200 : 400).json(result);
+    } catch (error) {
+        console.error('Error placing AA bet:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/aa/smart-account-address', async (req, res) => {
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    if (!custodialWalletService || !biconomyAAService) {
+        return res.status(503).json({ error: 'Required services unavailable' });
+    }
+    
+    try {
+        const wallet = await custodialWalletService.loadWalletSigner(userId);
+        const result = await biconomyAAService.getSmartAccountAddress(wallet.privateKey);
+        
+        res.status(result.success ? 200 : 400).json(result);
+    } catch (error) {
+        console.error('Error getting smart account address:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 

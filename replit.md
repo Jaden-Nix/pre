@@ -29,6 +29,8 @@ The platform uses a dual-workflow architecture:
 - **AI Features**: Google Gemini AI is used for market generation, "Quick Play" generation, and auto-resolution with web search verification, providing rationale and sources. AI guardrails are implemented for duplicate detection, quality filtering, and Sybil detection.
 - **Jury System**: A fully functional jury voting system allows users to submit votes for disputed markets, with outcomes determined by majority rule. An admin dashboard provides oversight and manual override capabilities.
 - **Multiple Options Market Display**: Supports markets with 3-6 options, each displayed with individual percentages.
+- **Custodial Wallets**: Automatic server-side wallet creation on user signup using ethers.js v5, with AES-256-GCM encrypted private keys stored in Firebase Firestore. Keys never exposed to client.
+- **Account Abstraction**: Biconomy Smart Account SDK enables gasless transactions via ERC-4337 UserOperations, with sponsored gas from Biconomy Paymaster on BSC Testnet (Chain ID: 97).
 
 ### System Design Choices
 - **Vanilla JS**: Chosen to preserve the existing codebase, simplify deployment, and avoid a build step.
@@ -42,7 +44,8 @@ The platform uses a dual-workflow architecture:
 - **Web3Modal & WalletConnect**: Multi-wallet connection support with secure Project ID injection.
 - **Tailwind CSS (CDN)**: For styling.
 - **Chart.js**: For data visualization.
-- **Biconomy SDK / Particle Network SDK (Planned)**: For Account Abstraction and gasless transactions.
+- **Biconomy SDK**: Active ERC-4337 Account Abstraction implementation for gasless transactions on BSC Testnet.
+- **Custodial Wallet System**: Auto-generated encrypted wallets for seamless user onboarding.
 - **Express.js**: Backend framework.
 - **Node.js**: Backend runtime.
 
