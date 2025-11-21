@@ -1667,20 +1667,10 @@
 
                 <div class="text-center">
                     <h1 class="text-2xl lg:text-3xl font-bold gradient-text">Sign In with Email</h1>
-                    <p class="text-gray-300 mt-2">Choose your preferred sign-in method</p>
+                    <p class="text-gray-300 mt-2">Secure authentication with email verification</p>
                 </div>
 
-                <!-- Auth Method Toggle -->
-                <div class="flex gap-2 p-1 bg-gray-800/50 rounded-lg">
-                    <button id="toggle-password-auth" onclick="showPasswordAuth()" class="flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all bg-sky-500/20 text-sky-300 border border-sky-500/50">
-                        🔑 Password
-                    </button>
-                    <button id="toggle-otp-auth" onclick="showOTPAuth()" class="flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all text-gray-400 hover:text-white">
-                        📧 Email Code
-                    </button>
-                </div>
-
-                <!-- Password Auth Form (Default) -->
+                <!-- Email + Password Auth Form -->
                 <div id="password-auth-form" class="ui-panel space-y-4">
                     <div>
                         <label class="text-sm font-medium text-gray-300 mb-2 block">Email Address</label>
@@ -1693,24 +1683,10 @@
                         <p class="text-xs text-gray-400 mt-1">First time? We'll create your account automatically</p>
                     </div>
 
-                    <button onclick="emailPasswordAuth()" class="btn btn-primary w-full">Sign In / Sign Up</button>
+                    <button onclick="emailPasswordAuth()" class="btn btn-primary w-full">Continue</button>
 
                     <p class="text-xs text-center text-gray-400">
-                        🔒 Secure password-based authentication
-                    </p>
-                </div>
-
-                <!-- OTP Auth Form (Hidden by default) -->
-                <div id="otp-auth-form" class="ui-panel space-y-4 hidden">
-                    <div>
-                        <label class="text-sm font-medium text-gray-300 mb-2 block">Email Address</label>
-                        <input id="email-otp-input" type="email" class="ui-input" placeholder="your-email@example.com" autocomplete="email">
-                    </div>
-
-                    <button onclick="requestOTP()" class="btn btn-primary w-full">Send Verification Code</button>
-
-                    <p class="text-xs text-center text-gray-400">
-                        🔒 No password needed • Passwordless login
+                        🔒 You'll receive a verification code after entering your password
                     </p>
                 </div>
             </div>
@@ -6088,6 +6064,7 @@
             showLoadingOverlay(true, 'Verifying code...');
             
             try {
+                // Verify OTP with server
                 const response = await fetch('/api/verify-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -6100,49 +6077,37 @@
                     throw new Error(data.error || 'Invalid verification code');
                 }
                 
-                // OTP verified! Create user session
-                const userId = data.userId;
-                currentUserId = userId;
-                
-                // Store auth info
-                localStorage.setItem('demoUserId', userId);
-                localStorage.setItem('userEmail', email);
-                
-                // Generate Smart Contract Wallet (Account Abstraction) for this user
-                const walletData = await generateBSCWallet(userId);
-                userProfile.walletAddress = walletData.address;
-                userProfile.isSmartWallet = true;
-                localStorage.setItem('userWalletAddress', walletData.address);
-                localStorage.setItem('isSmartWallet', 'true');
-
-                showLoadingOverlay(true, `Setting up your account...`);
-
-                // Initialize user profile in Firestore
-                await initializeUserProfile();
-                
-                // Check if user needs onboarding
-                const { getDoc, doc } = window.firebase.firestore;
-                const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
-                const profileSnap = await getDoc(profileRef);
-                
-                if (!profileSnap.exists() || !profileSnap.data().displayName) {
-                    showScreen('onboarding-screen');
-                } else {
-                    userProfile = { ...userProfile, ...profileSnap.data() };
-                    
-                    // Execute pending action if guest was trying to do something
-                    if (pendingAction) {
-                        const action = pendingAction;
-                        pendingAction = null;
-                        isGuestMode = false;
-                        action();
-                    }
-                    
-                    showScreen('home-screen');
+                // OTP verified! Retrieve pending auth user
+                const pendingAuthData = sessionStorage.getItem('pending-auth-user');
+                if (!pendingAuthData) {
+                    throw new Error('Authentication session expired. Please try again.');
                 }
                 
+                const pendingAuth = JSON.parse(pendingAuthData);
+                
+                // Complete authentication with Firebase user
+                const { getAuth } = window.firebase.auth;
+                const currentAuth = getAuth();
+                const firebaseUser = currentAuth.currentUser;
+                
+                if (!firebaseUser || firebaseUser.uid !== pendingAuth.uid) {
+                    throw new Error('Authentication mismatch. Please try again.');
+                }
+
+                showLoadingOverlay(true, 'Setting up your account...');
+                
+                // Complete authentication
+                await completeAuthentication(firebaseUser, 'firebase-email');
+                
+                // Clean up session storage
                 sessionStorage.removeItem('otp-email');
-                showToast("Welcome to Predora! 🎉", "success");
+                sessionStorage.removeItem('pending-auth-user');
+                
+                if (pendingAuth.isNewAccount) {
+                    showToast("Account created successfully! Welcome to Predora! 🎉", "success");
+                } else {
+                    showToast("Welcome back to Predora! 🎉", "success");
+                }
                 
             } catch (error) {
                 console.error('OTP verification error:', error);
@@ -6212,7 +6177,7 @@
         };
 
         /**
-         * Email/Password authentication - Re-enabled alongside OTP
+         * Email/Password authentication with OTP verification (Replit-style flow)
          */
         window.emailPasswordAuth = async () => {
             const email = document.getElementById('email-auth-input').value.trim();
@@ -6229,7 +6194,7 @@
             }
 
             try {
-                showLoadingOverlay(true, 'Signing in...');
+                showLoadingOverlay(true, 'Verifying credentials...');
                 const { signInWithEmailAndPassword, createUserWithEmailAndPassword } = window.firebase.auth;
 
                 let result;
@@ -6246,7 +6211,6 @@
                         try {
                             result = await createUserWithEmailAndPassword(auth, email, password);
                             isNewAccount = true;
-                            showToast("Account created successfully! Welcome to Predora! 🎉", "success");
                         } catch (createError) {
                             console.error('Account creation error:', createError.code, createError.message);
                             // If email already exists, it means the user entered wrong password for existing account
@@ -6263,7 +6227,42 @@
                     }
                 }
 
-                await completeAuthentication(result.user, 'firebase-email');
+                // Password verified! Now send OTP for verification
+                showLoadingOverlay(true, 'Sending verification code...');
+                
+                // Store auth result temporarily for later completion
+                sessionStorage.setItem('pending-auth-user', JSON.stringify({
+                    uid: result.user.uid,
+                    email: result.user.email,
+                    isNewAccount: isNewAccount
+                }));
+                
+                // Send OTP to email
+                const otpResponse = await fetch('/api/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                
+                if (!otpResponse.ok) {
+                    const errorData = await otpResponse.json();
+                    throw new Error(errorData.error || 'Failed to send verification code');
+                }
+                
+                // Store email for OTP verification
+                sessionStorage.setItem('otp-email', email);
+                
+                // Show OTP entry screen
+                showLoadingOverlay(false);
+                document.getElementById('otp-email-display').textContent = email;
+                document.getElementById('otp-code-input').value = '';
+                showScreen('otp-entry-screen');
+                
+                if (isNewAccount) {
+                    showToast("Account created! Check your email for verification code 📧", "success");
+                } else {
+                    showToast("Check your email for verification code 📧", "success");
+                }
 
             } catch (error) {
                 console.error('Email auth error:', error.code, error.message);
