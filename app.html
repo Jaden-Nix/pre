@@ -1494,11 +1494,14 @@
                             <h3 class="text-sm md:text-base font-bold text-white uppercase tracking-widest">Web3 Wallet</h3>
                             <span class="text-xs px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/40 to-pink-500/40 text-purple-200 font-bold border border-purple-300/40 shadow-lg backdrop-blur-sm">CRYPTO</span>
                         </div>
-                        <button onclick="connectWeb3Wallet()" class="relative w-full flex items-center justify-center gap-3 px-6 py-4 md:py-5 rounded-xl border-2 border-purple-400/50 bg-gradient-to-r from-purple-500/30 to-pink-500/30 hover:from-purple-500/40 hover:to-pink-500/40 hover:border-purple-300/70 transition-all duration-500 transform hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/60 active:scale-95 group overflow-hidden">
-                            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
-                            <svg class="relative w-6 h-6 md:w-7 md:h-7 text-purple-200 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
-                            <span class="relative font-semibold text-white text-base md:text-lg">Connect Wallet</span>
-                        </button>
+                        <div class="relative">
+                            <button class="relative w-full flex items-center justify-center gap-3 px-6 py-4 md:py-5 rounded-xl border-2 border-purple-400/50 bg-gradient-to-r from-purple-500/30 to-pink-500/30 opacity-50 cursor-not-allowed transition-all duration-500 group overflow-hidden">
+                                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
+                                <svg class="relative w-6 h-6 md:w-7 md:h-7 text-purple-200 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+                                <span class="relative font-semibold text-white text-base md:text-lg">Connect Wallet</span>
+                            </button>
+                            <span class="absolute top-2 right-2 px-3 py-1 text-xs font-bold bg-yellow-500/90 text-gray-900 rounded-full">COMING SOON</span>
+                        </div>
                         <p class="text-xs md:text-sm text-center text-gray-300">MetaMask, Coinbase, WalletConnect & More</p>
                     </div>
                 </div>
@@ -1539,8 +1542,8 @@
                         <div class="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
                             <svg class="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             <div class="text-xs text-blue-200 space-y-1">
-                                <p class="font-semibold">🔐 Secure Passwordless Login</p>
-                                <p class="text-blue-300/90">We send a one-time code to your email (expires in 10 min). No passwords to remember or leak. Your email controls access—protect it with 2FA for maximum security.</p>
+                                <p class="font-semibold">✉️ Email → Password → OTP Verification</p>
+                                <p class="text-blue-300/90">Sign up with email and password, then verify with a 6-digit code sent to your inbox. Set your display name to complete onboarding. You're in control of your account.</p>
                             </div>
                         </div>
                     </div>
@@ -6765,7 +6768,7 @@
                 // Balances will be fetched from blockchain on next login
             };
             pledgePoolItems = [];
-            showScreen('login-screen');
+            enableGuestMode(); // Go to guest mode instead of login
         }
 
         /**
