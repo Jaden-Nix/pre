@@ -13394,7 +13394,7 @@ ${historyText}`;
             if (!selectedMarketForStance) return;
             
             attachedMarket = {
-                marketId: selectedMarketForStance.marketId,
+                marketId: selectedMarketForStance.id || selectedMarketForStance.marketId,
                 title: selectedMarketForStance.title,
                 stance: stance,
                 category: selectedMarketForStance.category || 'General'
