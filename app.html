@@ -7334,9 +7334,17 @@
          * A router that loads or attaches listeners based on the screen being viewed.
          */
         function loadDataForScreen(screenId) {
+            console.log('📱 loadDataForScreen:', screenId);
             switch(screenId) {
                 case 'home-screen':
-                    if (!standardMarketsUnsubscribe) attachStandardMarketsListener();
+                    console.log('🏠 Loading home-screen, standardMarketsUnsubscribe:', standardMarketsUnsubscribe);
+                    if (!standardMarketsUnsubscribe) {
+                        console.log('📊 Attaching listener for home-screen');
+                        attachStandardMarketsListener();
+                    } else {
+                        console.log('📊 Listener already attached, just rendering...');
+                        filterMarkets(currentCategoryFilter || 'All');
+                    }
                     break;
                 case 'pledge-pool-screen': 
                     renderPledgePool();
@@ -7571,6 +7579,11 @@
             const { collection, query, onSnapshot, where } = window.firebase.firestore;
 
             try {
+                console.log('📊 Attaching standard markets listener...');
+                console.log('DB instance:', db);
+                console.log('APP_ID:', APP_ID);
+                console.log('STANDARD_MARKETS_COLLECTION:', STANDARD_MARKETS_COLLECTION);
+                
                 // Query for all standard markets
                 const q = query(
                     collection(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION),
@@ -7578,6 +7591,8 @@
                 );
 
                 standardMarketsUnsubscribe = onSnapshot(q, (snapshot) => {
+                    console.log('📊 Firestore listener fired! Got', snapshot.size, 'markets');
+                    
                     let markets = [];
                     snapshot.forEach(doc => {
                         markets.push({ id: doc.id, ...doc.data() });
@@ -7588,6 +7603,8 @@
                         markets.unshift(MOCK_ETH_MARKET);
                     }
 
+                    console.log('📊 Total markets after adding mock:', markets.length);
+                    
                     // 1. Cache the full list for searching
                     allStandardMarkets = markets; 
 
@@ -7595,12 +7612,16 @@
                     filterMarkets('All'); 
 
                 }, (error) => {
-                    console.error("Error fetching standard markets:", error);
-                    dom.standardMarketsFeed.innerHTML = '<p class="text-red-400 text-center">Error loading markets.</p>';
+                    console.error("❌ Error fetching standard markets:", error);
+                    if (dom.standardMarketsFeed) {
+                        dom.standardMarketsFeed.innerHTML = '<p class="text-red-400 text-center">Error loading markets: ' + error.message + '</p>';
+                    }
                 });
             } catch (error) {
-                console.error("Critical error in attachStandardMarketsListener:", error);
-                dom.standardMarketsFeed.innerHTML = '<p class="text-red-400 text-center">Failed to attach listener.</p>';
+                console.error("❌ Critical error in attachStandardMarketsListener:", error);
+                if (dom.standardMarketsFeed) {
+                    dom.standardMarketsFeed.innerHTML = '<p class="text-red-400 text-center">Failed to attach listener: ' + error.message + '</p>';
+                }
             }
         }
 
@@ -15330,14 +15351,24 @@ ${historyText}`;
          * Renders the search results into the UI.
          */
         function renderMarketFeed(markets) {
+            console.log('🎨 renderMarketFeed called with', markets.length, 'markets');
+            
             // We use the cached feed element
             const feed = dom.standardMarketsFeed; 
-            if (!feed) return; // Safety check
+            console.log('Feed element:', feed);
+            
+            if (!feed) {
+                console.error('❌ dom.standardMarketsFeed not found!');
+                return;
+            }
 
             if (markets.length === 0) {
+                console.log('⚠️ No markets to display');
                 feed.innerHTML = '<p class="text-gray-400 text-center">No active markets match your search.</p>';
                 return;
             }
+            
+            console.log('✅ Rendering', markets.length, 'markets');
 
             let html = '';
             markets.forEach(market => {
