@@ -26,7 +26,21 @@ The platform uses a dual-workflow architecture:
 - **Web3 Integration**: Ethers.js for MetaMask wallet connection, network switching (BSC Testnet and opBNB Testnet), and on-chain balance fetching. Smart contract deployed on BSC Testnet at `0xdaAf91610e33355c9Cd9258219C6A4822E693f55` handles all on-chain betting and payouts.
 - **Smart Contract**: PredictionMarket.sol includes automatic payout distribution with duplicate prevention via `hasReceivedPayout` mapping, platform fee collection, and 30-minute dispute window before finalization.
 - **Auto-Payout System**: Backend job (`server/auto-payout-job.js`) monitors resolved markets and automatically calls `autoFinalizeAndPayout()` after 30 minutes, distributing winnings to all winners and collecting platform fees.
-- **AI Features**: Google Gemini AI is used for market generation, "Quick Play" generation, and auto-resolution with web search verification, providing rationale and sources. AI guardrails are implemented for duplicate detection, quality filtering, and Sybil detection.
+- **AI Features**: 
+  - **Swarm-Verify Oracle**: Multi-agent Byzantine fault-tolerant market resolution system featuring:
+    - Perplexity API: Deep research agent with web search and citations
+    - OpenAI GPT-4o: Skeptic agent with adversarial "Paranoid" prompt verification
+    - Brave Search API: Independent fact-checking and source validation
+    - Gemini AI: Optional diversity agent
+    - Geometric median consensus algorithm (Weiszfeld's method) for confidence aggregation
+    - Cryptographic evidence hashing (SHA-256) for auditability
+    - 85% default confidence threshold with configurable per-market thresholds
+    - Fallback to legacy Gemini single-agent oracle if Swarm-Verify unavailable
+    - 4-phase resolution: (1) Independent research, (2) Skeptic review, (3) Consensus, (4) Threshold check
+    - Byzantine fault tolerance: Tolerates up to 50% malicious/faulty agents
+    - Prompt injection mitigation and input sanitization for security
+  - Google Gemini AI also used for market generation and "Quick Play" generation
+  - AI guardrails implemented for duplicate detection, quality filtering, and Sybil detection
 - **Jury System**: A fully functional jury voting system allows users to submit votes for disputed markets, with outcomes determined by majority rule. An admin dashboard provides oversight and manual override capabilities.
 - **Multiple Options Market Display**: Supports markets with 3-6 options, each displayed with individual percentages.
 - **Custodial Wallets**: Automatic server-side wallet creation on user signup using ethers.js v5, with AES-256-GCM encrypted private keys stored in Firebase Firestore. Keys never exposed to client.
