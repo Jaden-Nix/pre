@@ -7,7 +7,7 @@ const ALGORITHM = 'aes-256-gcm';
 export class CustodialWalletService {
     constructor(db) {
         this.db = db;
-        this.provider = new ethers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+        this.provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
     }
 
     encrypt(text) {
@@ -152,7 +152,7 @@ export class CustodialWalletService {
             return {
                 success: true,
                 address: walletInfo.address,
-                balance: ethers.formatEther(balance),
+                balance: ethers.utils.formatEther(balance),
                 balanceWei: balance.toString()
             };
         } catch (error) {
@@ -170,7 +170,7 @@ export class CustodialWalletService {
             
             const tx = await wallet.sendTransaction({
                 to,
-                value: ethers.parseEther(valueInBNB.toString())
+                value: ethers.utils.parseEther(valueInBNB.toString())
             });
 
             console.log(`📤 Transaction sent from custodial wallet: ${tx.hash}`);
