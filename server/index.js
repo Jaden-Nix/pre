@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import admin from 'firebase-admin';
 import OpenAI from 'openai';
 import sgMail from '@sendgrid/mail';
+import { AutoPayoutJob } from './auto-payout-job.js';
 
 // --- Constants ---
 const __filename = fileURLToPath(import.meta.url);
@@ -1956,6 +1957,18 @@ app.post('/api/indexer/markets/:marketId/odds-snapshot', requireAdmin, async (re
         res.status(500).json({ error: error.message });
     }
 });
+
+// --- Initialize Auto-Payout Job ---
+const autoPayoutJob = new AutoPayoutJob();
+if (db && process.env.DEPLOY_PRIVATE_KEY) {
+    const initialized = autoPayoutJob.initialize(process.env.DEPLOY_PRIVATE_KEY, db);
+    if (initialized) {
+        autoPayoutJob.start(5); // Check every 5 minutes
+        console.log('✅ Auto-payout job started (checks every 5 minutes)');
+    }
+} else {
+    console.warn('⚠️  Auto-payout job not started (missing database or private key)');
+}
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Predora Backend Server is live on port ${PORT}`);
