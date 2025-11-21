@@ -4435,12 +4435,16 @@
         function initializeBSCProvider() {
             if (!bscProvider) {
                 try {
-                    bscProvider = new ethers.providers.JsonRpcProvider(NETWORKS.BSC_TESTNET.rpcUrls[0]);
-                    console.log('✅ BSC Testnet provider initialized for balance reads');
+                    // Use reliable BSC Testnet RPC URL
+                    const BSC_TESTNET_RPC = 'https://bsc-testnet-dataseed.bnbchain.org';
+                    bscProvider = new ethers.providers.JsonRpcProvider(BSC_TESTNET_RPC);
+                    console.log('✅ BSC Testnet provider initialized:', BSC_TESTNET_RPC);
                 } catch (error) {
-                    console.error('Failed to initialize BSC provider:', error);
+                    console.error('❌ Failed to initialize BSC provider:', error);
+                    console.error('Error details:', error.message, error.code);
                 }
             }
+            return bscProvider;
         }
 
         /**
