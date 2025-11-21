@@ -13,6 +13,7 @@ import sgMail from '@sendgrid/mail';
 import { AutoPayoutJob } from './auto-payout-job.js';
 import { CustodialWalletService } from './custodial-wallet-service.js';
 import { BiconomyAAService } from './biconomy-aa-service.js';
+import { privyClient, verifyPrivyToken, getPrivyUser } from './privy-service.js';
 
 // --- Constants ---
 const __filename = fileURLToPath(import.meta.url);
@@ -294,6 +295,75 @@ app.get('/', (req, res) => {
 
 app.get('/pitch-deck', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'pitch-deck', 'index.html'));
+});
+
+// --- PRIVY AUTHENTICATION ENDPOINTS ---
+app.get('/api/privy/config', (req, res) => {
+    const PRIVY_APP_ID = process.env.PRIVY_APP_ID;
+    if (!PRIVY_APP_ID) {
+        return res.status(500).json({ error: 'Privy not configured' });
+    }
+    res.json({ appId: PRIVY_APP_ID });
+});
+
+app.post('/api/privy/verify', async (req, res) => {
+    const { accessToken } = req.body;
+    
+    if (!accessToken) {
+        return res.status(400).json({ error: 'Access token is required' });
+    }
+    
+    try {
+        const { userId, user } = await verifyPrivyToken(accessToken);
+        
+        if (!db) {
+            return res.json({ userId, user });
+        }
+        
+        const userDoc = await db.collection('users').doc(userId).get();
+        let userData = userDoc.exists ? userDoc.data() : null;
+        
+        if (!userDoc.exists) {
+            const email = user.email?.address || null;
+            const walletAddress = user.wallet?.address || null;
+            
+            userData = {
+                uid: userId,
+                email,
+                walletAddress,
+                displayName: email ? email.split('@')[0] : `User${userId.slice(-4)}`,
+                avatar: '',
+                xp: 0,
+                balance: 100,
+                bnbBalance: 0,
+                cakeBalance: 0,
+                isApproved: false,
+                createdAt: new Date().toISOString(),
+                lastLoginAt: new Date().toISOString()
+            };
+            
+            await db.collection('users').doc(userId).set(userData);
+            console.log(`✅ Created new user profile for Privy user: ${userId}`);
+            
+            if (custodialWalletService && walletAddress) {
+                try {
+                    await custodialWalletService.createWallet(userId);
+                    console.log(`✅ Custodial wallet created for Privy user: ${userId}`);
+                } catch (walletError) {
+                    console.error('Error creating custodial wallet:', walletError);
+                }
+            }
+        } else {
+            await db.collection('users').doc(userId).update({
+                lastLoginAt: new Date().toISOString()
+            });
+        }
+        
+        res.json({ userId, user, userData });
+    } catch (error) {
+        console.error('Privy verification error:', error);
+        res.status(401).json({ error: error.message });
+    }
 });
 
 // --- EMAIL OTP AUTHENTICATION ENDPOINTS ---

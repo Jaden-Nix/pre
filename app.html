@@ -3828,21 +3828,11 @@
 
 
     <script type="module">
-        // --- Import Firebase modules ---
-        // These are imported from the web to make the HTML file self-contained
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { 
-            getAuth, 
-            signInAnonymously, 
-            onAuthStateChanged,
-            signInWithCustomToken,
-            GoogleAuthProvider,
-            TwitterAuthProvider,
-            signInWithPopup,
-            signInWithEmailAndPassword,
-            createUserWithEmailAndPassword
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // --- Import Privy SDK ---
+        import { PrivyClient } from 'https://cdn.jsdelivr.net/npm/@privy-io/js-sdk-core@latest/+esm';
 
+        // --- Import Firebase Firestore (keeping for database) ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
             getFirestore, 
             doc, getDoc, setDoc, 
@@ -3857,14 +3847,10 @@
             limit,
             arrayUnion
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        // --- Pass all imports to a global window object for convenience ---
+        
+        // --- Pass imports to global window object ---
         window.firebase = {
             app: { initializeApp },
-            auth: { 
-                getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken,
-                GoogleAuthProvider, TwitterAuthProvider, signInWithPopup,
-                signInWithEmailAndPassword, createUserWithEmailAndPassword
-            },
             firestore: { 
                 getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, 
                 onSnapshot, collection, query, where, increment, addDoc, 
@@ -3873,10 +3859,15 @@
             }
         };
 
+        // --- Initialize Privy Client ---
+        window.privyClient = null;
+        window.privyUser = null;
+        window.privyAccessToken = null;
+
         // --- GLOBAL APP LOGIC ---
 
         // --- GLOBAL STATE & CONSTANTS ---
-        let db, auth;
+        let db;
         let currentScreenId = 'login-screen'; 
         let currentUserId = null;
         let userProfile = { 
@@ -4693,15 +4684,14 @@
         });
 
         /**
-         * Initializes the Firebase app, caches DOM, and checks for a saved session.
+         * Initializes Privy, Firebase Firestore, caches DOM, and checks for a saved session.
          */
-        function startApp() {
+        async function startApp() {
             const { initializeApp } = window.firebase.app;
-            const { getAuth } = window.firebase.auth;
             const { getFirestore, setLogLevel } = window.firebase.firestore;
 
             try {
-
+                // Initialize Firebase Firestore (for database only)
                 const firebaseConfig = {
                     apiKey: "AIzaSyCr36OARwTBJduV9PJI6FfhDKRVwxarBBM",
                     authDomain: "predora-app.firebaseapp.com",
@@ -4711,9 +4701,21 @@
                     appId: "1:264141669177:web:e650746b9ed7ce2a1fdee8",
                 };
                 const app = initializeApp(firebaseConfig);
-
                 db = getFirestore(app);
-                auth = getAuth(app);
+
+                // Initialize Privy Client - get app ID from backend
+                try {
+                    const response = await fetch('/api/privy/config');
+                    const { appId } = await response.json();
+                    
+                    window.privyClient = new PrivyClient({
+                        appId: appId
+                    });
+                    console.log('✅ Privy initialized');
+                } catch (error) {
+                    console.error('Failed to initialize Privy:', error);
+                    showToast('Failed to initialize authentication', 'error');
+                }
 
                 // setLogLevel('debug'); // Uncomment for verbose Firestore logs
                 cacheDomElements();
@@ -4939,6 +4941,76 @@
         }
 
         /**
+         * Complete Privy authentication and initialize user with embedded wallet
+         */
+        async function completePrivyAuthentication(privyUser, accessToken, authMethod = 'privy') {
+            try {
+                cleanupFirestoreListeners();
+
+                showLoadingOverlay(true, 'Verifying authentication...');
+
+                // Verify token and get user data from backend
+                const response = await fetch('/api/privy/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accessToken })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Authentication verification failed');
+                }
+
+                const { userId, user, userData } = await response.json();
+                currentUserId = userId;
+
+                // Store auth info
+                window.privyUser = privyUser;
+                window.privyAccessToken = accessToken;
+                localStorage.setItem('privyUserId', userId);
+                localStorage.setItem('privyAccessToken', accessToken);
+                localStorage.setItem('authMethod', authMethod);
+
+                // Get Privy embedded wallet
+                showLoadingOverlay(true, 'Creating your embedded wallet...');
+                const embeddedWallet = await window.privyClient.embeddedWallet.create();
+                const accounts = await embeddedWallet.request({ method: 'eth_requestAccounts' });
+                const walletAddress = accounts[0];
+
+                userProfile.walletAddress = walletAddress;
+                userProfile.isSmartWallet = false;  // Privy wallet, not AA yet
+                localStorage.setItem('userWalletAddress', walletAddress);
+
+                // Initialize user profile in Firestore
+                showLoadingOverlay(true, 'Setting up your account...');
+                await initializeUserProfile();
+
+                // Check if user needs onboarding
+                const { getDoc, doc } = window.firebase.firestore;
+                const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
+                const profileSnap = await getDoc(profileRef);
+
+                if (!profileSnap.exists() || !profileSnap.data().displayName) {
+                    // Set default display name from email or user ID
+                    const email = user.email?.address || null;
+                    userProfile.displayName = email ? email.split('@')[0] : `User${userId.slice(-4)}`;
+                    showScreen('onboarding-screen');
+                } else {
+                    userProfile = { ...userProfile, ...profileSnap.data() };
+                    showScreen('home-screen');
+                }
+
+                showLoadingOverlay(false);
+                showToast("Welcome to Predora!", "success");
+                console.log('✅ Privy authentication complete. Wallet:', walletAddress);
+
+            } catch (error) {
+                console.error('Error completing Privy authentication:', error);
+                showLoadingOverlay(false);
+                showToast("Authentication failed: " + error.message, "error");
+            }
+        }
+
+        /**
          * Generates a Smart Contract Wallet (Account Abstraction) for Firebase users
          * This creates a wallet ADDRESS that's controlled by the backend for gasless transactions.
          * No private keys are generated or stored on the client.
@@ -4970,52 +5042,60 @@
         }
 
         /**
-         * Sign in with Google (Firebase)
+         * Sign in with Google (Privy)
          */
         window.signInWithGoogle = async () => {
             try {
                 showLoadingOverlay(true, 'Connecting to Google...');
-                const { GoogleAuthProvider, signInWithPopup } = window.firebase.auth;
-                const provider = new GoogleAuthProvider();
-                
-                const result = await signInWithPopup(auth, provider);
-                await completeAuthentication(result.user, 'google');
-                
+                await window.privyClient.login({ loginMethods: ['google'] });
+                const user = window.privyClient.user;
+                const accessToken = await window.privyClient.getAccessToken();
+                await completePrivyAuthentication(user, accessToken, 'google');
             } catch (error) {
                 console.error('Google sign-in error:', error);
                 showLoadingOverlay(false);
-                if (error.code !== 'auth/popup-closed-by-user') {
+                if (!error.message.includes('popup-closed')) {
                     showToast("Google sign-in failed: " + error.message, "error");
                 }
             }
         };
 
         /**
-         * Sign in with X (Twitter) (Firebase)
+         * Sign in with X (Twitter) (Privy)
          */
         window.signInWithX = async () => {
             try {
                 showLoadingOverlay(true, 'Connecting to X...');
-                const { TwitterAuthProvider, signInWithPopup } = window.firebase.auth;
-                const provider = new TwitterAuthProvider();
-                
-                const result = await signInWithPopup(auth, provider);
-                await completeAuthentication(result.user, 'twitter');
-                
+                await window.privyClient.login({ loginMethods: ['twitter'] });
+                const user = window.privyClient.user;
+                const accessToken = await window.privyClient.getAccessToken();
+                await completePrivyAuthentication(user, accessToken, 'twitter');
             } catch (error) {
                 console.error('X sign-in error:', error);
                 showLoadingOverlay(false);
-                if (error.code !== 'auth/popup-closed-by-user') {
+                if (!error.message.includes('popup-closed')) {
                     showToast("X sign-in failed: " + error.message, "error");
                 }
             }
         };
 
         /**
-         * Navigate to email/password screen
+         * Sign in with Email (Privy)
          */
-        window.signInWithEmail = () => {
-            showScreen('email-password-screen');
+        window.signInWithEmail = async () => {
+            try {
+                showLoadingOverlay(true, 'Opening email login...');
+                await window.privyClient.login({ loginMethods: ['email'] });
+                const user = window.privyClient.user;
+                const accessToken = await window.privyClient.getAccessToken();
+                await completePrivyAuthentication(user, accessToken, 'email');
+            } catch (error) {
+                console.error('Email sign-in error:', error);
+                showLoadingOverlay(false);
+                if (!error.message.includes('popup-closed')) {
+                    showToast("Email sign-in failed: " + error.message, "error");
+                }
+            }
         };
 
         /**
