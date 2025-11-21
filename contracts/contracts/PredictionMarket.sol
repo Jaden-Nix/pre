@@ -115,7 +115,8 @@ contract PredictionMarket {
         require(!market.isResolved, "Market is already resolved");
         require(market.status == MarketStatus.ACTIVE, "Market is not active");
         require(block.timestamp < market.resolutionTime, "Market has expired");
-        require(msg.value > 0, "Bet amount must be greater than 0");
+        require(msg.value >= 0.001 ether, "Minimum bet: 0.001 BNB");
+        require(msg.value <= 100 ether, "Maximum bet: 100 BNB");
         
         // Record the bet
         Bet memory newBet = Bet({
@@ -162,6 +163,7 @@ contract PredictionMarket {
 
     /**
      * @dev Auto-finalize and payout market after 30-min dispute window
+     * WARNING: Use batch processing for markets with >100 bets to avoid gas limits
      */
     function autoFinalizeAndPayout(uint256 _marketId) external {
         Market storage market = markets[_marketId];
@@ -180,6 +182,37 @@ contract PredictionMarket {
         
         // Auto-distribute winnings to all winners
         _distributeWinnings(_marketId);
+    }
+    
+    /**
+     * @dev Batch payout for large markets (>100 bets)
+     * Processes winners in chunks to avoid gas limit issues
+     */
+    function batchDistributeWinnings(uint256 _marketId, uint256 startIdx, uint256 endIdx) external {
+        Market storage market = markets[_marketId];
+        require(market.status == MarketStatus.FINALIZED, "Market must be finalized first");
+        
+        Bet[] storage bets = marketBets[_marketId];
+        require(endIdx <= bets.length, "Index out of bounds");
+        require(startIdx < endIdx, "Invalid range");
+        
+        uint256 winningPool = market.outcome ? market.yesPool : market.noPool;
+        uint256 losingPool = market.outcome ? market.noPool : market.yesPool;
+        uint256 platformFee = (losingPool * platformFeeBps) / 10000;
+        uint256 payoutPool = market.totalVolume - platformFee;
+        
+        for (uint256 i = startIdx; i < endIdx; i++) {
+            if (bets[i].pick == market.outcome && !bets[i].claimed && !hasReceivedPayout[_marketId][bets[i].user]) {
+                uint256 payout = (bets[i].amount * payoutPool) / winningPool;
+                bets[i].claimed = true;
+                hasReceivedPayout[_marketId][bets[i].user] = true;
+                
+                (bool success, ) = payable(bets[i].user).call{value: payout}("");
+                require(success, "Payout failed");
+                
+                emit WinningsClaimed(_marketId, bets[i].user, payout);
+            }
+        }
     }
 
     /**
@@ -268,10 +301,15 @@ contract PredictionMarket {
         require(market.isResolved, "Market must be resolved to dispute");
         require(market.status == MarketStatus.RESOLVED, "Market already disputed");
         require(msg.value >= 0.01 ether, "Dispute requires 0.01 BNB stake");
+        require(msg.value <= 100 ether, "Stake too large");
         
         market.status = MarketStatus.DISPUTED;
         
         emit MarketDisputed(_marketId, msg.sender);
+        
+        // Dispute stake is now locked in contract for jury voting
+        // Note: Current implementation does not track individual dispute stakes
+        // Future: Implement refund mechanism based on jury vote outcome
     }
     
     /**
