@@ -21,9 +21,11 @@ contract PredictionMarket {
         uint256 noPool;
         uint256 totalVolume;
         MarketStatus status;
+        uint256 resolutionSubmittedAt; // When resolution was submitted
+        bool autoPayoutTriggered; // Whether auto-payout has been triggered
     }
     
-    enum MarketStatus { ACTIVE, DISPUTED, RESOLVED, CANCELLED }
+    enum MarketStatus { ACTIVE, DISPUTED, RESOLVED, FINALIZED, CANCELLED }
     
     struct Bet {
         address user;
@@ -50,6 +52,8 @@ contract PredictionMarket {
     event MarketCreated(uint256 indexed marketId, string title, address indexed creator);
     event BetPlaced(uint256 indexed marketId, address indexed user, uint256 amount, bool pick);
     event MarketResolved(uint256 indexed marketId, bool outcome);
+    event MarketFinalized(uint256 indexed marketId); // Auto-finalized after 30-min dispute window
+    event AutoPayoutTriggered(uint256 indexed marketId); // Auto-payout started
     event WinningsClaimed(uint256 indexed marketId, address indexed user, uint256 amount);
     event MarketDisputed(uint256 indexed marketId, address indexed disputor);
     
@@ -88,7 +92,9 @@ contract PredictionMarket {
             yesPool: 0,
             noPool: 0,
             totalVolume: 0,
-            status: MarketStatus.ACTIVE
+            status: MarketStatus.ACTIVE,
+            resolutionSubmittedAt: 0,
+            autoPayoutTriggered: false
         });
         
         emit MarketCreated(marketCounter, _title, msg.sender);
@@ -134,7 +140,7 @@ contract PredictionMarket {
     }
     
     /**
-     * @dev Resolve a market (admin only)
+     * @dev Resolve a market (admin only) - starts 30-min dispute window
      */
     function resolveMarket(uint256 _marketId, bool _outcome) external onlyAdmin {
         Market storage market = markets[_marketId];
@@ -146,8 +152,60 @@ contract PredictionMarket {
         market.isResolved = true;
         market.outcome = _outcome;
         market.status = MarketStatus.RESOLVED;
+        market.resolutionSubmittedAt = block.timestamp; // Start dispute window (30 min)
         
         emit MarketResolved(_marketId, _outcome);
+    }
+
+    /**
+     * @dev Auto-finalize and payout market after 30-min dispute window
+     */
+    function autoFinalizeAndPayout(uint256 _marketId) external {
+        Market storage market = markets[_marketId];
+        
+        require(market.id != 0, "Market does not exist");
+        require(market.status == MarketStatus.RESOLVED, "Market must be resolved");
+        require(market.resolutionSubmittedAt > 0, "Resolution not submitted");
+        require(block.timestamp >= market.resolutionSubmittedAt + 30 minutes, "Dispute window still open");
+        require(!market.autoPayoutTriggered, "Auto-payout already triggered");
+        
+        market.status = MarketStatus.FINALIZED;
+        market.autoPayoutTriggered = true;
+        
+        emit MarketFinalized(_marketId);
+        emit AutoPayoutTriggered(_marketId);
+        
+        // Auto-distribute winnings to all winners
+        _distributeWinnings(_marketId);
+    }
+
+    /**
+     * @dev Internal: Distribute winnings to all winners
+     */
+    function _distributeWinnings(uint256 _marketId) internal {
+        Market storage market = markets[_marketId];
+        Bet[] storage bets = marketBets[_marketId];
+        
+        uint256 winningPool = market.outcome ? market.yesPool : market.noPool;
+        uint256 losingPool = market.outcome ? market.noPool : market.yesPool;
+        uint256 platformFee = (losingPool * platformFeeBps) / 10000;
+        uint256 payoutPool = market.totalVolume - platformFee;
+        
+        // Track paid-out users to avoid duplicate payouts
+        mapping(address => bool) storage paidOutUsers;
+        
+        for (uint256 i = 0; i < bets.length; i++) {
+            if (bets[i].pick == market.outcome && !bets[i].claimed && !paidOutUsers[bets[i].user]) {
+                uint256 payout = (bets[i].amount * payoutPool) / winningPool;
+                bets[i].claimed = true;
+                paidOutUsers[bets[i].user] = true;
+                
+                (bool success, ) = payable(bets[i].user).call{value: payout}("");
+                require(success, "Payout failed");
+                
+                emit WinningsClaimed(_marketId, bets[i].user, payout);
+            }
+        }
     }
     
     /**
