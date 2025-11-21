@@ -63,6 +63,24 @@ async function getSendGridClient() {
         return { client: sendGridClient, fromEmail };
     }
 
+    // First try direct environment variables
+    const directApiKey = process.env.SENDGRID_API_KEY;
+    const directFromEmail = process.env.SENDGRID_FROM_EMAIL;
+    
+    if (directApiKey && directFromEmail) {
+        try {
+            sgMail.setApiKey(directApiKey);
+            sendGridClient = sgMail;
+            fromEmail = directFromEmail;
+            console.log("✅ SendGrid initialized successfully (direct env vars).");
+            return { client: sendGridClient, fromEmail };
+        } catch (error) {
+            console.error("❌ SendGrid initialization failed:", error.message);
+            return null;
+        }
+    }
+
+    // Try Replit integration as fallback
     const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
     const xReplitToken = process.env.REPL_IDENTITY 
         ? 'repl ' + process.env.REPL_IDENTITY 
@@ -71,7 +89,7 @@ async function getSendGridClient() {
         : null;
 
     if (!hostname || !xReplitToken) {
-        console.warn("⚠️  SendGrid not initialized (missing Replit environment variables).");
+        console.warn("⚠️  SendGrid not initialized (set SENDGRID_API_KEY and SENDGRID_FROM_EMAIL env vars).");
         return null;
     }
 
@@ -90,7 +108,7 @@ async function getSendGridClient() {
         const connectionSettings = data.items?.[0];
 
         if (!connectionSettings || !connectionSettings.settings.api_key || !connectionSettings.settings.from_email) {
-            console.warn("⚠️  SendGrid not connected.");
+            console.warn("⚠️  SendGrid not connected via Replit integration.");
             return null;
         }
 
@@ -98,7 +116,7 @@ async function getSendGridClient() {
         sendGridClient = sgMail;
         fromEmail = connectionSettings.settings.from_email;
 
-        console.log("✅ SendGrid initialized successfully.");
+        console.log("✅ SendGrid initialized successfully (Replit integration).");
         return { client: sendGridClient, fromEmail };
     } catch (error) {
         console.error("❌ SendGrid initialization failed:", error.message);
