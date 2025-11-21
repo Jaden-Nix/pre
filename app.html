@@ -5108,49 +5108,6 @@
                 showPrivyStep('oauth');
             }
         }
-        
-        /**
-         * Completes Privy authentication and creates/updates user profile
-         */
-        async function completePrivyAuthentication(user, accessToken, authMethod) {
-            showLoadingOverlay(true, `Setting up your account...`);
-            
-            try {
-                // Verify token with backend
-                const response = await fetch('/api/privy/verify', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${accessToken}`
-                    },
-                    body: JSON.stringify({ accessToken })
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Token verification failed');
-                }
-                
-                const data = await response.json();
-                
-                // Store user data
-                window.currentUserId = data.userId;
-                window.currentUserEmail = data.user.email?.address || null;
-                window.currentUserWallet = data.userData?.custodialWalletAddress || null;
-                window.privyAccessToken = accessToken;
-                
-                showLoadingOverlay(false);
-                showToast(`Welcome! Signed in with ${authMethod}`, 'success');
-                
-                // Navigate to main app
-                showScreen('main-screen');
-                loadMarkets();
-                
-            } catch (error) {
-                console.error('Authentication completion error:', error);
-                showLoadingOverlay(false);
-                showToast('Authentication failed. Please try again.', 'error');
-            }
-        }
 
         /**
          * Caches all frequently used DOM elements into the `dom` object.
