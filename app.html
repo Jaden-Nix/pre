@@ -4028,6 +4028,9 @@
         let currentNetwork = null;
         let predoraContract = null;
         
+        // Contract Event Listeners (for cleanup)
+        let contractEventListeners = [];
+        
         // BSC Testnet Read-Only Provider (for fetching balances without wallet connection)
         let bscProvider = null;
         
@@ -4259,6 +4262,9 @@
                 // Initialize Account Abstraction smart account (if available)
                 await initializeSmartAccount();
 
+                // Setup contract event listeners
+                await setupContractEventListeners();
+
                 return userWalletAddress;
             } catch (error) {
                 console.error('Wallet connection failed:', error);
@@ -4360,6 +4366,215 @@
                     console.error('Failed to initialize BSC provider:', error);
                 }
             }
+        }
+
+        /**
+         * Sets up contract event listeners for real-time blockchain updates
+         */
+        async function setupContractEventListeners() {
+            if (!ethersProvider || !PREDORA_CONTRACT_ADDRESS) {
+                console.log('⏭️ Skipping contract events - no provider or contract');
+                return;
+            }
+            
+            try {
+                // Clean up old listeners
+                contractEventListeners.forEach(listener => listener.removeAllListeners());
+                contractEventListeners = [];
+                
+                const contract = new ethers.Contract(
+                    PREDORA_CONTRACT_ADDRESS,
+                    PREDORA_CONTRACT_ABI,
+                    ethersProvider
+                );
+                
+                console.log('🎧 Setting up contract event listeners...');
+                
+                // Listen for market creation
+                contract.on('MarketCreated', (marketId, title, creator, event) => {
+                    console.log('📢 Market Created Event:', { marketId: marketId.toString(), title, creator });
+                    // Note: renderMarketsContent doesn't exist in this app, but we log the event
+                    // Markets are loaded via Firebase, not directly from contract
+                });
+                
+                // Listen for bets
+                contract.on('BetPlaced', (marketId, user, amount, pick, event) => {
+                    console.log('📢 Bet Placed Event:', {
+                        marketId: marketId.toString(),
+                        user,
+                        amount: ethers.utils.formatEther(amount),
+                        pick: pick ? 'YES' : 'NO'
+                    });
+                    
+                    // Refresh user balance if this is the current user
+                    if (user.toLowerCase() === userWalletAddress?.toLowerCase()) {
+                        if (typeof refreshAllBalances === 'function') {
+                            refreshAllBalances();
+                        }
+                    }
+                });
+                
+                // Listen for market resolution
+                contract.on('MarketResolved', (marketId, outcome, event) => {
+                    console.log('📢 Market Resolved Event:', {
+                        marketId: marketId.toString(),
+                        outcome: outcome ? 'YES' : 'NO'
+                    });
+                    
+                    // Show notification
+                    showToast(`Market #${marketId} resolved: ${outcome ? 'YES' : 'NO'}`, 'info');
+                });
+                
+                // Listen for winnings claims
+                contract.on('WinningsClaimed', (marketId, user, amount, event) => {
+                    console.log('📢 Winnings Claimed Event:', {
+                        marketId: marketId.toString(),
+                        user,
+                        amount: ethers.utils.formatEther(amount)
+                    });
+                    
+                    // If current user claimed, refresh balance
+                    if (user.toLowerCase() === userWalletAddress?.toLowerCase()) {
+                        if (typeof refreshAllBalances === 'function') {
+                            refreshAllBalances();
+                        }
+                        showToast(`You claimed ${ethers.utils.formatEther(amount)} BNB!`, 'success');
+                    }
+                });
+                
+                // Listen for market finalization
+                contract.on('MarketFinalized', (marketId, event) => {
+                    console.log('📢 Market Finalized Event:', { marketId: marketId.toString() });
+                    
+                    // Update UI to show finalized status
+                    showToast(`Market #${marketId} finalized - payouts available`, 'info');
+                });
+                
+                // Listen for auto payout triggers
+                contract.on('AutoPayoutTriggered', (marketId, event) => {
+                    console.log('📢 Auto Payout Triggered Event:', { marketId: marketId.toString() });
+                    showToast(`Market #${marketId} auto-payout executed`, 'info');
+                });
+                
+                // Listen for market disputes
+                contract.on('MarketDisputed', (marketId, disputor, event) => {
+                    console.log('📢 Market Disputed Event:', {
+                        marketId: marketId.toString(),
+                        disputor
+                    });
+                    showToast(`Market #${marketId} has been disputed`, 'warning');
+                });
+                
+                // Store listeners for cleanup
+                contractEventListeners.push(contract);
+                
+                console.log('✅ Contract event listeners active');
+                
+            } catch (error) {
+                console.error('❌ Error setting up contract events:', error);
+            }
+        }
+
+        /**
+         * Watches events for a specific market
+         */
+        async function watchMarketEvents(onChainMarketId) {
+            if (!ethersProvider) return;
+            
+            const contract = new ethers.Contract(
+                PREDORA_CONTRACT_ADDRESS,
+                PREDORA_CONTRACT_ABI,
+                ethersProvider
+            );
+            
+            // Filter events for this specific market
+            const filter = contract.filters.BetPlaced(onChainMarketId);
+            
+            contract.on(filter, (marketId, user, amount, pick, event) => {
+                console.log(`📢 New bet on market #${marketId.toString()}`);
+                
+                // Update market pool display in real-time
+                updateMarketPoolDisplay(marketId, amount, pick);
+            });
+        }
+
+        /**
+         * Updates market pool display when a bet is placed
+         */
+        function updateMarketPoolDisplay(marketId, amount, pick) {
+            // Find the market element in the UI
+            const marketElement = document.querySelector(`[data-market-id="${marketId}"]`);
+            if (!marketElement) return;
+            
+            // Update pool totals
+            const amountBNB = parseFloat(ethers.utils.formatEther(amount));
+            const poolElement = pick 
+                ? marketElement.querySelector('.yes-pool')
+                : marketElement.querySelector('.no-pool');
+            
+            if (poolElement) {
+                const currentPool = parseFloat(poolElement.textContent) || 0;
+                poolElement.textContent = (currentPool + amountBNB).toFixed(4);
+                
+                // Animate the update
+                poolElement.classList.add('bg-green-500/20');
+                setTimeout(() => {
+                    poolElement.classList.remove('bg-green-500/20');
+                }, 1000);
+            }
+        }
+
+        /**
+         * Fetches past events for a market
+         */
+        async function getMarketHistory(onChainMarketId) {
+            if (!ethersProvider) return [];
+            
+            try {
+                const contract = new ethers.Contract(
+                    PREDORA_CONTRACT_ADDRESS,
+                    PREDORA_CONTRACT_ABI,
+                    ethersProvider
+                );
+                
+                // Get past BetPlaced events for this market
+                const filter = contract.filters.BetPlaced(onChainMarketId);
+                const events = await contract.queryFilter(filter);
+                
+                return events.map(event => ({
+                    user: event.args.user,
+                    amount: ethers.utils.formatEther(event.args.amount),
+                    pick: event.args.pick ? 'YES' : 'NO',
+                    blockNumber: event.blockNumber,
+                    txHash: event.transactionHash
+                }));
+                
+            } catch (error) {
+                console.error('Error fetching market history:', error);
+                return [];
+            }
+        }
+
+        /**
+         * Set up provider change listeners for reconnecting events
+         */
+        if (typeof window !== 'undefined' && window.ethereum) {
+            window.ethereum.on('chainChanged', async (chainId) => {
+                console.log('⚠️ Chain changed:', chainId);
+                // Reconnect listeners after chain change
+                if (ethersProvider) {
+                    await setupContractEventListeners();
+                }
+            });
+            
+            window.ethereum.on('accountsChanged', async (accounts) => {
+                console.log('⚠️ Account changed:', accounts);
+                // Refresh user data and reconnect listeners
+                if (accounts.length > 0 && ethersProvider) {
+                    userWalletAddress = accounts[0];
+                    await setupContractEventListeners();
+                }
+            });
         }
 
         /**
@@ -4871,6 +5086,11 @@
         window.getRealBNBBalance = getRealBNBBalance;
         window.submitJuryVote = submitJuryVote;
         window.updateRealBNBBalance = updateRealBNBBalance;
+        
+        // Expose contract event listener functions globally
+        window.setupContractEventListeners = setupContractEventListeners;
+        window.watchMarketEvents = watchMarketEvents;
+        window.getMarketHistory = getMarketHistory;
         
         // Expose admin functions globally
         window.authenticateAdmin = authenticateAdmin;
@@ -6014,6 +6234,14 @@
             localStorage.removeItem('demoDisplayName');
             localStorage.removeItem('pledgePool');
             cleanupFirestoreListeners();
+            
+            // Clean up contract event listeners
+            contractEventListeners.forEach(listener => {
+                listener.removeAllListeners();
+            });
+            contractEventListeners = [];
+            console.log('🧹 Contract event listeners cleaned up');
+            
             currentUserId = null;
             userProfile = { 
                 xp: 0, displayName: '', walletAddress: '', isApproved: false
