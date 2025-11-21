@@ -2700,8 +2700,8 @@
 
 
 </div> </div> <div id="logout-button-container" class="pt-4 hidden">
-            <button id="logout-or-login-btn" onclick="handleLogoutOrLogin()" class="btn btn-secondary w-full lg:w-auto lg:px-8" style="border-color: #EF4444; color: #F87171;">
-                Log Out
+            <button id="logout-or-login-btn" onclick="handleLogoutOrLogin()" class="btn btn-secondary w-full lg:w-auto lg:px-8">
+                <span id="logout-or-login-text">Sign In</span>
             </button>
         </div>
                     </div>
@@ -6759,12 +6759,26 @@
             console.log('🧹 Contract event listeners cleaned up');
             
             currentUserId = null;
+            isGuestMode = true; // Enable guest mode after logout
             userProfile = { 
                 xp: 0, displayName: '', walletAddress: '', isApproved: false
                 // Balances will be fetched from blockchain on next login
             };
             pledgePoolItems = [];
             showScreen('login-screen');
+        }
+
+        /**
+         * Handles logout or login based on current authentication state
+         */
+        window.handleLogoutOrLogin = () => {
+            if (currentUserId && !isGuestMode) {
+                // User is logged in, so log them out
+                logout();
+            } else {
+                // User is a guest, redirect to login
+                showScreen('login-screen');
+            }
         }
         // ---- END OF NEW FUNCTION ----
 
@@ -7748,7 +7762,32 @@
                     dom.userStreakText.innerText = `🔥 ${profile.streak || 0} Wins`;
                     updateStreakMultiplier(profile.streak || 0);
                 }
+
+                // Update logout/login button text and style
+                updateAuthButton();
             }
+
+        /**
+         * Updates the auth button text and style based on login state
+         */
+        function updateAuthButton() {
+            const authBtn = document.getElementById('logout-or-login-btn');
+            const authText = document.getElementById('logout-or-login-text');
+            
+            if (!authBtn || !authText) return;
+
+            if (currentUserId && !isGuestMode) {
+                // User is logged in - show logout button
+                authText.textContent = 'Log Out';
+                authBtn.style.borderColor = '#EF4444';
+                authBtn.style.color = '#F87171';
+            } else {
+                // User is guest - show sign in button
+                authText.textContent = 'Sign In';
+                authBtn.style.borderColor = '#38BDF8';
+                authBtn.style.color = '#38BDF8';
+            }
+        }
 
         /**
          * Handles the tab switching on the profile screen (Active, History, Assets).
@@ -7793,7 +7832,10 @@
             else if (tabName === 'assets') { 
                 renderAssetsContent(); 
 
-              if(dom.logoutButtonContainer) dom.logoutButtonContainer.classList.remove('hidden');
+                if(dom.logoutButtonContainer) {
+                    dom.logoutButtonContainer.classList.remove('hidden');
+                    updateAuthButton(); // Update button text/style when showing
+                }
             } 
         }
 
@@ -12739,8 +12781,7 @@ ${historyText}`;
          * Load and display social feed posts
          */
         window.loadSocialFeed = async () => {
-            if (!currentUserId) return;
-
+            // Guest mode allowed - can view feed without auth
             const container = document.getElementById('social-feed-container');
             
             // Clean up old listener
@@ -13049,8 +13090,7 @@ ${historyText}`;
          * Load leaderboard in social tab
          */
         window.loadSocialLeaderboard = async () => {
-            if (!currentUserId) return;
-
+            // Guest mode allowed - can view leaderboard without auth
             const { collection, query, orderBy, limit, getDocs } = window.firebase.firestore;
             
             try {
@@ -13070,34 +13110,48 @@ ${historyText}`;
                 });
 
                 // Find current user's rank
-                const userRank = rankings.findIndex(r => r.userId === currentUserId) + 1;
                 const userRankPanel = document.getElementById('social-user-rank-panel');
                 
-                if (userRank > 0) {
-                    const userData = rankings[userRank - 1];
-                    const medal = userRank === 1 ? '🥇' : userRank === 2 ? '🥈' : userRank === 3 ? '🥉' : '';
+                // Check if user is logged in
+                if (!currentUserId || isGuestMode) {
+                    // Guest mode - prompt to sign in
                     userRankPanel.innerHTML = `
-                        <div class="flex items-center justify-between border-2 border-sky-400/30 rounded-2xl">
-                            <div class="flex items-center gap-3">
-                                <div class="text-2xl font-bold ${userRank <= 3 ? 'text-yellow-400' : 'text-sky-400'} w-12 text-center">
-                                    ${medal || '#' + userRank}
-                                </div>
-                                <img src="${userData.avatarUrl || LOGO_URL}" class="w-12 h-12 rounded-full border-2 border-sky-400" alt="Your Avatar">
-                                <div>
-                                    <p class="text-sm text-gray-400">Your Rank</p>
-                                    <p class="font-semibold text-white">${sanitizeHTML(userData.displayName)}</p>
-                                </div>
-                            </div>
-                            <div class="text-right pr-4">
-                                <p class="text-2xl font-bold text-yellow-400">${userData.xp || 0} XP</p>
-                                <p class="text-xs text-gray-500">Total Points</p>
-                            </div>
+                        <div class="text-center p-6 border-2 border-sky-400/30 rounded-2xl">
+                            <p class="text-gray-400 mb-3">Sign in to join the leaderboard!</p>
+                            <button onclick="showScreen('login-screen')" class="btn btn-primary px-6 py-2">
+                                Sign In
+                            </button>
                         </div>
                     `;
                 } else {
-                    userRankPanel.innerHTML = `
-                        <p class="text-gray-400 text-center">Participate in predictions to join the leaderboard!</p>
-                    `;
+                    const userRank = rankings.findIndex(r => r.userId === currentUserId) + 1;
+                    
+                    if (userRank > 0) {
+                        const userData = rankings[userRank - 1];
+                        const medal = userRank === 1 ? '🥇' : userRank === 2 ? '🥈' : userRank === 3 ? '🥉' : '';
+                        userRankPanel.innerHTML = `
+                            <div class="flex items-center justify-between border-2 border-sky-400/30 rounded-2xl">
+                                <div class="flex items-center gap-3">
+                                    <div class="text-2xl font-bold ${userRank <= 3 ? 'text-yellow-400' : 'text-sky-400'} w-12 text-center">
+                                        ${medal || '#' + userRank}
+                                    </div>
+                                    <img src="${userData.avatarUrl || LOGO_URL}" class="w-12 h-12 rounded-full border-2 border-sky-400" alt="Your Avatar">
+                                    <div>
+                                        <p class="text-sm text-gray-400">Your Rank</p>
+                                        <p class="font-semibold text-white">${sanitizeHTML(userData.displayName)}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right pr-4">
+                                    <p class="text-2xl font-bold text-yellow-400">${userData.xp || 0} XP</p>
+                                    <p class="text-xs text-gray-500">Total Points</p>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        userRankPanel.innerHTML = `
+                            <p class="text-gray-400 text-center">Participate in predictions to join the leaderboard!</p>
+                        `;
+                    }
                 }
 
                 // Render rankings
