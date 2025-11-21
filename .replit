@@ -33,6 +33,10 @@ localPort = 42969
 externalPort = 3003
 
 [[ports]]
+localPort = 45309
+externalPort = 6800
+
+[[ports]]
 localPort = 46419
 externalPort = 4200
 
@@ -56,10 +60,6 @@ author = "agent"
 task = "workflow.run"
 args = "Start Predora Server"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Start Predora Frontend"
-
 [[workflows.workflow]]
 name = "Start Predora Server"
 author = "agent"
@@ -71,17 +71,5 @@ outputType = "console"
 task = "shell.exec"
 args = "cd server && node index.js"
 waitForPort = 3001
-
-[[workflows.workflow]]
-name = "Start Predora Frontend"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm run dev"
-waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 

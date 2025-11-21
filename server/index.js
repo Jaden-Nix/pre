@@ -11,6 +11,7 @@ import admin from 'firebase-admin';
 import OpenAI from 'openai';
 import sgMail from '@sendgrid/mail';
 import { AutoPayoutJob } from './auto-payout-job.js';
+import { CustodialWalletService } from './custodial-wallet-service.js';
 
 // --- Constants ---
 const __filename = fileURLToPath(import.meta.url);
@@ -105,6 +106,15 @@ async function getSendGridClient() {
 
 // OTP storage (in-memory for simplicity, could use Redis or Firebase)
 const otpStore = new Map();
+
+// Initialize custodial wallet service
+let custodialWalletService = null;
+if (db) {
+    custodialWalletService = new CustodialWalletService(db);
+    console.log("✅ Custodial Wallet Service initialized");
+} else {
+    console.warn("⚠️  Custodial Wallet Service not available (Firebase required)");
+}
 
 const app = express();
 
@@ -268,7 +278,8 @@ async function checkSybilBehavior(userId, userMarkets, timeWindow = 3600000) {
 
 // --- ROUTES ---
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'index.html'));
+    // Redirect to app.html (main frontend)
+    res.redirect('/app');
 });
 
 app.get('/pitch-deck', (req, res) => {
@@ -352,11 +363,78 @@ app.post('/api/verify-otp', async (req, res) => {
     const crypto = await import('crypto');
     const userId = crypto.createHash('sha256').update(email.toLowerCase()).digest('hex').substring(0, 16);
     
+    if (custodialWalletService) {
+        const walletResult = await custodialWalletService.createWallet(userId);
+        if (walletResult.success) {
+            console.log(`🔑 Auto-created custodial wallet for user ${userId}: ${walletResult.address}`);
+        }
+    }
+    
     res.status(200).json({ 
         success: true, 
         userId: userId,
         email: email
     });
+});
+
+app.post('/api/custodial-wallet/create', async (req, res) => {
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    if (!custodialWalletService) {
+        return res.status(503).json({ error: 'Custodial wallet service unavailable' });
+    }
+    
+    const result = await custodialWalletService.createWallet(userId);
+    
+    if (result.success) {
+        res.status(200).json(result);
+    } else {
+        res.status(400).json(result);
+    }
+});
+
+app.post('/api/custodial-wallet/info', async (req, res) => {
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    if (!custodialWalletService) {
+        return res.status(503).json({ error: 'Custodial wallet service unavailable' });
+    }
+    
+    const result = await custodialWalletService.getWallet(userId);
+    
+    if (result.success) {
+        res.status(200).json(result);
+    } else {
+        res.status(404).json(result);
+    }
+});
+
+app.post('/api/custodial-wallet/balance', async (req, res) => {
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    if (!custodialWalletService) {
+        return res.status(503).json({ error: 'Custodial wallet service unavailable' });
+    }
+    
+    const result = await custodialWalletService.getBalance(userId);
+    
+    if (result.success) {
+        res.status(200).json(result);
+    } else {
+        res.status(400).json(result);
+    }
 });
 
 // --- NEW HELPER: Retry Logic for 503 Errors ---
