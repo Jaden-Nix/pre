@@ -13432,49 +13432,49 @@ ${historyText}`;
             try {
                 const { collection, addDoc, serverTimestamp } = window.firebase.firestore;
                 
-                let displayName = userProfile?.displayName || '@User';
+                let displayName = userProfile?.displayName || 'Anonymous User';
                 let avatarUrl = userProfile?.avatarUrl || LOGO_URL;
 
                 const postData = {
                     userId: currentUserId,
                     displayName: displayName,
                     avatarUrl: avatarUrl,
-                    content: content,
-                    reactions: {
-                        like: [],
-                        heart: [],
-                        fire: [],
-                        rocket: []
-                    },
+                    content: content || '',
                     commentCount: 0,
                     timestamp: serverTimestamp()
                 };
 
                 // Add attached market if present
-                if (attachedMarket) {
-                    postData.attachedMarket = attachedMarket;
+                if (attachedMarket && attachedMarket.marketId) {
+                    postData.attachedMarket = {
+                        marketId: attachedMarket.marketId,
+                        title: attachedMarket.title || '',
+                        stance: attachedMarket.stance || 'YES',
+                        category: attachedMarket.category || 'General'
+                    };
                 }
 
-                // Add attached image if present - compress before saving
+                // Add attached image if present - skip compression to avoid size issues
                 if (attachedImage) {
-                    try {
-                        const compressedImage = await compressImage(attachedImage);
-                        postData.imageUrl = compressedImage;
-                    } catch (e) {
-                        console.warn('Could not compress image, using original', e);
+                    // Only add small images to avoid Firestore size limits
+                    if (attachedImage.length < 500000) {
                         postData.imageUrl = attachedImage;
                     }
                 }
 
+                console.log('Submitting post data:', postData);
                 await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION), postData);
 
                 showToast('Post created successfully!', 'success');
                 closeCreatePost();
                 removePostImage();
+                attachedMarket = null;
                 loadSocialFeed();
             } catch (error) {
                 console.error('Error creating post:', error);
-                showToast('Failed to create post. Please try again.', 'error');
+                console.error('Error code:', error.code);
+                console.error('Error message:', error.message);
+                showToast('Failed to create post: ' + (error.message || 'Unknown error'), 'error');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Post';
@@ -13488,7 +13488,7 @@ ${historyText}`;
             if (!currentUserId) return;
 
             try {
-                const { doc: firestoreDoc, getDoc, updateDoc, arrayUnion, arrayRemove } = window.firebase.firestore;
+                const { doc: firestoreDoc, getDoc, updateDoc, arrayUnion, arrayRemove, setDoc } = window.firebase.firestore;
                 
                 const postRef = firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION, postId);
                 const postDoc = await getDoc(postRef);
@@ -13504,7 +13504,10 @@ ${historyText}`;
                         [`reactions.${reactionType}`]: arrayRemove(currentUserId)
                     });
                 } else {
-                    // Add reaction
+                    // Add reaction - initialize field if it doesn't exist
+                    if (!reactions[reactionType]) {
+                        reactions[reactionType] = [];
+                    }
                     await updateDoc(postRef, {
                         [`reactions.${reactionType}`]: arrayUnion(currentUserId)
                     });
