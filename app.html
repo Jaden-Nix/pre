@@ -4707,7 +4707,10 @@
                     const response = await fetch('/api/privy/config');
                     const { appId } = await response.json();
                     
-                    const { Privy, LocalStorage } = await import('https://cdn.jsdelivr.net/npm/@privy-io/js-sdk-core@latest/+esm');
+                    // Import Privy SDK from CDN (Privy is default export, LocalStorage is named export)
+                    const privyModule = await import('https://cdn.jsdelivr.net/npm/@privy-io/js-sdk-core@0.54.2/+esm');
+                    const Privy = privyModule.default;
+                    const { LocalStorage } = privyModule;
                     
                     window.privyClient = new Privy({
                         appId: appId,
@@ -4715,31 +4718,25 @@
                     });
                     
                     // Setup embedded wallet iframe with secure message handling
+                    const iframeUrl = window.privyClient.embeddedWallet.getURL();
                     const iframe = document.createElement('iframe');
-                    iframe.src = 'https://auth.privy.io';
+                    iframe.src = iframeUrl;
                     iframe.style.display = 'none';
                     document.body.appendChild(iframe);
                     
                     iframe.onload = () => {
-                        window.privyClient.embeddedWallet.setMessagePoster(iframe.contentWindow);
-                        const iframeHandler = window.privyClient.embeddedWallet.getMessageHandler();
+                        // Set message poster for Privy to communicate with iframe
+                        window.privyClient.setMessagePoster(iframe.contentWindow);
                         
                         // Secure message handler with origin and source validation
                         const secureMessageHandler = (event) => {
-                            // Validate origin matches Privy's auth domain
-                            if (event.origin !== 'https://auth.privy.io') {
-                                console.warn('Rejected postMessage from unauthorized origin:', event.origin);
-                                return;
-                            }
-                            
                             // Validate source matches our iframe
                             if (event.source !== iframe.contentWindow) {
-                                console.warn('Rejected postMessage from unauthorized source');
-                                return;
+                                return; // Silently ignore messages from other sources
                             }
                             
-                            // Only process messages from trusted Privy iframe
-                            iframeHandler(event.data);
+                            // Process message from Privy iframe
+                            window.privyClient.embeddedWallet.onMessage(event.data);
                         };
                         
                         window.addEventListener('message', secureMessageHandler);
