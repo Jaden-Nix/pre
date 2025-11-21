@@ -118,18 +118,16 @@ if (db) {
     console.warn("⚠️  Custodial Wallet Service not available (Firebase required)");
 }
 
-// TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
-// Initialize Biconomy AA service - DISABLED FOR DEMO
+// Re-enabled Biconomy AA service for hybrid mode
 let biconomyAAService = null;
-/*
 const BICONOMY_PAYMASTER_API_KEY = process.env.BICONOMY_PAYMASTER_API_KEY;
 if (BICONOMY_PAYMASTER_API_KEY) {
     biconomyAAService = new BiconomyAAService(BICONOMY_PAYMASTER_API_KEY);
+    console.log("✅ Biconomy AA Service initialized");
 } else {
     console.warn("⚠️  Biconomy AA Service not available (missing BICONOMY_PAYMASTER_API_KEY)");
+    console.log("   Wallet users will pay gas fees directly");
 }
-*/
-console.log("ℹ️  Biconomy AA Service disabled for hackathon demo");
 
 const app = express();
 
@@ -511,14 +509,8 @@ app.post('/api/custodial-wallet/execute-transaction', async (req, res) => {
     }
 });
 
-// TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
+// Re-enabled for hybrid mode - wallet users get blockchain, email users get Firestore
 app.post('/api/aa/place-bet', async (req, res) => {
-    // Blockchain features temporarily disabled for hackathon demo
-    return res.status(503).json({
-        success: false,
-        error: 'Blockchain features temporarily disabled for hackathon demo. Please use the Firestore-only betting flow.'
-    });
-    /* ORIGINAL CODE - DISABLED FOR DEMO
     const { userId, marketId, pick, amount } = req.body;
     
     if (!userId || !marketId || pick === undefined || !amount) {
@@ -526,13 +518,19 @@ app.post('/api/aa/place-bet', async (req, res) => {
     }
     
     if (!custodialWalletService || !biconomyAAService) {
-        return res.status(503).json({ error: 'Required services unavailable' });
+        // If blockchain services not available, fall back to Firestore-only betting
+        console.log('⚠️ Blockchain services unavailable, using Firestore fallback');
+        return res.status(503).json({ 
+            error: 'Biconomy service not available. Please configure BICONOMY_PAYMASTER_API_KEY or use external wallet.',
+            fallbackAvailable: true 
+        });
     }
     
     try {
         const wallet = await custodialWalletService.loadWalletSigner(userId);
         
-        const contractAddress = '0x7AB69aA7543e9ae43b5D01c5622868392252EAAd';
+        // Updated contract address for BSC Testnet deployment
+        const contractAddress = '0xdaAf91610e33355c9Cd9258219C6A4822E693f55';
         const abi = [
             'function placeBet(uint256 _marketId, bool _pick) external payable'
         ];
@@ -565,17 +563,10 @@ app.post('/api/aa/place-bet', async (req, res) => {
         console.error('Error placing AA bet:', error);
         res.status(500).json({ error: error.message });
     }
-    */
 });
 
-// TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
+// Re-enabled for hybrid mode
 app.post('/api/aa/smart-account-address', async (req, res) => {
-    // Blockchain features temporarily disabled for hackathon demo
-    return res.status(503).json({
-        success: false,
-        error: 'Blockchain features temporarily disabled for hackathon demo. Wallet addresses are mock only.'
-    });
-    /* ORIGINAL CODE - DISABLED FOR DEMO
     const { userId } = req.body;
     
     if (!userId) {
@@ -595,7 +586,6 @@ app.post('/api/aa/smart-account-address', async (req, res) => {
         console.error('Error getting smart account address:', error);
         res.status(500).json({ error: error.message });
     }
-    */
 });
 
 // Biconomy gasless transaction endpoint for custodial wallets
