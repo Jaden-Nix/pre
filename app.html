@@ -4127,21 +4127,27 @@
         // === WEB3 SERVICE LAYER ===
         
         /**
-         * Connects to user's Web3 wallet (MetaMask, etc.)
+         * LEGACY: Connects to user's Web3 wallet
+         * DEPRECATED: Use connectWeb3Wallet() from multi-wallet modal instead
+         * Kept for backwards compatibility with existing code
          */
         async function connectWallet() {
             try {
-                if (typeof window.ethereum === 'undefined') {
-                    showToast('Please install MetaMask to use Web3 features!', 'error');
-                    return null;
+                // Use the web3Provider if already set (from multi-wallet connection)
+                if (!web3Provider) {
+                    if (typeof window.ethereum === 'undefined') {
+                        showToast('Please connect a wallet using the wallet selector', 'error');
+                        return null;
+                    }
+                    web3Provider = window.ethereum;
                 }
 
-                // Request account access
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                // Request account access from the active provider
+                const accounts = await web3Provider.request({ method: 'eth_requestAccounts' });
                 userWalletAddress = accounts[0];
 
-                // Initialize ethers provider
-                ethersProvider = new ethers.providers.Web3Provider(window.ethereum);
+                // Initialize ethers provider from the active provider
+                ethersProvider = new ethers.providers.Web3Provider(web3Provider);
                 signer = ethersProvider.getSigner();
 
                 // Get current network
@@ -4178,10 +4184,14 @@
 
         /**
          * Switches to BSC Testnet or opBNB Testnet
+         * Uses the active web3Provider (supports all wallet types)
          */
         async function switchNetwork(networkKey) {
-            if (!window.ethereum) {
-                showToast('MetaMask not detected!', 'error');
+            // Use active provider, fallback to window.ethereum if no provider set
+            const provider = web3Provider || (typeof window.ethereum !== 'undefined' ? window.ethereum : null);
+            
+            if (!provider) {
+                showToast('No wallet provider detected. Please connect a wallet first.', 'error');
                 return false;
             }
 
@@ -4192,7 +4202,7 @@
             }
 
             try {
-                await window.ethereum.request({
+                await provider.request({
                     method: 'wallet_switchEthereumChain',
                     params: [{ chainId: network.chainId }],
                 });
@@ -4204,7 +4214,7 @@
                 // Network doesn't exist, add it
                 if (switchError.code === 4902) {
                     try {
-                        await window.ethereum.request({
+                        await provider.request({
                             method: 'wallet_addEthereumChain',
                             params: [network],
                         });
