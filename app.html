@@ -2383,7 +2383,15 @@
                                 😀
                             </div>
                             <h1 id="profile-display-name" class="text-2xl lg:text-3xl font-bold text-white">...</h1>
-                            <p id="profile-wallet-address" class="text-sm lg:text-base text-gray-400 mt-2">Connecting wallet...</p>
+                            <div class="flex items-center gap-2 mt-2">
+                                <button id="profile-wallet-address" onclick="copyWalletAddress()" class="text-sm lg:text-base text-gray-400 hover:text-sky-400 transition-colors duration-200 cursor-pointer flex items-center gap-1" title="Click to copy wallet address">
+                                    <span id="wallet-address-text">Connecting wallet...</span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                    </svg>
+                                </button>
+                                <span id="custodial-wallet-badge" class="badge badge-blue hidden">🔐 Custodial</span>
+                            </div>
 
                             <!-- Follower Count - Clickable -->
                             <button onclick="handleProfileTab('networking'); handleNetworkingTab('followers');" class="mt-2 px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 transition-all duration-200 border border-white/10">
@@ -4967,7 +4975,6 @@
                 }
 
                 showLoadingOverlay(false);
-                showToast("Welcome to Predora!", "success");
 
             } catch (error) {
                 console.error('Error completing authentication:', error);
@@ -4981,9 +4988,29 @@
          * This creates an encrypted wallet on the backend with gasless transactions.
          * Private keys are NEVER exposed to the client - stored encrypted in Firebase.
          */
-        async function generateBSCWallet(userId) {
+        async function generateBSCWallet(userId, retryCount = 0) {
+            const MAX_RETRIES = 2;
+            
             try {
-                console.log('🔑 Creating custodial wallet for user:', userId);
+                console.log('🔑 Setting up custodial wallet for user:', userId);
+                
+                // First, try to fetch existing wallet
+                try {
+                    const fetchResponse = await fetch(`/api/custodial-wallet/get?userId=${userId}`);
+                    if (fetchResponse.ok) {
+                        const existingWallet = await fetchResponse.json();
+                        if (existingWallet && existingWallet.address) {
+                            console.log('✅ Retrieved existing custodial wallet:', existingWallet.address);
+                            return {
+                                address: existingWallet.address,
+                                isSmartWallet: true,
+                                custodial: true
+                            };
+                        }
+                    }
+                } catch (fetchError) {
+                    console.log('No existing wallet found, creating new one...');
+                }
                 
                 // Call backend to create encrypted custodial wallet
                 const response = await fetch('/api/custodial-wallet/create', {
@@ -4999,6 +5026,10 @@
 
                 const data = await response.json();
                 
+                if (!data || !data.address) {
+                    throw new Error('Invalid wallet data received from server');
+                }
+                
                 console.log('✅ Custodial Wallet created:', data.address);
                 console.log('   Private key encrypted and stored securely on backend');
                 console.log('   Account Abstraction enabled for gasless transactions');
@@ -5009,7 +5040,15 @@
                     custodial: true
                 };
             } catch (error) {
-                console.error('❌ Error creating custodial wallet:', error);
+                console.error('❌ Error setting up custodial wallet:', error);
+                
+                // Retry logic for network failures
+                if (retryCount < MAX_RETRIES && (error.message.includes('Failed to fetch') || error.message.includes('network'))) {
+                    console.log(`Retrying wallet creation... (${retryCount + 1}/${MAX_RETRIES})`);
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+                    return generateBSCWallet(userId, retryCount + 1);
+                }
+                
                 throw error; // Let completeAuthentication handle the error
             }
         }
@@ -5071,7 +5110,13 @@
                             showToast("Account created successfully! Welcome to Predora! 🎉", "success");
                         } catch (createError) {
                             console.error('Account creation error:', createError.code, createError.message);
-                            // If account creation also fails, it means wrong password on existing account
+                            // If email already exists, it means the user entered wrong password for existing account
+                            if (createError.code === 'auth/email-already-in-use') {
+                                const wrongPasswordError = new Error("Incorrect password");
+                                wrongPasswordError.code = 'auth/wrong-password';
+                                throw wrongPasswordError;
+                            }
+                            // Otherwise, throw the original error
                             throw createError;
                         }
                     } else {
@@ -6509,7 +6554,23 @@
 
                 // --- Original Profile Logic ---
                 dom.profileDisplayName.innerText = profile.displayName || '...';
-                dom.profileWalletAddress.innerText = truncateAddress(profile.walletAddress) || "No wallet connected";
+                
+                // Update wallet address with proper handling
+                const walletAddressText = document.getElementById('wallet-address-text');
+                const custodialBadge = document.getElementById('custodial-wallet-badge');
+                if (walletAddressText) {
+                    walletAddressText.innerText = truncateAddress(profile.walletAddress) || "No wallet connected";
+                    // Store full address for copying
+                    walletAddressText.setAttribute('data-full-address', profile.walletAddress || '');
+                }
+                
+                // Show custodial wallet badge if applicable
+                if (custodialBadge && profile.walletAddress && profile.isSmartWallet) {
+                    custodialBadge.classList.remove('hidden');
+                } else if (custodialBadge) {
+                    custodialBadge.classList.add('hidden');
+                }
+                
                 dom.profileXpBadge.innerText = `${profile.xp.toLocaleString()} XP`;
                 dom.mockBalance.innerText = `$${profile.balance.toFixed(2)}`;
                 // Fetch actual rank from leaderboard
@@ -6592,10 +6653,15 @@
                 }
             }
 
-            const walletStatus = userWalletAddress ? 
+            // Check for both Web3 wallet and custodial wallet
+            const hasWallet = userWalletAddress || userProfile.walletAddress;
+            const displayAddress = userWalletAddress || userProfile.walletAddress;
+            const isCustodial = userProfile.isSmartWallet && !userWalletAddress;
+            
+            const walletStatus = hasWallet ? 
                 `<div class="mb-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
-                    <p class="text-sm text-green-400">✓ Connected: ${truncateAddress(userWalletAddress)}</p>
-                    <p class="text-xs text-gray-400 mt-1">BSC Testnet (ChainID: 97)</p>
+                    <p class="text-sm text-green-400">✓ ${isCustodial ? 'Custodial Wallet' : 'Connected'}: ${truncateAddress(displayAddress)}</p>
+                    <p class="text-xs text-gray-400 mt-1">${isCustodial ? '🔐 Secure custodial wallet • BSC Testnet' : 'BSC Testnet (ChainID: 97)'}</p>
                 </div>` : 
                 `<div class="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                     <p class="text-sm text-yellow-400">⚠ No wallet connected</p>
@@ -6606,7 +6672,7 @@
                 <div class="ui-panel p-4">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-base font-semibold gradient-text">BNB Testnet Wallet</h3>
-                        ${userWalletAddress ? `<button onclick="updateRealBNBBalance()" class="text-xs px-3 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-400 border border-sky-500/30 transition-all">
+                        ${hasWallet && !isCustodial ? `<button onclick="updateRealBNBBalance()" class="text-xs px-3 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-400 border border-sky-500/30 transition-all">
                             <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             Refresh
                         </button>` : ''}
@@ -6617,7 +6683,7 @@
                             <div class="flex items-center">
                                 <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1839.png" class="w-10 h-10 rounded-full mr-3" alt="BNB">
                                 <div>
-                                    <p class="font-semibold theme-text-primary">BNB ${userWalletAddress ? '(Testnet)' : '(Mock)'}</p>
+                                    <p class="font-semibold theme-text-primary">BNB ${hasWallet ? '(Testnet)' : '(Mock)'}</p>
                                     <p class="text-sm theme-text-secondary">Binance Coin</p>
                                 </div>
                             </div>
@@ -10498,6 +10564,27 @@ ${historyText}`;
 
 
         /**
+         * Copy wallet address to clipboard
+         */
+        window.copyWalletAddress = async () => {
+            const walletAddressText = document.getElementById('wallet-address-text');
+            const fullAddress = walletAddressText?.getAttribute('data-full-address');
+            
+            if (!fullAddress || fullAddress === 'No wallet connected') {
+                showToast("No wallet address to copy", "error");
+                return;
+            }
+            
+            try {
+                await navigator.clipboard.writeText(fullAddress);
+                showToast("✅ Wallet address copied to clipboard!", "success");
+            } catch (error) {
+                console.error('Failed to copy:', error);
+                showToast("❌ Failed to copy wallet address", "error");
+            }
+        };
+
+        /**
          * Shows the avatar selection modal.
          */
         window.showAvatarModal = () => {
@@ -10552,7 +10639,7 @@ ${historyText}`;
                 // After saving, log them into the app
                 showLoadingOverlay(false);
                 closeAvatarModal();
-                showToast("Avatar saved! Welcome to Predora!", "success");
+                showToast("✅ Avatar saved! Ready to predict!", "success");
 
                 // Attach all data listeners
                 attachDataListeners();
