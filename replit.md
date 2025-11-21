@@ -1,7 +1,58 @@
 # Predora - AI-Native Prediction Market Platform
 
+## 🚨 IMPORTANT: Current Architecture Status (Hackathon Demo Mode)
+
+**As of November 21, 2025 - Temporary Firestore-Only Mode**
+
+For the hackathon demo, ALL blockchain features have been temporarily disabled and the platform operates entirely on Firestore with mock balances. This is a strategic pivot to ensure demo stability, with plans to re-enable blockchain integration post-hackathon/funding.
+
+### Currently DISABLED Features (Code Preserved with TODO Comments):
+- ❌ BSC Testnet/opBNB blockchain integration
+- ❌ Web3 wallet connection (MetaMask, WalletConnect, Web3Modal)
+- ❌ Smart contract interactions (betting, market creation)
+- ❌ On-chain balance fetching (BNB, CAKE)
+- ❌ Custodial wallet generation with blockchain RPC calls
+- ❌ Biconomy Account Abstraction service
+- ❌ Contract event listeners and real-time blockchain updates
+- ❌ Google/X authentication (buttons visible with "Coming Soon" badges)
+
+### Currently ACTIVE Features:
+- ✅ Firestore-only betting system with mock balances (BNB, CAKE)
+- ✅ Email OTP authentication
+- ✅ Demo account login (predorademo@gmail.com / demo1234)
+- ✅ Browse-first UX (no login required to view markets)
+- ✅ AI-powered market generation (Gemini API)
+- ✅ Swarm-Verify Oracle for market resolution
+- ✅ Jury system for dispute resolution
+- ✅ Multi-option markets
+- ✅ Real-time market visualization
+- ✅ TikTok-style Quick Play interface
+
+### Where Blockchain Code is Preserved:
+All blockchain code is commented out with `// TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO` markers in:
+- `app.html`: Lines with wallet connection, smart contract interactions, balance fetchers
+- `server/index.js`: Biconomy AA service initialization and `/api/aa/*` endpoints
+- `server/custodial-wallet-service.js`: Blockchain provider and RPC calls
+
+### Mock Balance System (Firestore-Only):
+- New users get default balances: `bnbBalance: 0.2`, `cakeBalance: 150`
+- All betting deducts from Firestore balance fields
+- All payouts add to Firestore balance fields
+- Mock wallet addresses generated for display: `0x{userId-hash}...`
+- No blockchain RPCs or ethers.js calls during normal operation
+
+### Re-enabling Blockchain (Post-Hackathon):
+To re-enable blockchain features, simply uncomment all `// TODO: BLOCKCHAIN TEMPORARILY DISABLED` sections and:
+1. Restore Web3Modal/WalletConnect script tags in app.html
+2. Uncomment Biconomy AA service initialization in server/index.js
+3. Restore blockchain provider in custodial-wallet-service.js
+4. Re-enable on-chain paths in `stakeMarket()` and `createMarket()`
+5. Restore balance fetchers and event listeners
+
+---
+
 ## Overview
-Predora is an AI-native prediction market platform built on BNB Chain, featuring a TikTok-style "Quick Play" interface and Web3 integration for gasless transactions. Its core purpose is to offer a decentralized and engaging platform for users to predict outcomes. Predora leverages AI for market generation, resolution, and content moderation, alongside a community-driven jury system for dispute resolution. The project aims to create a dynamic, user-friendly prediction market with a focus on real-time engagement and a robust, transparent resolution mechanism.
+Predora is an AI-native prediction market platform originally built on BNB Chain, featuring a TikTok-style "Quick Play" interface. Currently running in Firestore-only demo mode (blockchain temporarily disabled). Its core purpose is to offer a decentralized and engaging platform for users to predict outcomes. Predora leverages AI for market generation, resolution, and content moderation, alongside a community-driven jury system for dispute resolution.
 
 ## User Preferences
 - Vanilla HTML/CSS/JS architecture (original design, not Next.js)

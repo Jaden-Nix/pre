@@ -118,14 +118,18 @@ if (db) {
     console.warn("⚠️  Custodial Wallet Service not available (Firebase required)");
 }
 
-// Initialize Biconomy AA service
+// TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
+// Initialize Biconomy AA service - DISABLED FOR DEMO
 let biconomyAAService = null;
+/*
 const BICONOMY_PAYMASTER_API_KEY = process.env.BICONOMY_PAYMASTER_API_KEY;
 if (BICONOMY_PAYMASTER_API_KEY) {
     biconomyAAService = new BiconomyAAService(BICONOMY_PAYMASTER_API_KEY);
 } else {
     console.warn("⚠️  Biconomy AA Service not available (missing BICONOMY_PAYMASTER_API_KEY)");
 }
+*/
+console.log("ℹ️  Biconomy AA Service disabled for hackathon demo");
 
 const app = express();
 
@@ -507,7 +511,14 @@ app.post('/api/custodial-wallet/execute-transaction', async (req, res) => {
     }
 });
 
+// TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
 app.post('/api/aa/place-bet', async (req, res) => {
+    // Blockchain features temporarily disabled for hackathon demo
+    return res.status(503).json({
+        success: false,
+        error: 'Blockchain features temporarily disabled for hackathon demo. Please use the Firestore-only betting flow.'
+    });
+    /* ORIGINAL CODE - DISABLED FOR DEMO
     const { userId, marketId, pick, amount } = req.body;
     
     if (!userId || !marketId || pick === undefined || !amount) {
@@ -554,9 +565,17 @@ app.post('/api/aa/place-bet', async (req, res) => {
         console.error('Error placing AA bet:', error);
         res.status(500).json({ error: error.message });
     }
+    */
 });
 
+// TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
 app.post('/api/aa/smart-account-address', async (req, res) => {
+    // Blockchain features temporarily disabled for hackathon demo
+    return res.status(503).json({
+        success: false,
+        error: 'Blockchain features temporarily disabled for hackathon demo. Wallet addresses are mock only.'
+    });
+    /* ORIGINAL CODE - DISABLED FOR DEMO
     const { userId } = req.body;
     
     if (!userId) {
@@ -576,6 +595,7 @@ app.post('/api/aa/smart-account-address', async (req, res) => {
         console.error('Error getting smart account address:', error);
         res.status(500).json({ error: error.message });
     }
+    */
 });
 
 // Biconomy gasless transaction endpoint for custodial wallets
