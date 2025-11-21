@@ -4926,7 +4926,7 @@
         /**
          * Opens the Privy login modal with slide-up animation
          */
-        function openPrivyModal(provider) {
+        window.openPrivyModal = function openPrivyModal(provider) {
             if (!window.privyClient) {
                 showToast('Authentication service not ready. Please refresh the page.', 'error');
                 return;
@@ -4959,7 +4959,7 @@
         /**
          * Closes the Privy modal with slide-down animation
          */
-        function closePrivyModal() {
+        window.closePrivyModal = function closePrivyModal() {
             const modal = document.getElementById('privy-modal');
             const modalContent = document.getElementById('privy-modal-content');
             
@@ -4981,7 +4981,7 @@
         /**
          * Shows specific step in the Privy modal
          */
-        function showPrivyStep(step) {
+        window.showPrivyStep = function showPrivyStep(step) {
             // Hide all steps
             document.getElementById('privy-email-step').classList.add('hidden');
             document.getElementById('privy-otp-step').classList.add('hidden');
@@ -5003,7 +5003,7 @@
         /**
          * Setup OAuth button with provider-specific styling
          */
-        function setupOAuthButton(provider) {
+        window.setupOAuthButton = function setupOAuthButton(provider) {
             const button = document.getElementById('privy-oauth-button');
             const icon = document.getElementById('privy-oauth-icon');
             const text = document.getElementById('privy-oauth-text');
@@ -5020,7 +5020,7 @@
         /**
          * Sends email verification code via Privy
          */
-        async function sendPrivyEmailCode() {
+        window.sendPrivyEmailCode = async function sendPrivyEmailCode() {
             const email = document.getElementById('privy-email-input').value.trim();
             
             if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -5055,7 +5055,7 @@
         /**
          * Verifies OTP and completes email login
          */
-        async function verifyPrivyOTP() {
+        window.verifyPrivyOTP = async function verifyPrivyOTP() {
             const otp = document.getElementById('privy-otp-input').value.trim();
             
             if (!otp || otp.length !== 6) {
@@ -5088,7 +5088,7 @@
         /**
          * Initiates OAuth login flow
          */
-        async function initiatePrivyOAuth() {
+        window.initiatePrivyOAuth = async function initiatePrivyOAuth() {
             if (!currentPrivyProvider) return;
             
             showPrivyStep('loading');
