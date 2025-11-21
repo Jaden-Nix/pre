@@ -15138,6 +15138,12 @@ ${historyText}`;
          * Toggles the follow/unfollow status for a user.
          */
         async function toggleFollow() {
+            // Check if user is authenticated
+            if (!currentUserId || isGuestMode) {
+                showToast("Please sign in to follow users", "info");
+                return;
+            }
+            
             const { doc, getDoc, setDoc, deleteDoc, serverTimestamp, writeBatch } = window.firebase.firestore;
             const targetUserId = dom.followBtn.dataset.targetUserId;
             const targetUserName = dom.followBtn.dataset.targetUserName || "user";
