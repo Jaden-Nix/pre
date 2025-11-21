@@ -7,29 +7,28 @@ async function main() {
   
   // Get deployer account
   const [deployer] = await hre.ethers.getSigners();
-  console.log("Deploying with account:", deployer.address);
+  console.log("Deploying with account:", await deployer.getAddress());
   
   // Get account balance
-  const balance = await deployer.getBalance();
-  console.log("Account balance:", hre.ethers.utils.formatEther(balance), "BNB");
+  const balance = await hre.ethers.provider.getBalance(deployer.address);
+  console.log("Account balance:", hre.ethers.formatEther(balance), "BNB");
   
   // Deploy contract
   const PredictionMarket = await hre.ethers.getContractFactory("PredictionMarket");
   const contract = await PredictionMarket.deploy();
   
-  await contract.deployed();
+  await contract.waitForDeployment();
   
-  console.log("✅ PredictionMarket deployed to:", contract.address);
+  const contractAddress = await contract.getAddress();
+  console.log("✅ PredictionMarket deployed to:", contractAddress);
   
   // Save deployment info
   const deploymentInfo = {
     network: "BSC Testnet",
     chainId: 97,
-    contractAddress: contract.address,
-    deployer: deployer.address,
-    deployedAt: new Date().toISOString(),
-    blockNumber: contract.deployTransaction.blockNumber,
-    transactionHash: contract.deployTransaction.hash
+    contractAddress: contractAddress,
+    deployer: await deployer.getAddress(),
+    deployedAt: new Date().toISOString()
   };
   
   const deploymentPath = path.join(__dirname, "../deployment-info.json");
@@ -42,14 +41,11 @@ async function main() {
   fs.writeFileSync(abiPath, JSON.stringify(artifact.abi, null, 2));
   console.log("📝 ABI saved to:", abiPath);
   
-  console.log("\n⏳ Waiting for block confirmations...");
-  await contract.deployTransaction.wait(5);
-  
   console.log("\n✅ Contract verified and ready!");
   console.log("\nNext steps:");
-  console.log("1. Update app.html with contract address:", contract.address);
+  console.log("1. Update app.html with contract address:", contractAddress);
   console.log("2. Verify on BSCScan:");
-  console.log(`   npx hardhat verify --network bscTestnet ${contract.address}`);
+  console.log(`   npx hardhat verify --network bscTestnet ${contractAddress}`);
   console.log("3. Fund the contract with testnet BNB if needed");
   console.log("4. Test contract interaction from frontend");
 }
