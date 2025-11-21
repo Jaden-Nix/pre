@@ -43,6 +43,9 @@ contract PredictionMarket {
     mapping(address => uint256[]) public userBets;
     mapping(uint256 => mapping(address => uint256)) public userBetIndex;
     
+    // Payout tracking: marketId => user address => has been paid out
+    mapping(uint256 => mapping(address => bool)) public hasReceivedPayout;
+    
     // Platform fee (1% = 100 basis points)
     uint256 public platformFeeBps = 100;
     address public platformFeeRecipient;
@@ -191,14 +194,17 @@ contract PredictionMarket {
         uint256 platformFee = (losingPool * platformFeeBps) / 10000;
         uint256 payoutPool = market.totalVolume - platformFee;
         
-        // Track paid-out users to avoid duplicate payouts
-        mapping(address => bool) storage paidOutUsers;
+        // Prevent division by zero
+        if (winningPool == 0) {
+            return;
+        }
         
+        // Distribute to all winners, tracking to avoid duplicate payouts
         for (uint256 i = 0; i < bets.length; i++) {
-            if (bets[i].pick == market.outcome && !bets[i].claimed && !paidOutUsers[bets[i].user]) {
+            if (bets[i].pick == market.outcome && !bets[i].claimed && !hasReceivedPayout[_marketId][bets[i].user]) {
                 uint256 payout = (bets[i].amount * payoutPool) / winningPool;
                 bets[i].claimed = true;
-                paidOutUsers[bets[i].user] = true;
+                hasReceivedPayout[_marketId][bets[i].user] = true;
                 
                 (bool success, ) = payable(bets[i].user).call{value: payout}("");
                 require(success, "Payout failed");
