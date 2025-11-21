@@ -838,15 +838,15 @@ async function autoResolveMarkets() {
                     
                     console.log(`✅ SWARM-VERIFY: Complete for "${market.title}" - ${resolution.consensus.outcome} (${resolution.consensus.confidence}%)`);
                     
-                    // Store full evidence in subcollection
-                    if (resolution.success) {
+                    // PATH A: High Confidence (>= 90%) - Auto-resolve with 30-min dispute window
+                    if (resolution.success && !resolution.requiresManualReview) {
                         const evidenceRef = doc.ref.collection('resolutionEvidence').doc('swarm-verify');
                         await evidenceRef.set({
                             ...resolution,
                             createdAt: new Date().toISOString()
                         });
                         
-                        // Update market with consensus
+                        // Update market with consensus - auto-resolve with 30-min dispute window
                         const updateData = {
                             isResolved: true,
                             winningOutcome: resolution.consensus.outcome,
@@ -854,34 +854,48 @@ async function autoResolveMarkets() {
                             resolutionSource: resolution.consensus.sources[0] || null,
                             resolutionSources: resolution.consensus.sources,
                             resolutionConfidence: resolution.consensus.confidence,
-                            resolutionMethod: 'swarm-verify',
+                            resolutionMethod: 'swarm-verify-auto',
                             resolvedAt: new Date().toISOString(),
-                            evidenceHash: resolution.evidence.hash
+                            evidenceHash: resolution.evidence.hash,
+                            resolutionPath: 'A',
+                            disputeWindowEndsAt: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 minutes from now
                         };
                         
                         await doc.ref.update(updateData);
-                        console.log(`ORACLE: ✅ Resolved ${market.title} as ${resolution.consensus.outcome} (Swarm-Verify)`);
+                        console.log(`ORACLE: ✅ PATH A - Auto-resolved "${market.title}" as ${resolution.consensus.outcome} (confidence: ${resolution.consensus.confidence}%)`);
+                        console.log(`ORACLE: 30-minute dispute window started`);
                         continue; // Success - move to next market
-                    } else {
-                        console.log(`⚠️  SWARM-VERIFY: Confidence ${resolution.consensus.confidence}% below threshold ${resolution.consensus.threshold}%`);
+                    } 
+                    
+                    // PATH B: Low Confidence (< 90%) - Flag for manual human review
+                    else if (resolution.requiresManualReview) {
+                        console.log(`⚠️  PATH B - SWARM-VERIFY: Confidence ${resolution.consensus.confidence}% below auto-resolve threshold (${resolution.consensus.autoResolveThreshold}%)`);
                         
-                        // Store evidence but mark as AWAITING_REVIEW
-                        const evidenceRef = doc.ref.collection('resolutionEvidence').doc('swarm-verify-insufficient');
+                        // Store evidence and oracle recommendation
+                        const evidenceRef = doc.ref.collection('resolutionEvidence').doc('swarm-verify-uncertain');
                         await evidenceRef.set({
                             ...resolution,
-                            status: 'INSUFFICIENT_CONFIDENCE',
+                            status: 'PENDING_UNCERTAIN',
+                            uncertaintyReason: resolution.uncertaintyReason,
                             createdAt: new Date().toISOString()
                         });
                         
+                        // Mark market for manual review - DO NOT auto-resolve
                         await doc.ref.update({
-                            resolutionStatus: 'AWAITING_REVIEW',
+                            resolutionStatus: 'PENDING_UNCERTAIN',
                             resolutionAttemptedAt: new Date().toISOString(),
-                            resolutionMethod: 'swarm-verify-pending',
+                            resolutionMethod: 'swarm-verify-uncertain',
                             resolutionConfidence: resolution.consensus.confidence,
-                            requiresManualReview: true
+                            requiresManualReview: true,
+                            uncertaintyReason: resolution.uncertaintyReason,
+                            oracleRecommendation: resolution.consensus.outcome, // Store AI recommendation for admin
+                            resolutionPath: 'B',
+                            flaggedForReview: true
                         });
                         
-                        console.log(`ORACLE: ⏸️  Market "${market.title}" marked for manual review`);
+                        console.log(`ORACLE: ⏸️  PATH B - Market "${market.title}" flagged for manual human review`);
+                        console.log(`ORACLE: Oracle recommendation: ${resolution.consensus.outcome} (confidence: ${resolution.consensus.confidence}%)`);
+                        console.log(`ORACLE: Reason: ${resolution.uncertaintyReason}`);
                         continue;
                     }
                 } catch (swarmError) {
@@ -1505,6 +1519,64 @@ app.post('/api/admin/stats', requireAdmin, async (req, res) => {
 
 app.post('/api/admin/verify', requireAdmin, async (req, res) => {
     res.status(200).json({ valid: true, message: 'Admin authenticated successfully' });
+});
+
+// Enhancement C: Allow jury/admin to request second Swarm run with updated data
+app.post('/api/admin/request-second-swarm', requireAdmin, async (req, res) => {
+    const { marketId, reason } = req.body;
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    try {
+        const marketRef = db.collection(`artifacts/${APP_ID}/public/data/standard_markets`).doc(marketId);
+        const marketSnap = await marketRef.get();
+        
+        if (!marketSnap.exists) {
+            return res.status(404).json({ error: 'Market not found' });
+        }
+        
+        const market = marketSnap.data();
+        
+        console.log(`🔄 Second Swarm run requested for market "${market.title}"`);
+        console.log(`   Reason: ${reason || 'Admin/jury request for updated data'}`);
+        
+        // Run Swarm-Verify with fresh data
+        const resolution = await swarmVerifyResolution(market, {
+            geminiApiKey: GEMINI_API_KEY,
+            geminiUrl: GEMINI_URL
+        });
+        
+        // Store second-pass evidence
+        const evidenceRef = marketRef.collection('resolutionEvidence').doc('swarm-verify-second-run');
+        await evidenceRef.set({
+            ...resolution,
+            requestReason: reason,
+            requestedAt: new Date().toISOString(),
+            isJuryRequested: true
+        });
+        
+        // Update market with new resolution data
+        await marketRef.update({
+            secondSwarmRunCompleted: true,
+            secondSwarmRunAt: new Date().toISOString(),
+            secondSwarmConfidence: resolution.consensus.confidence,
+            secondSwarmOutcome: resolution.consensus.outcome,
+            secondSwarmResolutionPath: resolution.resolutionPath,
+            lastUpdated: new Date().toISOString()
+        });
+        
+        res.status(200).json({
+            success: true,
+            resolution,
+            message: `Second Swarm run completed: ${resolution.consensus.outcome} (${resolution.consensus.confidence}% confidence, Path ${resolution.resolutionPath})`
+        });
+        
+    } catch (error) {
+        console.error('Error running second Swarm:', error);
+        res.status(500).json({ error: error.message });
+    }
 });
 
 app.post('/api/admin/normal-markets', requireAdmin, async (req, res) => {

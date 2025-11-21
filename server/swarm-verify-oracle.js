@@ -19,12 +19,30 @@ import OpenAI from 'openai';
 // ============================================================================
 
 const CONFIG = {
-    CONSENSUS_THRESHOLD: 85, // Minimum confidence % to resolve
+    // Three-tier confidence system:
+    HIGH_CONFIDENCE_THRESHOLD: 90,    // Path A: Auto-resolve (>= 90%)
+    MID_CONFIDENCE_THRESHOLD: 85,     // Path A2: Extended AI review + second pass (85-90%)
+    LOW_CONFIDENCE_THRESHOLD: 85,     // Path B: Manual human review (< 85%)
+    
     AGENT_TIMEOUT_MS: 12000, // 12 seconds per agent
     MAX_RETRIES: 2,
     PARALLEL_MODE: true, // Run agents in parallel (faster but more expensive)
     GEOMETRIC_MEDIAN_MAX_ITERATIONS: 100,
     GEOMETRIC_MEDIAN_TOLERANCE: 1e-6,
+    
+    // Second-pass settings for mid-confidence tier
+    SECOND_PASS_ENABLED: true,
+    SECOND_PASS_TEMPERATURE: 0.1, // Lower temperature for more focused second pass
+    
+    // Multi-model scoring (Enhancement B)
+    MULTI_MODEL_SCORING_ENABLED: true,
+    SCORING_WEIGHTS: {
+        factual: 0.45,       // Fact verification weight
+        consistency: 0.25,    // Internal consistency check
+        timestamp: 0.20,      // Temporal validity
+        sentiment: 0.10       // Bias detection
+    },
+    USE_BLENDED_SCORE: true, // Use weighted blend vs raw consensus
 };
 
 // ============================================================================
@@ -486,6 +504,339 @@ function aggregateConsensus(agentResults) {
 }
 
 // ============================================================================
+// SECOND-PASS AGENT (for mid-confidence tier 85-90%)
+// ============================================================================
+
+/**
+ * Conducts a focused second-pass review for mid-confidence cases
+ * Uses lower temperature and cross-validation prompts
+ */
+async function secondPassReview(market, firstPassResults) {
+    const sanitized = sanitizeMarketData(market);
+    
+    const systemPrompt = `You are a verification agent conducting a SECOND-PASS review for market resolution.
+
+CONTEXT: A first-pass multi-agent consensus reached ${firstPassResults.confidence}% confidence in outcome "${firstPassResults.outcome}".
+This is in the mid-confidence range (85-90%), requiring additional verification.
+
+Your task: Cross-validate the first-pass conclusion with FOCUSED fact-checking.
+
+Rules:
+1. Challenge the first-pass outcome - look for disconfirming evidence
+2. Search for recent updates or developments
+3. Verify temporal accuracy (has the event actually occurred by the resolution date?)
+4. Check for edge cases or technicalities that might change the outcome
+5. Be MORE CRITICAL than first-pass agents
+
+Output format:
+OUTCOME: YES|NO|AMBIGUOUS
+CONFIDENCE: <0-100>
+RATIONALE: <focused analysis>
+CHANGES_DETECTED: <any new evidence vs first pass>`;
+
+    const userPrompt = `Market Title: "${sanitized.title}"
+Description: "${sanitized.description}"
+Resolution Date: ${sanitized.resolutionDate}
+
+FIRST-PASS RESULT: ${firstPassResults.outcome} (${firstPassResults.confidence}% confidence)
+FIRST-PASS RATIONALE: ${firstPassResults.rationale}
+
+Conduct second-pass verification. Be critical and thorough.`;
+
+    const response = await retryWithBackoff(async () => {
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4o',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+            ],
+            temperature: CONFIG.SECOND_PASS_TEMPERATURE,
+            max_completion_tokens: 1200,
+        });
+        return completion;
+    });
+
+    const content = response.choices[0]?.message?.content || '';
+
+    // Parse response
+    const outcomeMatch = content.match(/OUTCOME:\s*(YES|NO|AMBIGUOUS)/i);
+    const confidenceMatch = content.match(/CONFIDENCE:\s*(\d+)/i);
+    const rationaleMatch = content.match(/RATIONALE:\s*(.+?)(?=CHANGES_DETECTED:|$)/is);
+    const changesMatch = content.match(/CHANGES_DETECTED:\s*(.+?)$/is);
+
+    return {
+        agent: 'second-pass-review',
+        outcome: outcomeMatch ? outcomeMatch[1].toUpperCase() : 'AMBIGUOUS',
+        confidence: confidenceMatch ? parseInt(confidenceMatch[1]) : 70,
+        rationale: rationaleMatch ? rationaleMatch[1].trim() : content,
+        changesDetected: changesMatch ? changesMatch[1].trim() : 'None detected',
+        rawResponse: content,
+        timestamp: new Date().toISOString(),
+        isSecondPass: true
+    };
+}
+
+// ============================================================================
+// MULTI-MODEL SCORING SYSTEM (Phase 3.5)
+// ============================================================================
+
+/**
+ * Factual Scorer: Verifies factual accuracy using gpt-4o-mini
+ * Returns score 0-100
+ */
+async function factualScorer(market, consensus) {
+    const sanitized = sanitizeMarketData(market);
+    
+    const prompt = `Verify factual accuracy of this market resolution:
+
+Market: "${sanitized.title}"
+Description: "${sanitized.description}"
+Consensus Outcome: ${consensus.outcome}
+Consensus Rationale: ${consensus.rationale.slice(0, 300)}
+
+Rate factual accuracy (0-100). Consider:
+- Are facts verifiable?
+- Is reasoning sound?
+- Any factual errors?
+
+Output: SCORE: <0-100>
+REASON: <brief explanation>`;
+
+    try {
+        const response = await retryWithBackoff(async () => {
+            const completion = await openai.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.1,
+                max_completion_tokens: 300,
+            });
+            return completion;
+        });
+
+        const content = response.choices[0]?.message?.content || '';
+        const scoreMatch = content.match(/SCORE:\s*(\d+)/i);
+        return scoreMatch ? Math.max(0, Math.min(100, parseInt(scoreMatch[1]))) : 70;
+    } catch (error) {
+        console.warn(`⚠️  Factual scorer failed: ${error.message}`);
+        return 70;
+    }
+}
+
+/**
+ * Consistency Scorer: Checks for internal contradictions
+ * Uses heuristics + short prompt, returns score 0-100
+ */
+async function consistencyScorer(market, consensus) {
+    const sanitized = sanitizeMarketData(market);
+    
+    let heuristicScore = 100;
+    
+    const rationale = consensus.rationale.toLowerCase();
+    const outcome = consensus.outcome;
+    
+    if (outcome === 'YES') {
+        const negativeWords = ['no', 'not', 'false', 'denied', 'failed', 'unsuccessful'];
+        const negCount = negativeWords.reduce((count, word) => 
+            count + (rationale.match(new RegExp(`\\b${word}\\b`, 'g')) || []).length, 0);
+        heuristicScore -= negCount * 8;
+    } else if (outcome === 'NO') {
+        const positiveWords = ['yes', 'confirmed', 'true', 'verified', 'successful', 'achieved'];
+        const posCount = positiveWords.reduce((count, word) => 
+            count + (rationale.match(new RegExp(`\\b${word}\\b`, 'g')) || []).length, 0);
+        heuristicScore -= posCount * 8;
+    }
+    
+    if (consensus.agentVotes) {
+        const totalVotes = Object.values(consensus.agentVotes).reduce((sum, count) => sum + count, 0);
+        const majorityVotes = consensus.agentVotes[outcome] || 0;
+        const agreement = majorityVotes / totalVotes;
+        if (agreement < 0.6) heuristicScore -= 20;
+        else if (agreement < 0.8) heuristicScore -= 10;
+    }
+    
+    const prompt = `Check for contradictions in this reasoning:
+
+Market: "${sanitized.title}"
+Outcome: ${consensus.outcome}
+Rationale: ${consensus.rationale.slice(0, 400)}
+
+Rate consistency (0-100). Look for:
+- Contradictory statements
+- Logic flaws
+- Conflicting evidence
+
+Output: SCORE: <0-100>`;
+
+    try {
+        const response = await retryWithBackoff(async () => {
+            const completion = await openai.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.1,
+                max_completion_tokens: 200,
+            });
+            return completion;
+        });
+
+        const content = response.choices[0]?.message?.content || '';
+        const scoreMatch = content.match(/SCORE:\s*(\d+)/i);
+        const aiScore = scoreMatch ? parseInt(scoreMatch[1]) : 75;
+        
+        const blendedScore = Math.round((heuristicScore * 0.4) + (aiScore * 0.6));
+        return Math.max(0, Math.min(100, blendedScore));
+    } catch (error) {
+        console.warn(`⚠️  Consistency scorer failed: ${error.message}`);
+        return Math.max(0, Math.min(100, heuristicScore));
+    }
+}
+
+/**
+ * Timestamp Scorer: Validates temporal accuracy
+ * Returns score 0-100
+ */
+async function timestampScorer(market, consensus) {
+    const sanitized = sanitizeMarketData(market);
+    
+    let score = 100;
+    
+    try {
+        const resolutionDate = new Date(sanitized.resolutionDate);
+        const now = new Date();
+        
+        if (resolutionDate > now) {
+            const daysUntil = Math.floor((resolutionDate - now) / (1000 * 60 * 60 * 24));
+            if (daysUntil > 365) {
+                score = 40;
+            } else if (daysUntil > 180) {
+                score = 55;
+            } else if (daysUntil > 90) {
+                score = 70;
+            } else if (daysUntil > 30) {
+                score = 85;
+            } else if (daysUntil > 7) {
+                score = 95;
+            }
+        } else {
+            const daysPast = Math.floor((now - resolutionDate) / (1000 * 60 * 60 * 24));
+            if (daysPast > 365) {
+                score = 95;
+            } else if (daysPast > 30) {
+                score = 100;
+            } else if (daysPast > 7) {
+                score = 98;
+            } else if (daysPast >= 0) {
+                score = 90;
+            }
+        }
+        
+        const rationale = consensus.rationale.toLowerCase();
+        const futureKeywords = ['will', 'upcoming', 'planned', 'scheduled', 'expected'];
+        const pastKeywords = ['occurred', 'happened', 'completed', 'finished', 'concluded'];
+        
+        const hasFutureLanguage = futureKeywords.some(word => rationale.includes(word));
+        const hasPastLanguage = pastKeywords.some(word => rationale.includes(word));
+        
+        if (resolutionDate <= now && hasFutureLanguage && !hasPastLanguage) {
+            score = Math.max(40, score - 25);
+        }
+        
+        if (resolutionDate > now && hasPastLanguage && consensus.outcome !== 'AMBIGUOUS') {
+            score = Math.max(30, score - 35);
+        }
+        
+    } catch (error) {
+        console.warn(`⚠️  Timestamp parsing failed: ${error.message}`);
+        score = 75;
+    }
+    
+    return Math.max(0, Math.min(100, score));
+}
+
+/**
+ * Sentiment Scorer: Detects bias in rationale
+ * Uses heuristics to identify overly biased language, returns score 0-100
+ */
+async function sentimentScorer(market, consensus) {
+    let score = 100;
+    
+    const rationale = consensus.rationale.toLowerCase();
+    
+    const strongBiasWords = [
+        'obviously', 'clearly', 'undoubtedly', 'certainly', 'definitely',
+        'absolutely', 'guaranteed', 'impossible', 'never', 'always'
+    ];
+    const moderateBiasWords = [
+        'probably', 'likely', 'unlikely', 'seems', 'appears',
+        'supposedly', 'allegedly', 'reportedly'
+    ];
+    
+    const strongCount = strongBiasWords.reduce((count, word) => 
+        count + (rationale.match(new RegExp(`\\b${word}\\b`, 'g')) || []).length, 0);
+    const moderateCount = moderateBiasWords.reduce((count, word) => 
+        count + (rationale.match(new RegExp(`\\b${word}\\b`, 'g')) || []).length, 0);
+    
+    score -= strongCount * 12;
+    score -= moderateCount * 5;
+    
+    const exclamationCount = (rationale.match(/!/g) || []).length;
+    score -= exclamationCount * 8;
+    
+    const allCapsWords = (consensus.rationale.match(/\b[A-Z]{3,}\b/g) || []).length;
+    score -= allCapsWords * 6;
+    
+    const emotionalWords = ['amazing', 'terrible', 'horrible', 'fantastic', 'awful', 'shocking'];
+    const emotionalCount = emotionalWords.reduce((count, word) => 
+        count + (rationale.match(new RegExp(`\\b${word}\\b`, 'g')) || []).length, 0);
+    score -= emotionalCount * 10;
+    
+    if (consensus.confidence > 95 && strongCount > 2) {
+        score -= 15;
+    }
+    
+    return Math.max(0, Math.min(100, score));
+}
+
+/**
+ * Multi-Model Scoring Orchestrator
+ * Runs all 4 scorers in parallel and calculates weighted blend
+ */
+async function runMultiModelScoring(market, consensus, agentResults) {
+    console.log(`🎯 Phase 3.5: Running multi-model scoring...`);
+    
+    const [factualScore, consistencyScore, timestampScore, sentimentScore] = await Promise.all([
+        factualScorer(market, consensus),
+        consistencyScorer(market, consensus),
+        timestampScorer(market, consensus),
+        sentimentScorer(market, consensus)
+    ]);
+    
+    console.log(`   Factual: ${factualScore}%, Consistency: ${consistencyScore}%, Timestamp: ${timestampScore}%, Sentiment: ${sentimentScore}%`);
+    
+    const weights = CONFIG.SCORING_WEIGHTS;
+    const blendedScore = Math.round(
+        (factualScore * weights.factual) +
+        (consistencyScore * weights.consistency) +
+        (timestampScore * weights.timestamp) +
+        (sentimentScore * weights.sentiment)
+    );
+    
+    const adjustedConfidence = CONFIG.USE_BLENDED_SCORE 
+        ? Math.min(consensus.confidence, blendedScore)
+        : consensus.confidence;
+    
+    console.log(`   Blended score: ${blendedScore}%, Adjusted confidence: ${adjustedConfidence}%`);
+    
+    return {
+        factualScore,
+        consistencyScore,
+        timestampScore,
+        sentimentScore,
+        blendedScore,
+        adjustedConfidence
+    };
+}
+
+// ============================================================================
 // MAIN ORCHESTRATOR
 // ============================================================================
 
@@ -570,32 +921,126 @@ async function swarmVerifyResolution(market, options = {}) {
     const consensus = aggregateConsensus(allResults);
     console.log(`📊 Phase 3 complete: Consensus reached (${consensus.outcome}, ${consensus.confidence}%)`);
     
-    // Phase 4: Threshold check
-    const threshold = market.resolutionThreshold || CONFIG.CONSENSUS_THRESHOLD;
-    const meetsThreshold = consensus.confidence >= threshold;
+    // Phase 3.5: Multi-Model Scoring (post-consensus evaluation)
+    let multiModelScores = null;
+    let confidenceForRouting = consensus.confidence;
     
-    console.log(`🎯 Phase 4: Threshold check (${consensus.confidence}% vs ${threshold}% required) - ${meetsThreshold ? 'PASS' : 'FAIL'}`);
+    if (CONFIG.MULTI_MODEL_SCORING_ENABLED) {
+        try {
+            multiModelScores = await runMultiModelScoring(market, consensus, allResults);
+            if (CONFIG.USE_BLENDED_SCORE) {
+                confidenceForRouting = multiModelScores.adjustedConfidence;
+                console.log(`   Using adjusted confidence (${confidenceForRouting}%) for tier routing`);
+            }
+        } catch (scoringError) {
+            console.warn(`⚠️  Multi-model scoring failed: ${scoringError.message}`);
+            multiModelScores = {
+                factualScore: null,
+                consistencyScore: null,
+                timestampScore: null,
+                sentimentScore: null,
+                blendedScore: null,
+                adjustedConfidence: consensus.confidence
+            };
+        }
+    }
+    
+    // Phase 4: Three-Tier Confidence-Based Resolution
+    const highThreshold = market.highConfidenceThreshold || CONFIG.HIGH_CONFIDENCE_THRESHOLD;
+    const midThreshold = market.midConfidenceThreshold || CONFIG.MID_CONFIDENCE_THRESHOLD;
+    const lowThreshold = market.lowConfidenceThreshold || CONFIG.LOW_CONFIDENCE_THRESHOLD;
+    
+    let finalConsensus = consensus;
+    let secondPassResult = null;
+    let resolutionPath = '';
+    let requiresManualReview = false;
+    
+    // Tier 1: High Confidence (>= 90%) - PATH A: Auto-resolve
+    if (confidenceForRouting >= highThreshold) {
+        resolutionPath = 'A';
+        requiresManualReview = false;
+        console.log(`🎯 Phase 4: PATH A - High confidence (${confidenceForRouting}% >= ${highThreshold}%)`);
+        console.log(`   Auto-resolve with 30-minute dispute window`);
+    } 
+    // Tier 2: Mid Confidence (85-90%) - PATH A2: Extended AI review + second pass
+    else if (confidenceForRouting >= midThreshold && confidenceForRouting < highThreshold && CONFIG.SECOND_PASS_ENABLED) {
+        resolutionPath = 'A2';
+        console.log(`🎯 Phase 4: PATH A2 - Mid confidence (${confidenceForRouting}% in range ${midThreshold}-${highThreshold}%)`);
+        console.log(`   Triggering second-pass review...`);
+        
+        try {
+            secondPassResult = await secondPassReview(market, consensus);
+            console.log(`✅ Second-pass complete: ${secondPassResult.outcome} (${secondPassResult.confidence}%)`);
+            
+            // Re-aggregate with second-pass included
+            const withSecondPass = [...allResults, secondPassResult];
+            finalConsensus = aggregateConsensus(withSecondPass);
+            
+            console.log(`📊 Final consensus after second-pass: ${finalConsensus.outcome} (${finalConsensus.confidence}%)`);
+            
+            // After second pass, re-evaluate tier
+            if (finalConsensus.confidence >= highThreshold) {
+                console.log(`   ✅ Upgraded to PATH A after second pass`);
+                resolutionPath = 'A2-upgraded';
+                requiresManualReview = false;
+            } else if (finalConsensus.confidence >= midThreshold) {
+                console.log(`   ⚠️ Still mid-confidence - escalating to PATH B (manual review)`);
+                resolutionPath = 'A2-escalated';
+                requiresManualReview = true;
+            } else {
+                console.log(`   ⚠️ Downgraded to PATH B (manual review)`);
+                resolutionPath = 'A2-downgraded';
+                requiresManualReview = true;
+            }
+        } catch (secondPassError) {
+            console.error(`❌ Second-pass failed:`, secondPassError.message);
+            // Fall back to manual review on second-pass failure
+            resolutionPath = 'A2-failed';
+            requiresManualReview = true;
+        }
+    }
+    // Tier 3: Low Confidence (< 85%) - PATH B: Manual human review
+    else {
+        resolutionPath = 'B';
+        requiresManualReview = true;
+        console.log(`🎯 Phase 4: PATH B - Low confidence (${confidenceForRouting}% < ${lowThreshold}%)`);
+        console.log(`   Flagging for manual human review`);
+    }
     
     // Generate cryptographic evidence hash
     const evidenceHash = generateEvidenceHash({
         market: sanitized,
-        agentResults: allResults,
-        consensus,
+        agentResults: secondPassResult ? [...allResults, secondPassResult] : allResults,
+        consensus: finalConsensus,
         timestamp: new Date().toISOString()
     });
     
     const elapsedTime = Date.now() - startTime;
     
     return {
-        success: meetsThreshold,
+        success: !requiresManualReview && resolutionPath.startsWith('A'), // Auto-resolve if not manual review
+        requiresManualReview,
+        resolutionPath,
+        uncertaintyReason: requiresManualReview ? `Confidence ${finalConsensus.confidence}% requires human verification` : null,
+        hadSecondPass: secondPassResult !== null,
         consensus: {
-            outcome: consensus.outcome,
-            confidence: consensus.confidence,
-            rationale: consensus.rationale,
-            sources: consensus.sources,
-            meetsThreshold,
-            threshold
+            outcome: finalConsensus.outcome,
+            confidence: finalConsensus.confidence,
+            rationale: finalConsensus.rationale,
+            sources: finalConsensus.sources,
+            resolutionPath,
+            highConfidenceThreshold: highThreshold,
+            midConfidenceThreshold: midThreshold,
+            lowConfidenceThreshold: lowThreshold
         },
+        multiModelScores: multiModelScores ? {
+            factual: multiModelScores.factualScore,
+            consistency: multiModelScores.consistencyScore,
+            timestamp: multiModelScores.timestampScore,
+            sentiment: multiModelScores.sentimentScore,
+            weighted: multiModelScores.blendedScore,
+            adjustedConfidence: multiModelScores.adjustedConfidence
+        } : null,
         agents: {
             total: allResults.length,
             votes: consensus.agentVotes,
@@ -610,7 +1055,8 @@ async function swarmVerifyResolution(market, options = {}) {
         metadata: {
             version: '1.0.0',
             algorithm: 'geometric-median-consensus',
-            parallelMode: CONFIG.PARALLEL_MODE
+            parallelMode: CONFIG.PARALLEL_MODE,
+            multiModelScoringEnabled: CONFIG.MULTI_MODEL_SCORING_ENABLED
         }
     };
 }

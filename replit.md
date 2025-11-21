@@ -1,30 +1,31 @@
 # Predora - AI-Native Prediction Market Platform
 
-## 🚨 IMPORTANT: Current Architecture Status (Hackathon Demo Mode)
+## 🚨 IMPORTANT: Current Architecture Status (Technical Screening Mode)
 
-**As of November 21, 2025 - Temporary Firestore-Only Mode**
+**As of November 21, 2025 - Hybrid Blockchain + Enhanced Oracle**
 
-For the hackathon demo, ALL blockchain features have been temporarily disabled and the platform operates entirely on Firestore with mock balances. This is a strategic pivot to ensure demo stability, with plans to re-enable blockchain integration post-hackathon/funding.
+Platform operates in **HYBRID MODE** for technical screening: Wallet-connected users get real BSC Testnet transactions, email users use Firestore betting. Browse-first UX allows market exploration without login. Advanced 3-tier oracle resolution system with multi-model scoring ensures accurate outcomes.
 
-### Currently DISABLED Features (Code Preserved with TODO Comments):
-- ❌ BSC Testnet/opBNB blockchain integration
-- ❌ Web3 wallet connection (MetaMask, WalletConnect, Web3Modal)
-- ❌ Smart contract interactions (betting, market creation)
-- ❌ On-chain balance fetching (BNB, CAKE)
-- ❌ Custodial wallet generation with blockchain RPC calls
-- ❌ Biconomy Account Abstraction service
-- ❌ Contract event listeners and real-time blockchain updates
-- ❌ Google/X authentication (buttons visible with "Coming Soon" badges)
+### Hybrid Mode Features:
 
-### Currently ACTIVE Features:
-- ✅ Firestore-only betting system with mock balances (BNB, CAKE)
-- ✅ Email OTP authentication
-- ✅ Demo account login (predorademo@gmail.com / demo1234)
+**Wallet-Connected Users (BSC Testnet):**
+- ✅ Real MetaMask wallet connection (Web3Modal)
+- ✅ On-chain betting via smart contract (0xdaAf91610e33355c9Cd9258219C6A4822E693f55)
+- ✅ Real BNB transactions on BSC Testnet
+- ✅ Blockchain balance fetching
+- ✅ Contract event listeners
+
+**Email-Authenticated Users:**
+- ✅ Password + email authentication
+- ✅ Passwordless OTP authentication  
+- ✅ Firestore-only betting with mock balances
+- ✅ Demo account (predorademo@gmail.com / demo1234)
+
+**Universal Features:**
 - ✅ Browse-first UX (no login required to view markets)
-- ✅ AI-powered market generation (Gemini API)
-- ✅ Swarm-Verify Oracle for market resolution
-- ✅ Jury system for dispute resolution
-- ✅ Multi-option markets
+- ✅ **Enhanced 3-Tier Oracle System** with multi-model scoring
+- ✅ Advanced jury system with second-pass request capability
+- ✅ Multi-option markets (3-6 choices)
 - ✅ Real-time market visualization
 - ✅ TikTok-style Quick Play interface
 
@@ -78,20 +79,27 @@ The platform uses a dual-workflow architecture:
 - **Smart Contract**: PredictionMarket.sol includes automatic payout distribution with duplicate prevention via `hasReceivedPayout` mapping, platform fee collection, and 30-minute dispute window before finalization.
 - **Auto-Payout System**: Backend job (`server/auto-payout-job.js`) monitors resolved markets and automatically calls `autoFinalizeAndPayout()` after 30 minutes, distributing winnings to all winners and collecting platform fees.
 - **AI Features**: 
-  - **Swarm-Verify Oracle**: Multi-agent Byzantine fault-tolerant market resolution system featuring:
-    - OpenAI GPT-4o: Research agent via Replit AI Integrations (no API key required)
-    - OpenAI GPT-4o-mini: Skeptic agent with adversarial "Paranoid" prompt verification
-    - DuckDuckGo API: Fact-checking via free public API (no API key required)
-    - Gemini AI: Optional diversity agent
-    - Geometric median consensus algorithm (Weiszfeld's method) for confidence aggregation
+  - **Enhanced Swarm-Verify Oracle** (3-Tier Resolution System):
+    - **Phase 1**: Parallel multi-agent research (GPT-4o, DuckDuckGo, Gemini)
+    - **Phase 2**: Adversarial skeptic verification (GPT-4o-mini)
+    - **Phase 3**: Geometric median consensus + **Multi-Model Scoring**
+    - **Phase 3.5**: NEW - Multi-dimensional confidence scoring:
+      - Factual model (45% weight): Fact verification via GPT-4o-mini
+      - Consistency model (25% weight): Internal contradiction detection  
+      - Timestamp model (20% weight): Temporal validity checking
+      - Sentiment model (10% weight): Bias detection heuristics
+      - Blended score = weighted average of all 4 models
+    - **Phase 4**: Three-tier confidence routing:
+      - **PATH A** (≥90%): Auto-resolve with 30-min dispute window
+      - **PATH A2** (85-90%): Extended AI review + second-pass verification
+      - **PATH B** (<85%): Escalate to manual jury review
+    - Second-pass review feature for mid-confidence cases (85-90%)
+    - Jury/admin can request additional Swarm runs via API endpoint
     - Cryptographic evidence hashing (SHA-256) for auditability
-    - 85% default confidence threshold with configurable per-market thresholds
-    - Fallback to legacy Gemini single-agent oracle if Swarm-Verify unavailable
-    - 4-phase resolution: (1) Independent research, (2) Skeptic review, (3) Consensus, (4) Threshold check
-    - Byzantine fault tolerance: Tolerates up to 50% malicious/faulty agents
-    - Prompt injection mitigation and input sanitization for security
-  - Google Gemini AI also used for market generation and "Quick Play" generation
-  - AI guardrails implemented for duplicate detection, quality filtering, and Sybil detection
+    - Byzantine fault tolerance (50% malicious agents)
+    - Security: Prompt injection mitigation, input sanitization
+  - Google Gemini AI for market generation and Quick Play
+  - AI guardrails: duplicate detection, quality filtering, Sybil detection
 - **Jury System**: A fully functional jury voting system allows users to submit votes for disputed markets, with outcomes determined by majority rule. An admin dashboard provides oversight and manual override capabilities.
 - **Multiple Options Market Display**: Supports markets with 3-6 options, each displayed with individual percentages.
 - **Custodial Wallets**: Automatic server-side wallet creation on user signup using ethers.js v5, with AES-256-GCM encrypted private keys stored in Firebase Firestore. Keys never exposed to client.

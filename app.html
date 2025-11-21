@@ -23,11 +23,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO -->
-    <!-- Web3 & Wallet Scripts - COMMENTED OUT FOR FIRESTORE-ONLY MODE -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script> -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.0/dist/index.min.js"></script> -->
-    <!-- ethers v5 loaded below in body, removed v6 to prevent conflict -->
+    <!-- Web3 & Wallet Scripts - RE-ENABLED FOR HYBRID MODE (Option C) -->
+    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.0/dist/index.min.js"></script>
+    <!-- ethers v5 loaded below in body -->
 
     <!-- WALLETCONNECT_PROJECT_ID_PLACEHOLDER -->
 
@@ -1485,27 +1484,24 @@
                     </div>
                 </div>
 
-                <!-- TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO -->
-                <!-- Web3 Wallet Login - COMMENTED OUT FOR FIRESTORE-ONLY MODE -->
-                <!--
+                <!-- Web3 Wallet Login - RE-ENABLED FOR HYBRID MODE (Option C) -->
                 <div class="relative z-10 animate-slide-up" style="animation-delay: 0.1s;">
-                    <div class="backdrop-blur-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/20 rounded-3xl p-8 lg:p-10 shadow-2xl space-y-6 overflow-hidden relative">
+                    <div class="backdrop-blur-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/20 rounded-3xl p-6 md:p-8 shadow-2xl space-y-4 overflow-hidden relative">
                         <div class="absolute -top-32 -right-32 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl"></div>
                         <div class="absolute -bottom-32 -left-32 w-64 h-64 bg-sky-500/20 rounded-full blur-3xl"></div>
                         
                         <div class="relative flex items-center justify-between mb-2">
-                            <h3 class="text-base lg:text-lg font-bold text-white uppercase tracking-widest">Web3 Wallet</h3>
-                            <span class="text-xs lg:text-sm px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/40 to-pink-500/40 text-purple-200 font-bold border border-purple-300/40 shadow-lg backdrop-blur-sm">CRYPTO</span>
+                            <h3 class="text-sm md:text-base font-bold text-white uppercase tracking-widest">Web3 Wallet</h3>
+                            <span class="text-xs px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/40 to-pink-500/40 text-purple-200 font-bold border border-purple-300/40 shadow-lg backdrop-blur-sm">CRYPTO</span>
                         </div>
-                        <button onclick="connectWeb3Wallet()" class="relative w-full flex items-center justify-center gap-4 px-10 py-6 lg:py-7 rounded-2xl border-2 border-purple-400/50 bg-gradient-to-r from-purple-500/30 to-pink-500/30 hover:from-purple-500/40 hover:to-pink-500/40 hover:border-purple-300/70 transition-all duration-500 transform hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/60 active:scale-95 group overflow-hidden">
+                        <button onclick="connectWeb3Wallet()" class="relative w-full flex items-center justify-center gap-3 px-6 py-4 md:py-5 rounded-xl border-2 border-purple-400/50 bg-gradient-to-r from-purple-500/30 to-pink-500/30 hover:from-purple-500/40 hover:to-pink-500/40 hover:border-purple-300/70 transition-all duration-500 transform hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/60 active:scale-95 group overflow-hidden">
                             <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
-                            <svg class="relative w-8 h-8 lg:w-9 lg:h-9 text-purple-200 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
-                            <span class="relative font-bold text-white text-xl lg:text-2xl">Connect Wallet</span>
+                            <svg class="relative w-6 h-6 md:w-7 md:h-7 text-purple-200 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+                            <span class="relative font-semibold text-white text-base md:text-lg">Connect Wallet</span>
                         </button>
-                        <p class="text-sm lg:text-base text-center text-gray-300 font-medium">MetaMask, Coinbase, WalletConnect & More</p>
+                        <p class="text-xs md:text-sm text-center text-gray-300">MetaMask, Coinbase, WalletConnect & More</p>
                     </div>
                 </div>
-                -->
 
                 <!-- Divider -->
                 <div class="relative my-8 animate-slide-up" style="animation-delay: 0.2s;">
@@ -1668,19 +1664,50 @@
 
                 <div class="text-center">
                     <h1 class="text-2xl lg:text-3xl font-bold gradient-text">Sign In with Email</h1>
-                    <p class="text-gray-300 mt-2">We'll send you a verification code</p>
+                    <p class="text-gray-300 mt-2">Choose your preferred sign-in method</p>
                 </div>
 
-                <div class="ui-panel space-y-4">
+                <!-- Auth Method Toggle -->
+                <div class="flex gap-2 p-1 bg-gray-800/50 rounded-lg">
+                    <button id="toggle-password-auth" onclick="showPasswordAuth()" class="flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all bg-sky-500/20 text-sky-300 border border-sky-500/50">
+                        🔑 Password
+                    </button>
+                    <button id="toggle-otp-auth" onclick="showOTPAuth()" class="flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all text-gray-400 hover:text-white">
+                        📧 Email Code
+                    </button>
+                </div>
+
+                <!-- Password Auth Form (Default) -->
+                <div id="password-auth-form" class="ui-panel space-y-4">
                     <div>
                         <label class="text-sm font-medium text-gray-300 mb-2 block">Email Address</label>
                         <input id="email-auth-input" type="email" class="ui-input" placeholder="your-email@example.com" autocomplete="email">
                     </div>
 
+                    <div>
+                        <label class="text-sm font-medium text-gray-300 mb-2 block">Password</label>
+                        <input id="password-auth-input" type="password" class="ui-input" placeholder="Enter password (min 6 characters)" autocomplete="current-password" minlength="6">
+                        <p class="text-xs text-gray-400 mt-1">First time? We'll create your account automatically</p>
+                    </div>
+
+                    <button onclick="emailPasswordAuth()" class="btn btn-primary w-full">Sign In / Sign Up</button>
+
+                    <p class="text-xs text-center text-gray-400">
+                        🔒 Secure password-based authentication
+                    </p>
+                </div>
+
+                <!-- OTP Auth Form (Hidden by default) -->
+                <div id="otp-auth-form" class="ui-panel space-y-4 hidden">
+                    <div>
+                        <label class="text-sm font-medium text-gray-300 mb-2 block">Email Address</label>
+                        <input id="email-otp-input" type="email" class="ui-input" placeholder="your-email@example.com" autocomplete="email">
+                    </div>
+
                     <button onclick="requestOTP()" class="btn btn-primary w-full">Send Verification Code</button>
 
                     <p class="text-xs text-center text-gray-400">
-                        🔒 No password needed • Secure passwordless login
+                        🔒 No password needed • Passwordless login
                     </p>
                 </div>
             </div>
@@ -4779,10 +4806,13 @@
         }
         */
         
-        // Stub function for demo mode
+        // Stub function for hybrid mode (re-enable when needed)
         async function setupContractEventListeners() {
-            console.log('ℹ️ Contract event listeners disabled for hackathon demo');
-            return;
+            if (!ethersProvider) {
+                console.log('ℹ️ Contract event listeners disabled (wallet not connected)');
+                return;
+            }
+            console.log('✅ Contract event listeners ready for wallet users');
         }
 
         /**
@@ -5064,20 +5094,11 @@
         
         // Stub function - Firestore is source of truth now
         async function refreshAllBalances() {
-            console.log('ℹ️ Blockchain disabled - balances come from Firestore only');
+            console.log('ℹ️ Balances come from Firestore (updated in real-time)');
             // Just update UI if needed (balances already in userProfile from Firestore)
-            if (dom.mockBalance) {
-                if (dom.mockBalance) {
-                    updateProfileUI(userProfile);
-                }
-                
-                console.log('✅ Balances refreshed:', { bnb, cake });
-                showToast('Balances updated from blockchain', 'success');
-            } catch (error) {
-                console.error('❌ Error refreshing balances:', error);
-                showToast('Failed to refresh balances', 'error');
-            } finally {
-                showLoadingOverlay(false);
+            if (userProfile && dom.mockBalance) {
+                updateProfileUI(userProfile);
+                console.log('✅ UI refreshed with current balances');
             }
         }
 
@@ -5987,13 +6008,34 @@
         };
 
         /**
+         * Toggle between password and OTP auth
+         */
+        window.showPasswordAuth = () => {
+            document.getElementById('password-auth-form').classList.remove('hidden');
+            document.getElementById('otp-auth-form').classList.add('hidden');
+            document.getElementById('toggle-password-auth').classList.add('bg-sky-500/20', 'text-sky-300', 'border', 'border-sky-500/50');
+            document.getElementById('toggle-password-auth').classList.remove('text-gray-400');
+            document.getElementById('toggle-otp-auth').classList.remove('bg-sky-500/20', 'text-sky-300', 'border', 'border-sky-500/50');
+            document.getElementById('toggle-otp-auth').classList.add('text-gray-400');
+        };
+
+        window.showOTPAuth = () => {
+            document.getElementById('password-auth-form').classList.add('hidden');
+            document.getElementById('otp-auth-form').classList.remove('hidden');
+            document.getElementById('toggle-otp-auth').classList.add('bg-sky-500/20', 'text-sky-300', 'border', 'border-sky-500/50');
+            document.getElementById('toggle-otp-auth').classList.remove('text-gray-400');
+            document.getElementById('toggle-password-auth').classList.remove('bg-sky-500/20', 'text-sky-300', 'border', 'border-sky-500/50');
+            document.getElementById('toggle-password-auth').classList.add('text-gray-400');
+        };
+
+        /**
          * OTP Authentication - Request OTP code via email
          */
         let resendCountdown = 60;
         let resendTimer = null;
 
         window.requestOTP = async () => {
-            const email = document.getElementById('email-auth-input').value.trim();
+            const email = document.getElementById('email-otp-input').value.trim();
             
             if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
                 showToast("Please enter a valid email address", "error");
@@ -6168,10 +6210,8 @@
         };
 
         /**
-         * OLD Email/Password authentication (DEPRECATED - replaced with OTP)
-         * Commented out but kept for reference
+         * Email/Password authentication - Re-enabled alongside OTP
          */
-        /*
         window.emailPasswordAuth = async () => {
             const email = document.getElementById('email-auth-input').value.trim();
             const password = document.getElementById('password-auth-input').value;
@@ -6191,6 +6231,7 @@
                 const { signInWithEmailAndPassword, createUserWithEmailAndPassword } = window.firebase.auth;
 
                 let result;
+                let isNewAccount = false;
                 try {
                     // Try to sign in first
                     result = await signInWithEmailAndPassword(auth, email, password);
@@ -6202,6 +6243,7 @@
                         // Credential is invalid - try creating a new account
                         try {
                             result = await createUserWithEmailAndPassword(auth, email, password);
+                            isNewAccount = true;
                             showToast("Account created successfully! Welcome to Predora! 🎉", "success");
                         } catch (createError) {
                             console.error('Account creation error:', createError.code, createError.message);
@@ -6219,7 +6261,7 @@
                     }
                 }
 
-                await completeAuthentication(result.user, 'email');
+                await completeAuthentication(result.user, 'firebase-email');
 
             } catch (error) {
                 console.error('Email auth error:', error.code, error.message);
@@ -6243,26 +6285,17 @@
                 showToast(errorMessage, "error");
             }
         };
-        */
 
-        // TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
         /**
-         * Connect Web3 wallet (MetaMask, WalletConnect, etc.) - DISABLED FOR DEMO
-         * Now shows wallet selector modal
+         * Connect Web3 wallet (MetaMask, WalletConnect, etc.) - RE-ENABLED FOR HYBRID MODE
+         * Shows wallet selector modal
          */
-        /*
         window.connectWeb3Wallet = async () => {
             // Show wallet selector modal instead of direct connection
             const modal = document.getElementById('wallet-selector-modal');
             if (modal) {
                 modal.classList.remove('hidden');
             }
-        };
-        */
-       
-        // Stub function for demo mode (wallet connection disabled)
-        window.connectWeb3Wallet = async () => {
-            showToast("🚧 Wallet connection temporarily disabled for hackathon demo. Use email login instead!", "info");
         };
 
         /**
@@ -8503,12 +8536,9 @@
                     return;
                 }
 
-                // TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
-                // 4. --- CHECK FOR ON-CHAIN MARKET --- DISABLED
-                const isOnChainMarket = false; // Always false for demo mode
-                // const isOnChainMarket = currentMarket.onChainMarketId && !currentMarket.isMock;
+                // 4. --- CHECK FOR ON-CHAIN MARKET --- RE-ENABLED FOR HYBRID MODE (Option C)
+                const isOnChainMarket = currentMarket.onChainMarketId && !currentMarket.isMock;
                 
-                /*
                 if (isOnChainMarket) {
                     // ✅ ON-CHAIN BETTING PATH - DISABLED FOR DEMO
                     showLoadingOverlay(true, "Placing bet on-chain...");
@@ -8729,9 +8759,8 @@
                     }
                     return;
                 }
-                */
 
-                // 5. --- FIRESTORE-ONLY PATH (now the ONLY path for demo) ---
+                // 5. --- FIRESTORE-ONLY PATH (for email users or markets without on-chain ID) ---
                 showLoadingOverlay(true, "Confirming on-chain...");
                 await new Promise(res => setTimeout(res, 1500)); // Shortened delay
 
@@ -15712,7 +15741,7 @@ ${historyText}`;
             window.stakeAllPledges = stakeAllPledges; 
             window.getAIResolution = getAIResolution;
             window.showTxToast = showTxToast;
-            window.claimTokens = claimTokens; 
+            // window.claimTokens removed - users use real BSC faucet now
             window.setPledgeAll = setPledgeAll; 
             window.updatePledgeTotalSummary = updatePledgeTotalSummary; 
             window.clearAllDemoData = clearAllDemoData;
