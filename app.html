@@ -1360,6 +1360,7 @@
 
     <!-- Web3 Libraries -->
     <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 </head>
 <body class="text-gray-100">
     <!-- Mobile Header (visible on mobile only) -->
@@ -1653,10 +1654,16 @@
                             </div>
                         </div>
 
-                        <div class="flex gap-3 pt-4">
-                            <button onclick="completeOnboarding()" class="btn btn-primary flex-1 lg:text-lg">Get Started</button>
-                            <button onclick="skipOnboarding()" class="btn btn-secondary flex-shrink-0 lg:text-lg">Skip</button>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4">
+                            <button onclick="completeOnboarding()" class="btn btn-primary sm:col-span-2 w-full py-3 lg:py-4 lg:text-lg font-bold">
+                                <svg class="w-5 h-5 inline mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                                Get Started
+                            </button>
+                            <button onclick="skipOnboarding()" class="btn btn-secondary w-full py-3 lg:py-4 lg:text-lg">
+                                Skip
+                            </button>
                         </div>
+                        <p class="text-xs text-center text-gray-500 mt-2">You can always complete your profile later</p>
                     </div>
                 </div>
             </div>
@@ -3692,6 +3699,91 @@
             </div>
         </div>
 
+        <!-- Wallet Selector Modal -->
+        <div id="wallet-selector-modal" class="hidden fixed inset-0 z-[995] bg-black/70 backdrop-blur-sm flex justify-center items-center p-4">
+            <div class="ui-panel w-full max-w-md space-y-5">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-2xl font-bold text-white">Connect Wallet</h2>
+                    <button onclick="closeWalletModal()" class="text-gray-400 hover:text-white text-3xl transition-colors">&times;</button>
+                </div>
+                <p class="text-sm text-gray-400">Choose your preferred wallet to connect to Predora</p>
+
+                <!-- Wallet Options -->
+                <div class="space-y-3">
+                    <!-- MetaMask -->
+                    <button onclick="connectWithProvider('metamask')" class="w-full flex items-center justify-between px-5 py-4 rounded-xl border-2 border-gray-700/50 bg-white/5 hover:bg-white/10 hover:border-orange-500/50 transition-all group">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
+                                <svg class="w-6 h-6" viewBox="0 0 40 40" fill="none">
+                                    <path d="M36 13L21 2L6 13L21 27L36 13Z" fill="#E2761B" stroke="#E2761B" stroke-linejoin="round"/>
+                                    <path d="M36 27L21 38L6 27L21 13L36 27Z" fill="#F6851B" stroke="#F6851B" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <div class="text-left">
+                                <p class="font-semibold text-white">MetaMask</p>
+                                <p class="text-xs text-gray-400">Browser wallet</p>
+                            </div>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+
+                    <!-- WalletConnect -->
+                    <button onclick="connectWithProvider('walletconnect')" class="w-full flex items-center justify-between px-5 py-4 rounded-xl border-2 border-gray-700/50 bg-white/5 hover:bg-white/10 hover:border-blue-500/50 transition-all group">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                                <svg class="w-6 h-6" viewBox="0 0 40 40" fill="none">
+                                    <path d="M9.5 14.5C15.5 8.5 24.5 8.5 30.5 14.5M12.5 19.5C17 15 23 15 27.5 19.5M20 28C21.5 28 22 26.5 22 25C22 23.5 21.5 22 20 22C18.5 22 18 23.5 18 25C18 26.5 18.5 28 20 28Z" stroke="#3B99FC" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <div class="text-left">
+                                <p class="font-semibold text-white">WalletConnect</p>
+                                <p class="text-xs text-gray-400">Mobile wallets & more</p>
+                            </div>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+
+                    <!-- Coinbase Wallet -->
+                    <button onclick="connectWithProvider('coinbase')" class="w-full flex items-center justify-between px-5 py-4 rounded-xl border-2 border-gray-700/50 bg-white/5 hover:bg-white/10 hover:border-blue-600/50 transition-all group">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-full bg-blue-600/20 flex items-center justify-center">
+                                <svg class="w-6 h-6" viewBox="0 0 40 40" fill="none">
+                                    <circle cx="20" cy="20" r="18" fill="#0052FF"/>
+                                    <rect x="14" y="14" width="12" height="12" rx="2" fill="white"/>
+                                </svg>
+                            </div>
+                            <div class="text-left">
+                                <p class="font-semibold text-white">Coinbase Wallet</p>
+                                <p class="text-xs text-gray-400">Mobile & extension</p>
+                            </div>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+
+                    <!-- Trust Wallet -->
+                    <button onclick="connectWithProvider('trust')" class="w-full flex items-center justify-between px-5 py-4 rounded-xl border-2 border-gray-700/50 bg-white/5 hover:bg-white/10 hover:border-cyan-500/50 transition-all group">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                                <svg class="w-6 h-6" viewBox="0 0 40 40" fill="none">
+                                    <path d="M20 6L8 12V20C8 27 13 33 20 35C27 33 32 27 32 20V12L20 6Z" fill="#3375BB" stroke="#3375BB"/>
+                                    <circle cx="20" cy="20" r="4" fill="white"/>
+                                </svg>
+                            </div>
+                            <div class="text-left">
+                                <p class="font-semibold text-white">Trust Wallet</p>
+                                <p class="text-xs text-gray-400">Mobile wallet</p>
+                            </div>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+
+                <div class="pt-3 border-t border-gray-700/50">
+                    <p class="text-xs text-center text-gray-500">By connecting your wallet, you agree to our Terms of Service</p>
+                </div>
+            </div>
+        </div>
+
     <div id="ticker-modal" class="hidden fixed inset-0 z-[995] bg-black/70 backdrop-blur-sm flex flex-col justify-end">
 
         <!-- This is the slide-up panel -->
@@ -4478,13 +4570,23 @@
         }
 
         /**
-         * Updates the UI to show real BNB balance
+         * Updates the UI to show real BNB balance - fetches from blockchain and re-renders
          */
         async function updateRealBNBBalance() {
-            const balance = await getRealBNBBalance();
-            const balanceDisplay = document.getElementById('bnb-balance-display');
-            if (balanceDisplay) {
-                balanceDisplay.textContent = `${parseFloat(balance).toFixed(4)} BNB`;
+            try {
+                showLoadingOverlay(true, 'Fetching balance...');
+                const balance = await getRealBNBBalance();
+                userProfile.bnbBalance = parseFloat(balance);
+                
+                // Re-render assets content to show updated balance
+                await renderAssetsContent();
+                
+                showLoadingOverlay(false);
+                showToast(`Balance updated: ${parseFloat(balance).toFixed(4)} tBNB`, 'success');
+            } catch (error) {
+                console.error('Failed to update balance:', error);
+                showLoadingOverlay(false);
+                showToast('Failed to fetch balance', 'error');
             }
         }
 
@@ -4957,58 +5059,202 @@
 
         /**
          * Connect Web3 wallet (MetaMask, WalletConnect, etc.)
+         * Now shows wallet selector modal
          */
         window.connectWeb3Wallet = async () => {
+            // Show wallet selector modal instead of direct connection
+            const modal = document.getElementById('wallet-selector-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+            }
+        };
+
+        /**
+         * Close wallet selector modal
+         */
+        window.closeWalletModal = () => {
+            const modal = document.getElementById('wallet-selector-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        };
+
+        /**
+         * Connect with specific wallet provider
+         */
+        window.connectWithProvider = async (provider) => {
+            closeWalletModal();
+            
             try {
-                if (typeof window.ethereum === 'undefined') {
-                    showToast("Please install MetaMask or another Web3 wallet", "error");
-                    window.open('https://metamask.io/download/', '_blank');
-                    return;
+                let accounts, walletAddress, web3Provider;
+
+                showLoadingOverlay(true, `Connecting to ${provider}...`);
+
+                switch(provider) {
+                    case 'metamask':
+                        if (typeof window.ethereum === 'undefined') {
+                            showToast("Please install MetaMask", "error");
+                            window.open('https://metamask.io/download/', '_blank');
+                            showLoadingOverlay(false);
+                            return;
+                        }
+                        
+                        // Check if user specifically has MetaMask (not other wallets)
+                        if (window.ethereum.isMetaMask) {
+                            web3Provider = window.ethereum;
+                        } else if (window.ethereum.providers) {
+                            // Multiple wallets installed - find MetaMask
+                            web3Provider = window.ethereum.providers.find(p => p.isMetaMask);
+                            if (!web3Provider) {
+                                web3Provider = window.ethereum; // Fallback to default
+                            }
+                        } else {
+                            web3Provider = window.ethereum;
+                        }
+                        
+                        accounts = await web3Provider.request({ 
+                            method: 'eth_requestAccounts' 
+                        });
+                        walletAddress = accounts[0];
+                        break;
+
+                    case 'coinbase':
+                        if (window.ethereum && window.ethereum.isCoinbaseWallet) {
+                            web3Provider = window.ethereum;
+                        } else if (window.ethereum && window.ethereum.providers) {
+                            web3Provider = window.ethereum.providers.find(p => p.isCoinbaseWallet);
+                        }
+                        
+                        if (!web3Provider) {
+                            showToast("Please install Coinbase Wallet", "error");
+                            window.open('https://www.coinbase.com/wallet/downloads', '_blank');
+                            showLoadingOverlay(false);
+                            return;
+                        }
+                        
+                        accounts = await web3Provider.request({ 
+                            method: 'eth_requestAccounts' 
+                        });
+                        walletAddress = accounts[0];
+                        break;
+
+                    case 'trust':
+                        if (window.ethereum && window.ethereum.isTrust) {
+                            web3Provider = window.ethereum;
+                        } else if (window.ethereum && window.ethereum.providers) {
+                            web3Provider = window.ethereum.providers.find(p => p.isTrust);
+                        } else if (window.ethereum) {
+                            // Trust Wallet might inject as default ethereum provider on mobile
+                            web3Provider = window.ethereum;
+                        }
+                        
+                        if (!web3Provider) {
+                            showToast("Please open in Trust Wallet browser or install Trust Wallet extension", "error");
+                            showLoadingOverlay(false);
+                            return;
+                        }
+                        
+                        accounts = await web3Provider.request({ 
+                            method: 'eth_requestAccounts' 
+                        });
+                        walletAddress = accounts[0];
+                        break;
+
+                    case 'walletconnect':
+                        if (typeof WalletConnectProvider === 'undefined') {
+                            showToast("WalletConnect not loaded properly", "error");
+                            showLoadingOverlay(false);
+                            return;
+                        }
+
+                        web3Provider = new WalletConnectProvider.default({
+                            rpc: {
+                                97: 'https://data-seed-prebsc-1-s1.binance.org:8545/',
+                                56: 'https://bsc-dataseed.binance.org/'
+                            },
+                            chainId: 97,
+                            qrcode: true,
+                            qrcodeModalOptions: {
+                                mobileLinks: [
+                                    "rainbow",
+                                    "metamask",
+                                    "argent",
+                                    "trust",
+                                    "imtoken",
+                                    "pillar",
+                                ],
+                            },
+                        });
+
+                        await web3Provider.enable();
+                        accounts = web3Provider.accounts;
+                        walletAddress = accounts[0];
+                        
+                        // Store WalletConnect provider for later use
+                        window.walletConnectProvider = web3Provider;
+                        break;
+
+                    default:
+                        showToast("Unknown wallet provider", "error");
+                        showLoadingOverlay(false);
+                        return;
                 }
 
-                showLoadingOverlay(true, 'Connecting wallet...');
+                // Use the selected provider for network switching
+                const activeProvider = web3Provider || window.ethereum;
+                
+                if (!walletAddress) {
+                    throw new Error("No wallet address received");
+                }
 
-                // Request account access
-                const accounts = await window.ethereum.request({ 
-                    method: 'eth_requestAccounts' 
-                });
+                // Store the selected provider globally
+                window.selectedWeb3Provider = activeProvider;
 
-                const walletAddress = accounts[0];
-
-                // Switch to BSC Testnet
-                try {
-                    await window.ethereum.request({
-                        method: 'wallet_switchEthereumChain',
-                        params: [{ chainId: '0x61' }], // BSC Testnet
-                    });
-                } catch (switchError) {
-                    // Chain not added, add it
-                    if (switchError.code === 4902) {
-                        await window.ethereum.request({
-                            method: 'wallet_addEthereumChain',
-                            params: [{
-                                chainId: '0x61',
-                                chainName: 'BSC Testnet',
-                                nativeCurrency: {
-                                    name: 'BNB',
-                                    symbol: 'tBNB',
-                                    decimals: 18
-                                },
-                                rpcUrls: ['https://data-seed-prebsc-1-s1.binance.org:8545/'],
-                                blockExplorerUrls: ['https://testnet.bscscan.com/']
-                            }]
+                // Switch to BSC Testnet (skip for WalletConnect as it's configured with chainId already)
+                if (provider !== 'walletconnect') {
+                    try {
+                        await activeProvider.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: '0x61' }], // BSC Testnet
                         });
-                    } else {
-                        throw switchError;
+                    } catch (switchError) {
+                        // Chain not added, add it
+                        if (switchError.code === 4902) {
+                            await activeProvider.request({
+                                method: 'wallet_addEthereumChain',
+                                params: [{
+                                    chainId: '0x61',
+                                    chainName: 'BSC Testnet',
+                                    nativeCurrency: {
+                                        name: 'BNB',
+                                        symbol: 'tBNB',
+                                        decimals: 18
+                                    },
+                                    rpcUrls: ['https://data-seed-prebsc-1-s1.binance.org:8545/'],
+                                    blockExplorerUrls: ['https://testnet.bscscan.com/']
+                                }]
+                            });
+                        } else {
+                            throw switchError;
+                        }
                     }
                 }
 
                 // Sign a message to verify ownership
                 const message = `Sign this message to log in to Predora.\n\nWallet: ${walletAddress}\nTimestamp: ${Date.now()}`;
-                const signature = await window.ethereum.request({
-                    method: 'personal_sign',
-                    params: [message, walletAddress]
-                });
+                let signature;
+                
+                if (provider === 'walletconnect') {
+                    // WalletConnect uses different signing method
+                    const ethersProvider = new ethers.providers.Web3Provider(activeProvider);
+                    const signer = ethersProvider.getSigner();
+                    signature = await signer.signMessage(message);
+                } else {
+                    signature = await activeProvider.request({
+                        method: 'personal_sign',
+                        params: [message, walletAddress]
+                    });
+                }
 
                 // Create/sign in with Firebase using wallet address
                 const { signInAnonymously } = window.firebase.auth;
@@ -5021,14 +5267,32 @@
                 currentUserId = userId;
                 userProfile.walletAddress = walletAddress;
                 userProfile.isSmartWallet = false;  // User controls their own private keys
-
+                
+                // Store provider type for persistence
                 localStorage.setItem('demoUserId', userId);
                 localStorage.setItem('authMethod', 'web3');
                 localStorage.setItem('userWalletAddress', walletAddress);
+                localStorage.setItem('walletProvider', provider); // Store which provider was used
                 localStorage.setItem('isSmartWallet', 'false');
                 localStorage.setItem('firebaseUid', result.user.uid);
 
+                // Set up ethers provider and signer from the selected provider
+                web3Provider = activeProvider; // Store the selected provider globally
+                userWalletAddress = walletAddress; // Set global wallet address
+                ethersProvider = new ethers.providers.Web3Provider(activeProvider); // Create ethers provider from selected provider
+                signer = ethersProvider.getSigner(); // Get signer from ethers provider
+
                 await initializeUserProfile();
+
+                // Fetch real BNB balance from blockchain
+                try {
+                    const realBnbBalance = await getRealBNBBalance();
+                    userProfile.bnbBalance = parseFloat(realBnbBalance);
+                    console.log('✅ Real BNB Balance fetched:', realBnbBalance, 'tBNB');
+                } catch (balanceError) {
+                    console.error('Failed to fetch BNB balance:', balanceError);
+                    userProfile.bnbBalance = 0;
+                }
 
                 const { getDoc, doc } = window.firebase.firestore;
                 const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
@@ -5038,11 +5302,13 @@
                     showScreen('onboarding-screen');
                 } else {
                     userProfile = { ...userProfile, ...profileSnap.data() };
+                    // Update profile with real balance
+                    userProfile.bnbBalance = parseFloat(await getRealBNBBalance());
                     showScreen('home-screen');
                 }
 
                 showLoadingOverlay(false);
-                showToast("🎉 Wallet connected successfully!", "success");
+                showToast(`🎉 Wallet connected successfully! Balance: ${userProfile.bnbBalance.toFixed(4)} tBNB`, "success");
 
             } catch (error) {
                 console.error('Web3 wallet connection error:', error);
@@ -6207,76 +6473,103 @@
 
 
         /**
-         * Renders the "Assets" tab on the profile screen, including the mock faucet.
+         * Renders the "Assets" tab on the profile screen with real blockchain balances
          */
-        function renderAssetsContent() {
+        async function renderAssetsContent() {
             const assetsEl = document.getElementById('assets-content');
             const balance = userProfile.balance || 0;
-            const bnbBalance = userProfile.bnbBalance || 0;
+            let bnbBalance = userProfile.bnbBalance || 0;
             const cakeBalance = userProfile.cakeBalance || 0;
+
+            // Fetch real BNB balance if wallet is connected
+            if (userWalletAddress && ethersProvider) {
+                try {
+                    const realBalance = await getRealBNBBalance();
+                    bnbBalance = parseFloat(realBalance);
+                    userProfile.bnbBalance = bnbBalance; // Update user profile with real balance
+                } catch (error) {
+                    console.error('Failed to fetch real BNB balance:', error);
+                }
+            }
+
+            const walletStatus = userWalletAddress ? 
+                `<div class="mb-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <p class="text-sm text-green-400">✓ Connected: ${truncateAddress(userWalletAddress)}</p>
+                    <p class="text-xs text-gray-400 mt-1">BSC Testnet (ChainID: 97)</p>
+                </div>` : 
+                `<div class="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                    <p class="text-sm text-yellow-400">⚠ No wallet connected</p>
+                    <p class="text-xs text-gray-400 mt-1">Connect wallet to see real balances</p>
+                </div>`;
 
             assetsEl.innerHTML = `
                 <div class="ui-panel p-4">
-                    <h3 class="text-base font-semibold gradient-text mb-4">Mock Wallet Assets (BNB Testnet)</h3>
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-base font-semibold gradient-text">BNB Testnet Wallet</h3>
+                        ${userWalletAddress ? `<button onclick="updateRealBNBBalance()" class="text-xs px-3 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-400 border border-sky-500/30 transition-all">
+                            <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            Refresh
+                        </button>` : ''}
+                    </div>
+                    ${walletStatus}
                     <div class="space-y-4">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/4687.png" class="w-10 h-10 rounded-full mr-3" alt="BUSD">
-                                <div>
-                                    <p class="font-semibold theme-text-primary">BUSD (Mock)</p>
-                                    <p class="text-sm theme-text-primary">Binance-Peg BUSD</p>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <p class="font-semibold theme-text-primary">$${balance.toFixed(2)}</p>
-                                <p class="text-sm theme-text-primary">${balance.toFixed(2)} BUSD</p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-between">
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
                             <div class="flex items-center">
                                 <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1839.png" class="w-10 h-10 rounded-full mr-3" alt="BNB">
                                 <div>
-                                    <p class="font-semibold theme-text-primary">BNB (Mock)</p>
-                                    <p class="text-sm theme-text-primary">BNB</p>
+                                    <p class="font-semibold theme-text-primary">BNB ${userWalletAddress ? '(Testnet)' : '(Mock)'}</p>
+                                    <p class="text-sm theme-text-secondary">Binance Coin</p>
                                 </div>
                             </div>
                             <div class="text-right">
-                                <p class="font-semibold theme-text-primary">$${(bnbBalance * getMockPrice('BNB')).toFixed(2)}</p>
-                                <p class="text-sm theme-text-primary">${bnbBalance.toFixed(4)} BNB</p>
+                                <p class="font-semibold theme-text-primary">${bnbBalance.toFixed(4)} tBNB</p>
+                                <p class="text-xs theme-text-secondary">$${(bnbBalance * getMockPrice('BNB')).toFixed(2)} USD</p>
                             </div>
                         </div>
 
-                        <div class="flex items-center justify-between">
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10 opacity-60">
                             <div class="flex items-center">
-                                <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/7186.png" class="w-10 h-10 rounded-full mr-3" alt="CAKE">
+                                <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/4687.png" class="w-10 h-10 rounded-full mr-3" alt="BUSD">
                                 <div>
-                                    <p class="font-semibold theme-text-primary">PancakeSwap (Mock)</p>
-                                    <p class="text-sm theme-text-primary">CAKE</p>
+                                    <p class="font-semibold theme-text-primary">BUSD (Coming Soon)</p>
+                                    <p class="text-sm theme-text-secondary">Binance-Peg BUSD</p>
                                 </div>
                             </div>
                             <div class="text-right">
-                                <p class="font-semibold theme-text-primary">$${(cakeBalance * getMockPrice('CAKE')).toFixed(2)}</p>
-                                <p class="text-sm theme-text-primary">${cakeBalance.toFixed(2)} CAKE</p>
+                                <p class="font-semibold theme-text-primary">-</p>
+                                <p class="text-xs theme-text-secondary">Multi-token support pending</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10 opacity-60">
+                            <div class="flex items-center">
+                                <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/825.png" class="w-10 h-10 rounded-full mr-3" alt="USDT">
+                                <div>
+                                    <p class="font-semibold theme-text-primary">USDT (Coming Soon)</p>
+                                    <p class="text-sm theme-text-secondary">Tether USD</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold theme-text-primary">-</p>
+                                <p class="text-xs theme-text-secondary">Multi-token support pending</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="ui-panel p-4 space-y-3">
-                    <h3 class="text-base font-semibold text-white">Mock Faucet</h3>
-                    <p class="text-sm text-gray-400">Need more test tokens?</p>
-                    <div class="grid grid-cols-3 gap-2">
-                        <button id="faucet-busd" class="btn btn-secondary text-sm">Get 100 BUSD</button>
-                        <button id="faucet-bnb" class="btn btn-secondary text-sm">Get 0.1 BNB</button>
-                        <button id="faucet-cake" class="btn btn-secondary text-sm">Get 50 CAKE</button>
-                    </div>
+                    <h3 class="text-base font-semibold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Get Testnet Tokens
+                    </h3>
+                    <p class="text-sm text-gray-400">Need testnet BNB? Visit the official faucet:</p>
+                    <a href="https://testnet.bnbchain.org/faucet-smart" target="_blank" class="block w-full py-3 px-4 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 hover:from-yellow-500/30 hover:to-orange-500/30 border border-yellow-500/30 rounded-xl text-center font-semibold text-yellow-400 transition-all">
+                        <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                        Open BSC Testnet Faucet
+                    </a>
+                    <p class="text-xs text-center text-gray-500 mt-2">You can claim 0.1 tBNB every 24 hours</p>
                 </div>
             `;
-
-            // Add listeners for the new faucet buttons
-            document.getElementById('faucet-busd').addEventListener('click', () => claimTokens('BUSD'));
-            document.getElementById('faucet-bnb').addEventListener('click', () => claimTokens('BNB'));
             document.getElementById('faucet-cake').addEventListener('click', () => claimTokens('CAKE'));
 
             // Re-populate all asset selectors in the app
