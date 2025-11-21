@@ -95,19 +95,22 @@ export class BiconomyAAService {
 
             const userOpResponse = await smartAccount.sendUserOp(userOp);
             
-            const { receipt, success } = await userOpResponse.wait(1);
-
-            if (!success || !receipt) {
-                throw new Error('Transaction failed or receipt unavailable');
+            const { transactionHash } = await userOpResponse.waitForTxHash();
+            console.log(`📤 Transaction hash: ${transactionHash}`);
+            
+            const userOpReceipt = await userOpResponse.wait();
+            
+            if (!userOpReceipt.success) {
+                throw new Error(`Transaction failed: ${userOpReceipt.reason || 'Unknown error'}`);
             }
 
-            console.log(`✅ Sponsored transaction sent: ${receipt.transactionHash}`);
+            console.log(`✅ Sponsored transaction confirmed: ${transactionHash}`);
 
             return {
                 success: true,
-                txHash: receipt.transactionHash,
-                blockNumber: receipt.blockNumber,
-                gasUsed: receipt.gasUsed?.toString(),
+                txHash: transactionHash,
+                blockNumber: userOpReceipt.receipt.blockNumber,
+                gasUsed: userOpReceipt.actualGasUsed?.toString(),
                 sponsored: true
             };
         } catch (error) {
