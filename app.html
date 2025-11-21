@@ -2700,8 +2700,7 @@
 
 
 </div> </div> <div id="logout-button-container" class="pt-4 hidden">
-
-            <button onclick="logout()" class="btn btn-secondary w-full lg:w-auto lg:px-8" style="border-color: #EF4444; color: #F87171;">
+            <button id="logout-or-login-btn" onclick="handleLogoutOrLogin()" class="btn btn-secondary w-full lg:w-auto lg:px-8" style="border-color: #EF4444; color: #F87171;">
                 Log Out
             </button>
         </div>
@@ -6390,57 +6389,72 @@
                         break;
 
                     case 'walletconnect':
-                        if (typeof window.Web3Modal === 'undefined') {
-                            console.error('Web3Modal not found in window');
-                            showToast("Web3Modal not loaded properly. Please refresh the page.", "error");
-                            showLoadingOverlay(false);
-                            return;
-                        }
-                        
-                        if (typeof window.WalletConnectProvider === 'undefined') {
-                            console.error('WalletConnectProvider not found in window');
-                            showToast("WalletConnect not loaded properly. Please refresh the page.", "error");
-                            showLoadingOverlay(false);
-                            return;
-                        }
-
-                        // Initialize Web3Modal with WalletConnect provider
-                        const walletConnectProjectId = window.WALLETCONNECT_PROJECT_ID;
-                        
-                        if (!walletConnectProjectId) {
-                            showToast("WalletConnect not configured. Please contact support.", "error");
-                            showLoadingOverlay(false);
-                            return;
-                        }
-                        
-                        const web3Modal = new window.Web3Modal({
-                            cacheProvider: false,
-                            providerOptions: {
-                                walletconnect: {
-                                    package: window.WalletConnectProvider.default || window.WalletConnectProvider,
-                                    options: {
-                                        projectId: walletConnectProjectId,
-                                        rpc: {
-                                            97: 'https://data-seed-prebsc-1-s1.binance.org:8545/',
-                                            56: 'https://bsc-dataseed.binance.org/'
-                                        },
-                                        chainId: 97,
-                                    }
-                                }
+                        try {
+                            if (typeof window.Web3Modal === 'undefined') {
+                                console.error('Web3Modal not found in window');
+                                showToast("WalletConnect library not loaded. Please refresh the page and try again.", "error");
+                                showLoadingOverlay(false);
+                                return;
                             }
-                        });
+                            
+                            if (typeof window.WalletConnectProvider === 'undefined') {
+                                console.error('WalletConnectProvider not found in window');
+                                showToast("WalletConnect library not loaded. Please refresh the page and try again.", "error");
+                                showLoadingOverlay(false);
+                                return;
+                            }
 
-                        // Show wallet selection modal
-                        web3Provider = await web3Modal.connect();
-                        
-                        // Wrap provider with ethers if needed
-                        const tempProvider = new ethers.providers.Web3Provider(web3Provider);
-                        const tempSigner = tempProvider.getSigner();
-                        accounts = await tempProvider.listAccounts();
-                        walletAddress = accounts[0];
-                        
-                        // Store Web3Modal instance for later disconnection if needed
-                        window.web3Modal = web3Modal;
+                            const walletConnectProjectId = window.WALLETCONNECT_PROJECT_ID;
+                            
+                            if (!walletConnectProjectId) {
+                                showToast("WalletConnect not configured. Please contact support.", "error");
+                                showLoadingOverlay(false);
+                                return;
+                            }
+                            
+                            // Try to create Web3Modal with proper error handling
+                            let web3Modal;
+                            try {
+                                web3Modal = new window.Web3Modal({
+                                    cacheProvider: false,
+                                    providerOptions: {
+                                        walletconnect: {
+                                            package: window.WalletConnectProvider.default || window.WalletConnectProvider,
+                                            options: {
+                                                projectId: walletConnectProjectId,
+                                                rpc: {
+                                                    97: 'https://data-seed-prebsc-1-s1.binance.org:8545/',
+                                                    56: 'https://bsc-dataseed.binance.org/'
+                                                },
+                                                chainId: 97,
+                                            }
+                                        }
+                                    }
+                                });
+                            } catch (initError) {
+                                console.error('Web3Modal initialization error:', initError);
+                                showToast("Failed to initialize WalletConnect. Try MetaMask instead.", "error");
+                                showLoadingOverlay(false);
+                                return;
+                            }
+
+                            // Show wallet selection modal
+                            web3Provider = await web3Modal.connect();
+                            
+                            // Wrap provider with ethers if needed
+                            const tempProvider = new ethers.providers.Web3Provider(web3Provider);
+                            const tempSigner = tempProvider.getSigner();
+                            accounts = await tempProvider.listAccounts();
+                            walletAddress = accounts[0];
+                            
+                            // Store Web3Modal instance for later disconnection if needed
+                            window.web3Modal = web3Modal;
+                        } catch (error) {
+                            console.error('WalletConnect connection error:', error);
+                            showToast("WalletConnect error: " + error.message, "error");
+                            showLoadingOverlay(false);
+                            return;
+                        }
                         break;
 
                     default:
