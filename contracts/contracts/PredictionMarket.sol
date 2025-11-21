@@ -194,6 +194,12 @@ contract PredictionMarket {
         uint256 platformFee = (losingPool * platformFeeBps) / 10000;
         uint256 payoutPool = market.totalVolume - platformFee;
         
+        // Transfer platform fee to recipient
+        if (platformFee > 0) {
+            (bool feeSuccess, ) = payable(platformFeeRecipient).call{value: platformFee}("");
+            require(feeSuccess, "Platform fee transfer failed");
+        }
+        
         // Prevent division by zero
         if (winningPool == 0) {
             return;
