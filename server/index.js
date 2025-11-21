@@ -366,6 +366,9 @@ app.post('/api/send-otp', async (req, res) => {
         
     } catch (error) {
         console.error('Error sending OTP:', error);
+        if (error.response && error.response.body && error.response.body.errors) {
+            console.error('SendGrid error details:', JSON.stringify(error.response.body.errors, null, 2));
+        }
         res.status(500).json({ error: 'Failed to send OTP email' });
     }
 });
