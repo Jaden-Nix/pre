@@ -4602,27 +4602,15 @@
                 startMockAliveFeatures(); // Starts the " online" counter
 
                 // --- Session Resume Logic ---
-                const demoUserId = localStorage.getItem('demoUserId');
-                const demoDisplayName = localStorage.getItem('demoDisplayName');
-
-                if (demoUserId && demoDisplayName) {
-                    // User has a saved session, log them back in
-                    console.log(`Resuming session for demo user: ${demoDisplayName}`);
-                    currentUserId = demoUserId;
-                    userProfile.displayName = demoDisplayName;
-
-                    initializeUserProfile().then(() => {
-                        attachDataListeners();
-                        showScreen('home-screen');
-                    }).catch(err => {
-                        console.error("Failed to init profile on resume:", err);
-                        showScreen('login-screen'); // Fallback to login
-                    });
-                } else {
-                    // No session, show the login screen
-                    console.log("No demo user in localStorage, showing login screen.");
-                    showScreen('login-screen');
-                }
+                // DISABLED: Always show login screen to let users choose between:
+                // 1. Connect with MetaMask (real wallet)
+                // 2. Try Demo Mode (mock data)
+                // This enables both worlds - real and demo data
+                
+                localStorage.removeItem('demoUserId');
+                localStorage.removeItem('demoDisplayName');
+                console.log("Login screen shown - user can choose real wallet or demo mode");
+                showScreen('login-screen');
                 
                 // Check if admin session exists and restore it
                 if (adminSecret) {
