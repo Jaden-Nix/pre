@@ -11,8 +11,8 @@
  * Fault Tolerance: Byzantine resilient up to 50% faulty agents
  */
 
-const crypto = require('crypto');
-const OpenAI = require('openai');
+import crypto from 'crypto';
+import OpenAI from 'openai';
 
 // ============================================================================
 // CONFIGURATION
@@ -647,14 +647,12 @@ async function swarmVerifyResolution(market, options = {}) {
 // EXPORTS
 // ============================================================================
 
-module.exports = {
+export {
     swarmVerifyResolution,
     CONFIG,
     // For testing
-    _internal: {
-        sanitizeMarketData,
-        computeGeometricMedian,
-        aggregateConsensus,
-        generateEvidenceHash
-    }
+    sanitizeMarketData,
+    computeGeometricMedian,
+    aggregateConsensus,
+    generateEvidenceHash
 };

@@ -13,6 +13,7 @@ import sgMail from '@sendgrid/mail';
 import { AutoPayoutJob } from './auto-payout-job.js';
 import { CustodialWalletService } from './custodial-wallet-service.js';
 import { BiconomyAAService } from './biconomy-aa-service.js';
+import { swarmVerifyResolution } from './swarm-verify-oracle.js';
 
 // --- Constants ---
 const __filename = fileURLToPath(import.meta.url);
@@ -803,6 +804,74 @@ async function autoResolveMarkets() {
         const marketId = doc.id;
 
         try {
+            // Try Swarm-Verify multi-agent oracle first
+            let resolution;
+            let useSwarmVerify = process.env.PERPLEXITY_API_KEY && process.env.BRAVE_SEARCH_API_KEY;
+            
+            if (useSwarmVerify) {
+                console.log(`🐝 SWARM-VERIFY: Attempting multi-agent resolution for "${market.title}"`);
+                try {
+                    resolution = await swarmVerifyResolution(market, {
+                        geminiApiKey: GEMINI_API_KEY,
+                        geminiUrl: GEMINI_URL
+                    });
+                    
+                    console.log(`✅ SWARM-VERIFY: Complete for "${market.title}" - ${resolution.consensus.outcome} (${resolution.consensus.confidence}%)`);
+                    
+                    // Store full evidence in subcollection
+                    if (resolution.success) {
+                        const evidenceRef = doc.ref.collection('resolutionEvidence').doc('swarm-verify');
+                        await evidenceRef.set({
+                            ...resolution,
+                            createdAt: new Date().toISOString()
+                        });
+                        
+                        // Update market with consensus
+                        const updateData = {
+                            isResolved: true,
+                            winningOutcome: resolution.consensus.outcome,
+                            resolutionRationale: resolution.consensus.rationale,
+                            resolutionSource: resolution.consensus.sources[0] || null,
+                            resolutionSources: resolution.consensus.sources,
+                            resolutionConfidence: resolution.consensus.confidence,
+                            resolutionMethod: 'swarm-verify',
+                            resolvedAt: new Date().toISOString(),
+                            evidenceHash: resolution.evidence.hash
+                        };
+                        
+                        await doc.ref.update(updateData);
+                        console.log(`ORACLE: ✅ Resolved ${market.title} as ${resolution.consensus.outcome} (Swarm-Verify)`);
+                        continue; // Success - move to next market
+                    } else {
+                        console.log(`⚠️  SWARM-VERIFY: Confidence ${resolution.consensus.confidence}% below threshold ${resolution.consensus.threshold}%`);
+                        
+                        // Store evidence but mark as AWAITING_REVIEW
+                        const evidenceRef = doc.ref.collection('resolutionEvidence').doc('swarm-verify-insufficient');
+                        await evidenceRef.set({
+                            ...resolution,
+                            status: 'INSUFFICIENT_CONFIDENCE',
+                            createdAt: new Date().toISOString()
+                        });
+                        
+                        await doc.ref.update({
+                            resolutionStatus: 'AWAITING_REVIEW',
+                            resolutionAttemptedAt: new Date().toISOString(),
+                            resolutionMethod: 'swarm-verify-pending',
+                            resolutionConfidence: resolution.consensus.confidence,
+                            requiresManualReview: true
+                        });
+                        
+                        console.log(`ORACLE: ⏸️  Market "${market.title}" marked for manual review`);
+                        continue;
+                    }
+                } catch (swarmError) {
+                    console.error(`❌ SWARM-VERIFY failed for ${marketId}:`, swarmError.message);
+                    console.log(`🔄 Falling back to legacy Gemini oracle...`);
+                }
+            }
+            
+            // Fallback to legacy single-agent Gemini oracle
+            console.log(`🤖 Using legacy Gemini oracle for "${market.title}"`);
             const systemPrompt = `As of ${today}, verify the outcome of: "${market.title}". First, search for credible sources. Then respond in this format:
 OUTCOME: YES or NO or AMBIGUOUS
 RATIONALE: Brief explanation of why this outcome is correct
@@ -838,6 +907,7 @@ SOURCE: URL of the most credible source you found (if available)`;
                     isResolved: true, 
                     winningOutcome: outcome,
                     resolutionRationale: rationale,
+                    resolutionMethod: 'gemini-legacy',
                     resolvedAt: new Date().toISOString()
                 };
                 
@@ -846,7 +916,7 @@ SOURCE: URL of the most credible source you found (if available)`;
                 }
                 
                 await doc.ref.update(updateData);
-                console.log(`ORACLE: Resolved ${market.title} as ${outcome}`);
+                console.log(`ORACLE: Resolved ${market.title} as ${outcome} (Gemini Legacy)`);
                 if (verifiedSource) console.log(`ORACLE: Source: ${verifiedSource}`);
             }
         } catch (e) {
