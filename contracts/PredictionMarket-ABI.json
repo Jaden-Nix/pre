@@ -181,6 +181,29 @@
         "internalType": "uint256",
         "name": "_marketId",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "startIdx",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "endIdx",
+        "type": "uint256"
+      }
+    ],
+    "name": "batchDistributeWinnings",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_marketId",
+        "type": "uint256"
       }
     ],
     "name": "cancelMarket",

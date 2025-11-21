@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/home/runner/workspace/contracts/contracts/PredictionMarket.sol": {
-      "lastModificationDate": 1763701879043,
-      "contentHash": "f584763104dcfcda4242b96a67865e84",
+      "lastModificationDate": 1763702182716,
+      "contentHash": "8504c43363dc3af4799ff6c61c4313d4",
       "sourceName": "contracts/PredictionMarket.sol",
       "solcConfig": {
         "version": "0.8.19",
