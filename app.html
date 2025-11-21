@@ -3948,8 +3948,8 @@
         let currentScreenId = 'login-screen'; 
         let currentUserId = null;
         let userProfile = { 
-            xp: 0, displayName: '', walletAddress: '', isApproved: false, 
-            balance: 100, bnbBalance: 0.2, cakeBalance: 150 
+            xp: 0, displayName: '', walletAddress: '', isApproved: false
+            // Balances fetched from blockchain, not stored here
         };
 
         // --- GUEST MODE STATE ---
@@ -4027,6 +4027,12 @@
         let smartAccountAddress = null;
         let currentNetwork = null;
         let predoraContract = null;
+        
+        // BSC Testnet Read-Only Provider (for fetching balances without wallet connection)
+        let bscProvider = null;
+        
+        // CAKE Token Contract on BSC Testnet
+        const CAKE_CONTRACT_ADDRESS = "0xFa60D973F7642B748046464e165A65B7323b0DEE";
 
         // --- FIRESTORE PATHS ---
         // All data is stored in a "public" path for the hackathon demo
@@ -4343,16 +4349,168 @@
         }
 
         /**
-         * Gets real BNB balance from wallet
+         * Initializes BSC Testnet read-only provider for fetching balances
+         */
+        function initializeBSCProvider() {
+            if (!bscProvider) {
+                try {
+                    bscProvider = new ethers.providers.JsonRpcProvider(NETWORKS.BSC_TESTNET.rpcUrls[0]);
+                    console.log('✅ BSC Testnet provider initialized for balance reads');
+                } catch (error) {
+                    console.error('Failed to initialize BSC provider:', error);
+                }
+            }
+        }
+
+        /**
+         * Gets real BNB balance from wallet (works with custodial wallets)
          */
         async function getRealBNBBalance() {
-            if (!userWalletAddress || !ethersProvider) return '0';
+            // Use custodial wallet address if available, fallback to connected wallet
+            const walletAddress = userProfile.walletAddress || userWalletAddress;
+            
+            if (!walletAddress) {
+                console.log('⚠️ No wallet address available for balance check');
+                return 0;
+            }
+            
+            // Initialize provider if not already done
+            if (!bscProvider) {
+                initializeBSCProvider();
+            }
+            
+            // Use BSC provider or ethersProvider (whichever is available)
+            const provider = bscProvider || ethersProvider;
+            
+            if (!provider) {
+                console.error('❌ No blockchain provider available');
+                return 0;
+            }
+            
             try {
-                const balance = await ethersProvider.getBalance(userWalletAddress);
-                return ethers.utils.formatEther(balance);
+                console.log(`🔍 Fetching real BNB balance for ${walletAddress}...`);
+                const balance = await provider.getBalance(walletAddress);
+                const formatted = parseFloat(ethers.utils.formatEther(balance));
+                console.log(`✅ Real BNB balance: ${formatted} tBNB`);
+                return formatted;
             } catch (error) {
-                console.error('Failed to get BNB balance:', error);
-                return '0';
+                console.error('❌ Failed to get BNB balance:', error);
+                return 0;
+            }
+        }
+
+        /**
+         * Gets real CAKE token balance from BSC Testnet
+         */
+        async function getRealCAKEBalance() {
+            // Use custodial wallet address if available, fallback to connected wallet
+            const walletAddress = userProfile.walletAddress || userWalletAddress;
+            
+            if (!walletAddress) {
+                console.log('⚠️ No wallet address available for CAKE balance check');
+                return 0;
+            }
+            
+            // Initialize provider if not already done
+            if (!bscProvider) {
+                initializeBSCProvider();
+            }
+            
+            // Use BSC provider or ethersProvider (whichever is available)
+            const provider = bscProvider || ethersProvider;
+            
+            if (!provider) {
+                console.error('❌ No blockchain provider available');
+                return 0;
+            }
+            
+            try {
+                console.log(`🔍 Fetching real CAKE balance for ${walletAddress}...`);
+                
+                // CAKE Token ABI (only need balanceOf function)
+                const cakeABI = [
+                    "function balanceOf(address) view returns (uint256)"
+                ];
+                
+                const cakeContract = new ethers.Contract(
+                    CAKE_CONTRACT_ADDRESS,
+                    cakeABI,
+                    provider
+                );
+                
+                const balance = await cakeContract.balanceOf(walletAddress);
+                const formatted = parseFloat(ethers.utils.formatUnits(balance, 18));
+                console.log(`✅ Real CAKE balance: ${formatted} CAKE`);
+                return formatted;
+            } catch (error) {
+                console.error('❌ Failed to get CAKE balance:', error);
+                return 0;
+            }
+        }
+
+        /**
+         * Refreshes all token balances from blockchain
+         */
+        async function refreshAllBalances() {
+            const walletAddress = userProfile.walletAddress || userWalletAddress;
+            
+            if (!walletAddress) {
+                console.log('⚠️ No wallet address, skipping balance refresh');
+                return;
+            }
+            
+            console.log('🔄 Refreshing all balances from blockchain...');
+            showLoadingOverlay(true, 'Updating balances...');
+            
+            try {
+                // Fetch real balances in parallel
+                const [bnb, cake] = await Promise.all([
+                    getRealBNBBalance(),
+                    getRealCAKEBalance()
+                ]);
+                
+                // Update userProfile
+                userProfile.bnbBalance = bnb;
+                userProfile.cakeBalance = cake;
+                
+                // Update Firestore (for caching purposes only, not source of truth)
+                if (currentUserId) {
+                    try {
+                        const { doc, updateDoc } = window.firebase.firestore;
+                        await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId), {
+                            bnbBalance: bnb,
+                            cakeBalance: cake,
+                            lastBalanceUpdate: Date.now()
+                        });
+                    } catch (firestoreError) {
+                        console.warn('Could not update Firestore with balances:', firestoreError);
+                        // Continue anyway - blockchain is source of truth
+                    }
+                }
+                
+                // Update UI if profile screen is visible
+                if (dom.mockBalance) {
+                    updateProfileUI(userProfile);
+                }
+                
+                console.log('✅ Balances refreshed:', { bnb, cake });
+                showToast('Balances updated from blockchain', 'success');
+            } catch (error) {
+                console.error('❌ Error refreshing balances:', error);
+                showToast('Failed to refresh balances', 'error');
+            } finally {
+                showLoadingOverlay(false);
+            }
+        }
+
+        /**
+         * Manual balance refresh (called by refresh button in UI)
+         */
+        async function updateRealBNBBalance() {
+            await refreshAllBalances();
+            // Re-render assets content to show updated balances
+            if (currentScreenId === 'profile-screen') {
+                await renderAssetsContent();
             }
         }
 
@@ -4659,25 +4817,10 @@
         }
 
         /**
-         * Updates the UI to show real BNB balance - fetches from blockchain and re-renders
+         * REMOVED: Old updateRealBNBBalance() implementation
+         * Now using the comprehensive version that refreshes both BNB and CAKE balances
+         * See line 4509 for the new implementation
          */
-        async function updateRealBNBBalance() {
-            try {
-                showLoadingOverlay(true, 'Fetching balance...');
-                const balance = await getRealBNBBalance();
-                userProfile.bnbBalance = parseFloat(balance);
-                
-                // Re-render assets content to show updated balance
-                await renderAssetsContent();
-                
-                showLoadingOverlay(false);
-                showToast(`Balance updated: ${parseFloat(balance).toFixed(4)} tBNB`, 'success');
-            } catch (error) {
-                console.error('Failed to update balance:', error);
-                showLoadingOverlay(false);
-                showToast('Failed to fetch balance', 'error');
-            }
-        }
 
         /**
          * Updates the UI after wallet connection
@@ -5051,6 +5194,12 @@
                     userProfile = { ...userProfile, ...profileSnap.data() };
                     showScreen('home-screen');
                 }
+
+                // Fetch real balances from blockchain after wallet is set up
+                // This runs in background and doesn't block the UI
+                refreshAllBalances().catch(err => {
+                    console.warn('Background balance refresh failed:', err);
+                });
 
                 showLoadingOverlay(false);
 
@@ -5867,8 +6016,8 @@
             cleanupFirestoreListeners();
             currentUserId = null;
             userProfile = { 
-                xp: 0, displayName: '', walletAddress: '', isApproved: false, 
-                balance: 100, bnbBalance: 0.2, cakeBalance: 150 
+                xp: 0, displayName: '', walletAddress: '', isApproved: false
+                // Balances will be fetched from blockchain on next login
             };
             pledgePoolItems = [];
             showScreen('login-screen');
@@ -5893,9 +6042,9 @@
                     displayName: userProfile.displayName, 
                     walletAddress: "0x" + [...Array(40)].map(() => Math.floor(Math.random() * 16).toString(16)).join(''), 
                     xp: 0,
-                    balance: 100, 
-                    bnbBalance: 0.2,
-                    cakeBalance: 150,
+                    balance: 0, 
+                    bnbBalance: 0,
+                    cakeBalance: 0,
                     createdAt: new Date().toISOString(),
                     streak: 0,
                     avatarUrl: LOGO_URL // Default to  app's logo
@@ -6914,16 +7063,30 @@
             const assetsEl = document.getElementById('assets-content');
             const balance = userProfile.balance || 0;
             let bnbBalance = userProfile.bnbBalance || 0;
-            const cakeBalance = userProfile.cakeBalance || 0;
+            let cakeBalance = userProfile.cakeBalance || 0;
 
-            // Fetch real BNB balance if wallet is connected
-            if (userWalletAddress && ethersProvider) {
+            // Fetch real balances from blockchain
+            const walletAddress = userProfile.walletAddress || userWalletAddress;
+            if (walletAddress) {
                 try {
-                    const realBalance = await getRealBNBBalance();
-                    bnbBalance = parseFloat(realBalance);
-                    userProfile.bnbBalance = bnbBalance; // Update user profile with real balance
+                    console.log('🔄 Fetching real balances for assets screen...');
+                    
+                    // Fetch both BNB and CAKE balances in parallel
+                    const [realBnb, realCake] = await Promise.all([
+                        getRealBNBBalance(),
+                        getRealCAKEBalance()
+                    ]);
+                    
+                    bnbBalance = realBnb;
+                    cakeBalance = realCake;
+                    
+                    // Update user profile with real balances
+                    userProfile.bnbBalance = bnbBalance;
+                    userProfile.cakeBalance = cakeBalance;
+                    
+                    console.log('✅ Real balances loaded:', { bnbBalance, cakeBalance });
                 } catch (error) {
-                    console.error('Failed to fetch real BNB balance:', error);
+                    console.error('❌ Failed to fetch real balances:', error);
                 }
             }
 
@@ -6994,6 +7157,20 @@
                                 <p class="text-xs theme-text-secondary">Multi-token support pending</p>
                             </div>
                         </div>
+
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
+                            <div class="flex items-center">
+                                <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/7186.png" class="w-10 h-10 rounded-full mr-3" alt="CAKE">
+                                <div>
+                                    <p class="font-semibold theme-text-primary">CAKE ${hasWallet ? '(Testnet)' : '(Mock)'}</p>
+                                    <p class="text-sm theme-text-secondary">PancakeSwap Token</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold theme-text-primary">${cakeBalance.toFixed(2)} CAKE</p>
+                                <p class="text-xs theme-text-secondary">$${(cakeBalance * getMockPrice('CAKE')).toFixed(2)} USD</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -7008,54 +7185,25 @@
                         Open BSC Testnet Faucet
                     </a>
                     <p class="text-xs text-center text-gray-500 mt-2">You can claim 0.1 tBNB every 24 hours</p>
+                    <p class="text-xs text-center text-gray-400 mt-3">
+                        💡 <strong>Note:</strong> Balances are fetched directly from BSC Testnet blockchain
+                    </p>
                 </div>
             `;
-            document.getElementById('faucet-cake').addEventListener('click', () => claimTokens('CAKE'));
 
             // Re-populate all asset selectors in the app
             populateAssetSelector();
         }
 
         /**
-         * Mock faucet function to add tokens to the user's profile.
+         * REMOVED: Mock faucet function
+         * Users should get real testnet tokens from official BSC faucet
+         * Balances are now read directly from blockchain
          */
-        async function claimTokens(asset) {
-            const { doc, updateDoc, increment } = window.firebase.firestore;
-
-            let amount = 0;
-            let field = "";
-
-            if (asset === 'BUSD') { amount = 100; field = 'balance'; }
-            else if (asset === 'BNB') { amount = 0.1; field = 'bnbBalance'; }
-            else if (asset === 'CAKE') { amount = 50; field = 'cakeBalance'; }
-
-            if (!field) return;
-
-            showLoadingOverlay(true, `Claiming ${amount} ${asset}...`);
-
-            try {
-                const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
-                await updateDoc(profileRef, {
-                    [field]: increment(amount) 
-                });
-
-
-                userProfile[field] = (userProfile[field] || 0) + amount;
-
-
-                renderAssetsContent();
-                updateProfileUI(userProfile);
-
-                showLoadingOverlay(false);
-                showToast(`${amount} ${asset} received from faucet!`, "success");
-
-
-            } catch (error) {
-                console.error("Faucet claim failed:", error);
-                showLoadingOverlay(false);
-                showToast("Faucet claim failed. Check console.", "error");
-            }
-        }
+        // async function claimTokens(asset) {
+        //     // This function has been removed - use real BSC testnet faucet instead
+        //     showToast('Please use the official BSC Testnet faucet to get real tBNB', 'info');
+        // }
 
         /**
          * Renders the list of active stakes on the profile screen.
