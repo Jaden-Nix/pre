@@ -110,75 +110,49 @@ function generateEvidenceHash(data) {
 }
 
 // ============================================================================
-// AGENT 1: PERPLEXITY RESEARCH AGENT
+// AGENT 1: GPT-4O RESEARCH AGENT (via Replit AI Integrations)
 // ============================================================================
 
-async function perplexityAgent(market) {
-    const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
-    if (!PERPLEXITY_API_KEY) {
-        throw new Error('PERPLEXITY_API_KEY not configured');
-    }
-
+async function gpt4oResearchAgent(market) {
     const sanitized = sanitizeMarketData(market);
     
     const systemPrompt = `You are a factual research agent for prediction market resolution. 
-Your task is to determine if the following market outcome is TRUE or FALSE based on verifiable evidence.
+Your task is to determine if the following market outcome is TRUE or FALSE based on logical reasoning and general knowledge.
 
 Rules:
-1. Use ONLY credible sources (news outlets, official statements, verified data)
+1. Use credible reasoning and established facts
 2. If evidence is inconclusive or contradictory, return AMBIGUOUS
 3. Provide confidence score (0-100) based on evidence quality
-4. List ALL source URLs used
+4. Be thorough but concise
 
 Output format:
 OUTCOME: YES|NO|AMBIGUOUS
 CONFIDENCE: <0-100>
 RATIONALE: <detailed explanation>
-SOURCES: <comma-separated URLs>`;
+SOURCES: <any relevant URLs or references>`;
 
     const userPrompt = `Market Title: "${sanitized.title}"
 Description: "${sanitized.description}"
 Resolution Date: ${sanitized.resolutionDate}
 Category: ${sanitized.category}
 
-Determine the outcome with maximum accuracy.`;
-
-    const payload = {
-        model: 'llama-3.1-sonar-large-128k-online',
-        messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.2,
-        max_tokens: 1000,
-        return_citations: true,
-        search_recency_filter: 'month'
-    };
+Determine the outcome with maximum accuracy using your knowledge and reasoning.`;
 
     const response = await retryWithBackoff(async () => {
-        const res = await fetchWithTimeout(
-            'https://api.perplexity.ai/chat/completions',
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            },
-            CONFIG.AGENT_TIMEOUT_MS
-        );
-        
-        if (!res.ok) {
-            const error = await res.text();
-            throw new Error(`Perplexity API error: ${error}`);
-        }
-        
-        return res.json();
+        // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4o', // Using gpt-4o for research
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+            ],
+            temperature: 0.3,
+            max_completion_tokens: 1000,
+        });
+        return completion;
     });
 
     const content = response.choices[0]?.message?.content || '';
-    const citations = response.citations || [];
 
     // Parse response
     const outcomeMatch = content.match(/OUTCOME:\s*(YES|NO|AMBIGUOUS)/i);
@@ -187,30 +161,30 @@ Determine the outcome with maximum accuracy.`;
     const sourcesMatch = content.match(/SOURCES:\s*(.+?)$/is);
 
     return {
-        agent: 'perplexity',
+        agent: 'gpt4o-research',
         outcome: outcomeMatch ? outcomeMatch[1].toUpperCase() : 'AMBIGUOUS',
-        confidence: confidenceMatch ? parseInt(confidenceMatch[1]) : 50,
+        confidence: confidenceMatch ? parseInt(confidenceMatch[1]) : 65,
         rationale: rationaleMatch ? rationaleMatch[1].trim() : content,
-        sources: citations.length > 0 ? citations : (sourcesMatch ? sourcesMatch[1].split(',').map(s => s.trim()) : []),
+        sources: sourcesMatch ? sourcesMatch[1].split(',').map(s => s.trim()).filter(s => s.startsWith('http')) : [],
         rawResponse: content,
         timestamp: new Date().toISOString()
     };
 }
 
 // ============================================================================
-// AGENT 2: GPT-4O SKEPTIC AGENT
+// AGENT 2: GPT-4O-MINI SKEPTIC AGENT (via Replit AI Integrations)
 // ============================================================================
 
-async function gpt4oSkepticAgent(market, otherAgentResults = []) {
+async function gpt4oMiniSkepticAgent(market, otherAgentResults = []) {
     const sanitized = sanitizeMarketData(market);
     
     const systemPrompt = `You are a PARANOID SKEPTIC agent designed to adversarially verify prediction market resolutions.
 
 Your role:
 1. ASSUME all claims are false until proven with overwhelming evidence
-2. Look for contradictions, biases, and unreliable sources
-3. Challenge assumptions and question weak reasoning
-4. Only accept outcomes backed by multiple independent credible sources
+2. Look for contradictions, biases, and unreliable reasoning
+3. Challenge assumptions and question weak evidence
+4. Only accept outcomes backed by strong logical proof
 5. Default to AMBIGUOUS if ANY doubt exists
 
 Be extremely critical and conservative.`;
@@ -226,8 +200,7 @@ Resolution Date: ${sanitized.resolutionDate}`;
             userPrompt += `\nAgent ${i + 1} (${result.agent}):
 - Outcome: ${result.outcome}
 - Confidence: ${result.confidence}%
-- Rationale: ${result.rationale.slice(0, 300)}
-- Sources: ${result.sources.slice(0, 3).join(', ')}`;
+- Rationale: ${result.rationale.slice(0, 300)}`;
         });
         userPrompt += `\n\nYour task: Adversarially verify these findings. Look for flaws, contradictions, and weak evidence.`;
     }
@@ -235,19 +208,18 @@ Resolution Date: ${sanitized.resolutionDate}`;
     userPrompt += `\n\nOutput format:
 OUTCOME: YES|NO|AMBIGUOUS
 CONFIDENCE: <0-100>
-RATIONALE: <critical analysis>
-SOURCES: <URLs you independently verified>`;
+RATIONALE: <critical analysis>`;
 
     const response = await retryWithBackoff(async () => {
         // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4o', // Using gpt-4o for cost efficiency in skeptic role
+            model: 'gpt-4o-mini', // Using gpt-4o-mini for cost efficiency
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt }
             ],
-            temperature: 0.3,
-            max_completion_tokens: 1000,
+            temperature: 0.4,
+            max_completion_tokens: 800,
         });
         return completion;
     });
@@ -256,42 +228,34 @@ SOURCES: <URLs you independently verified>`;
 
     const outcomeMatch = content.match(/OUTCOME:\s*(YES|NO|AMBIGUOUS)/i);
     const confidenceMatch = content.match(/CONFIDENCE:\s*(\d+)/i);
-    const rationaleMatch = content.match(/RATIONALE:\s*(.+?)(?=SOURCES:|$)/is);
-    const sourcesMatch = content.match(/SOURCES:\s*(.+?)$/is);
+    const rationaleMatch = content.match(/RATIONALE:\s*(.+?)$/is);
 
     return {
-        agent: 'gpt4o-skeptic',
+        agent: 'gpt4o-mini-skeptic',
         outcome: outcomeMatch ? outcomeMatch[1].toUpperCase() : 'AMBIGUOUS',
         confidence: confidenceMatch ? parseInt(confidenceMatch[1]) : 30, // Skeptic defaults lower
         rationale: rationaleMatch ? rationaleMatch[1].trim() : content,
-        sources: sourcesMatch ? sourcesMatch[1].split(',').map(s => s.trim()).filter(s => s.startsWith('http')) : [],
+        sources: [],
         rawResponse: content,
         timestamp: new Date().toISOString()
     };
 }
 
 // ============================================================================
-// AGENT 3: BRAVE SEARCH FACT-CHECKER
+// AGENT 3: DUCKDUCKGO FACT-CHECKER (NO API KEY REQUIRED!)
 // ============================================================================
 
-async function braveSearchAgent(market) {
-    const BRAVE_API_KEY = process.env.BRAVE_SEARCH_API_KEY;
-    if (!BRAVE_API_KEY) {
-        throw new Error('BRAVE_SEARCH_API_KEY not configured');
-    }
-
+async function duckDuckGoAgent(market) {
     const sanitized = sanitizeMarketData(market);
-    const searchQuery = `${sanitized.title} ${sanitized.category} fact check`;
+    const searchQuery = `${sanitized.title} ${sanitized.category}`;
 
     const response = await retryWithBackoff(async () => {
         const res = await fetchWithTimeout(
-            `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(searchQuery)}&count=10`,
+            `https://api.duckduckgo.com/?q=${encodeURIComponent(searchQuery)}&format=json`,
             {
                 method: 'GET',
                 headers: {
-                    'Accept': 'application/json',
-                    'Accept-Encoding': 'gzip',
-                    'X-Subscription-Token': BRAVE_API_KEY
+                    'Accept': 'application/json'
                 }
             },
             CONFIG.AGENT_TIMEOUT_MS
@@ -299,43 +263,55 @@ async function braveSearchAgent(market) {
         
         if (!res.ok) {
             const error = await res.text();
-            throw new Error(`Brave Search API error: ${error}`);
+            throw new Error(`DuckDuckGo API error: ${error}`);
         }
         
         return res.json();
     });
 
-    const results = response.web?.results || [];
-    const sources = results.slice(0, 5).map(r => r.url);
+    // DuckDuckGo returns instant answers, related topics, and abstract
+    const abstract = response.Abstract || '';
+    const abstractText = response.AbstractText || '';
+    const relatedTopics = response.RelatedTopics || [];
+    const abstractSource = response.AbstractSource || '';
+    const abstractURL = response.AbstractURL || '';
     
-    // Simple heuristic: analyze snippets for outcome indicators
-    const snippets = results.map(r => r.description || '').join(' ').toLowerCase();
+    // Analyze the abstract and related content
+    const content = (abstractText + ' ' + relatedTopics.map(t => t.Text || '').join(' ')).toLowerCase();
     
     let outcome = 'AMBIGUOUS';
-    let confidence = 40;
+    let confidence = 45;
+    let rationale = 'No definitive information found.';
     
-    // Basic sentiment analysis (can be improved)
-    const yesKeywords = ['confirmed', 'verified', 'true', 'yes', 'successful', 'achieved'];
-    const noKeywords = ['false', 'denied', 'failed', 'no', 'rejected', 'unsuccessful'];
-    
-    const yesCount = yesKeywords.reduce((count, word) => count + (snippets.match(new RegExp(word, 'g')) || []).length, 0);
-    const noCount = noKeywords.reduce((count, word) => count + (snippets.match(new RegExp(word, 'g')) || []).length, 0);
-    
-    if (yesCount > noCount * 2) {
-        outcome = 'YES';
-        confidence = Math.min(70, 40 + yesCount * 5);
-    } else if (noCount > yesCount * 2) {
-        outcome = 'NO';
-        confidence = Math.min(70, 40 + noCount * 5);
+    if (content.length > 50) {
+        // Basic keyword analysis
+        const yesKeywords = ['confirmed', 'verified', 'true', 'yes', 'successful', 'achieved', 'completed'];
+        const noKeywords = ['false', 'denied', 'failed', 'no', 'rejected', 'unsuccessful', 'cancelled'];
+        
+        const yesCount = yesKeywords.reduce((count, word) => count + (content.match(new RegExp(word, 'g')) || []).length, 0);
+        const noCount = noKeywords.reduce((count, word) => count + (content.match(new RegExp(word, 'g')) || []).length, 0);
+        
+        if (yesCount > noCount * 1.5) {
+            outcome = 'YES';
+            confidence = Math.min(65, 45 + yesCount * 4);
+            rationale = `DuckDuckGo found ${yesCount} positive indicators. ${abstractText.slice(0, 200)}`;
+        } else if (noCount > yesCount * 1.5) {
+            outcome = 'NO';
+            confidence = Math.min(65, 45 + noCount * 4);
+            rationale = `DuckDuckGo found ${noCount} negative indicators. ${abstractText.slice(0, 200)}`;
+        } else if (abstractText.length > 30) {
+            rationale = `Mixed signals from DuckDuckGo. ${abstractText.slice(0, 200)}`;
+            confidence = 50;
+        }
     }
 
     return {
-        agent: 'brave-search',
+        agent: 'duckduckgo',
         outcome,
         confidence,
-        rationale: `Analyzed ${results.length} search results. Found ${yesCount} positive and ${noCount} negative indicators.`,
-        sources,
-        rawResponse: snippets.slice(0, 500),
+        rationale,
+        sources: abstractURL ? [abstractURL] : [],
+        rawResponse: abstractText.slice(0, 500),
         timestamp: new Date().toISOString()
     };
 }
@@ -528,29 +504,25 @@ async function swarmVerifyResolution(market, options = {}) {
     const agentTasks = [];
     const agentErrors = {};
     
-    // Perplexity (required)
-    if (process.env.PERPLEXITY_API_KEY) {
-        agentTasks.push(
-            perplexityAgent(market)
-                .catch(err => {
-                    agentErrors.perplexity = err.message;
-                    return null;
-                })
-        );
-    }
+    // GPT-4o Research Agent (via Replit AI Integrations - NO API KEY NEEDED)
+    agentTasks.push(
+        gpt4oResearchAgent(market)
+            .catch(err => {
+                agentErrors.gpt4o_research = err.message;
+                return null;
+            })
+    );
     
-    // Brave Search (required)
-    if (process.env.BRAVE_SEARCH_API_KEY) {
-        agentTasks.push(
-            braveSearchAgent(market)
-                .catch(err => {
-                    agentErrors.brave = err.message;
-                    return null;
-                })
-        );
-    }
+    // DuckDuckGo Agent (NO API KEY NEEDED!)
+    agentTasks.push(
+        duckDuckGoAgent(market)
+            .catch(err => {
+                agentErrors.duckduckgo = err.message;
+                return null;
+            })
+    );
     
-    // Gemini (optional)
+    // Gemini (if available)
     if (options.geminiApiKey && options.geminiUrl) {
         agentTasks.push(
             geminiAgent(market, options.geminiApiKey, options.geminiUrl)
@@ -582,7 +554,7 @@ async function swarmVerifyResolution(market, options = {}) {
     // Phase 2: Skeptic agent adversarial verification
     let skepticResult = null;
     try {
-        skepticResult = await gpt4oSkepticAgent(market, phase1Results);
+        skepticResult = await gpt4oMiniSkepticAgent(market, phase1Results);
         console.log(`🔍 Phase 2 complete: Skeptic verification done`);
     } catch (err) {
         console.warn(`⚠️  Skeptic agent failed: ${err.message}`);

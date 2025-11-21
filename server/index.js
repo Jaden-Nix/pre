@@ -804,9 +804,9 @@ async function autoResolveMarkets() {
         const marketId = doc.id;
 
         try {
-            // Try Swarm-Verify multi-agent oracle first
+            // Try Swarm-Verify multi-agent oracle first (NO API KEYS NEEDED!)
             let resolution;
-            let useSwarmVerify = process.env.PERPLEXITY_API_KEY && process.env.BRAVE_SEARCH_API_KEY;
+            let useSwarmVerify = true; // Always use Swarm-Verify (uses OpenAI via Replit + DuckDuckGo)
             
             if (useSwarmVerify) {
                 console.log(`🐝 SWARM-VERIFY: Attempting multi-agent resolution for "${market.title}"`);

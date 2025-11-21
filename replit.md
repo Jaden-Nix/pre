@@ -28,9 +28,9 @@ The platform uses a dual-workflow architecture:
 - **Auto-Payout System**: Backend job (`server/auto-payout-job.js`) monitors resolved markets and automatically calls `autoFinalizeAndPayout()` after 30 minutes, distributing winnings to all winners and collecting platform fees.
 - **AI Features**: 
   - **Swarm-Verify Oracle**: Multi-agent Byzantine fault-tolerant market resolution system featuring:
-    - Perplexity API: Deep research agent with web search and citations
-    - OpenAI GPT-4o: Skeptic agent with adversarial "Paranoid" prompt verification
-    - Brave Search API: Independent fact-checking and source validation
+    - OpenAI GPT-4o: Research agent via Replit AI Integrations (no API key required)
+    - OpenAI GPT-4o-mini: Skeptic agent with adversarial "Paranoid" prompt verification
+    - DuckDuckGo API: Fact-checking via free public API (no API key required)
     - Gemini AI: Optional diversity agent
     - Geometric median consensus algorithm (Weiszfeld's method) for confidence aggregation
     - Cryptographic evidence hashing (SHA-256) for auditability
