@@ -405,6 +405,11 @@ app.post('/api/privy/verify', async (req, res) => {
     }
 });
 
+// --- BICONOMY ACCOUNT ABSTRACTION ENDPOINTS ---
+// Note: Biconomy integration requires client-side SDK loading with Privy embedded wallet as owner
+// for true self-custody. Server-side session keys violate the self-custody model.
+// TODO: Implement client-side Biconomy SDK integration using ESM modules
+
 // --- EMAIL OTP AUTHENTICATION ENDPOINTS ---
 app.post('/api/send-otp', async (req, res) => {
     const { email } = req.body;

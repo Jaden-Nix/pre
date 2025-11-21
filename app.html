@@ -27,6 +27,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.0/dist/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.1/dist/ethers.umd.min.js"></script>
+    
+    <!-- Biconomy SDK (loaded as ESM module in separate script) -->
 
     <!-- WALLETCONNECT_PROJECT_ID_PLACEHOLDER -->
 
@@ -4618,7 +4620,7 @@
                         smartAccountDisplay.classList.remove('text-gray-400');
                         smartAccountDisplay.classList.add('text-green-400');
                     } else {
-                        smartAccountDisplay.textContent = 'Not configured (needs Biconomy SDK)';
+                        smartAccountDisplay.textContent = 'Pending client-side SDK';
                         smartAccountDisplay.classList.remove('text-green-400');
                         smartAccountDisplay.classList.add('text-gray-400');
                     }
@@ -5036,13 +5038,24 @@
                 localStorage.setItem('authMethod', authMethod);
                 localStorage.setItem('demoUserId', userId);
 
-                // Get Privy embedded wallet
+                // Get Privy embedded wallet and setup Biconomy
                 showLoadingOverlay(true, 'Creating your embedded wallet...');
                 let walletAddress;
+                let embeddedWallet = null;
+                
                 try {
-                    const embeddedWallet = await window.privyClient.embeddedWallet.create();
+                    embeddedWallet = await window.privyClient.embeddedWallet.create();
                     const accounts = await embeddedWallet.request({ method: 'eth_requestAccounts' });
                     walletAddress = accounts[0];
+                    
+                    // Store embedded wallet for future use
+                    window.privyEmbeddedWallet = embeddedWallet;
+                    
+                    // Note: Biconomy gasless transactions require client-side SDK integration
+                    // For now, transactions will use direct wallet (user pays gas)
+                    smartAccountAddress = null;
+                    console.log('✅ Privy embedded wallet ready. Gasless transactions pending SDK integration.');
+                    
                 } catch (walletError) {
                     console.warn('Embedded wallet creation failed, using custodial wallet:', walletError);
                     // Fallback to custodial wallet from backend

@@ -20,17 +20,18 @@ The frontend is a single-page application (`app.html`) built with Vanilla JavaSc
 
 ### Technical Implementation
 The platform uses a dual-workflow architecture:
-- **Frontend**: Vanilla JavaScript (`app.html`) integrating Firebase Client SDK, Ethers.js for Web3, and Chart.js.
-- **Backend**: Express.js server (`/server`) handling AI proxying, market generation, oracle resolution, and jury system endpoints. It also serves the frontend and APIs. Includes an automated payout job that finalizes and distributes winnings after the 30-minute dispute window.
+- **Frontend**: Vanilla JavaScript (`app.html`) integrating Privy SDK, Ethers.js for Web3, and Chart.js.
+- **Backend**: Express.js server (`/server`) handling AI proxying, market generation, oracle resolution, jury system endpoints, and Privy token verification. It also serves the frontend and APIs. Includes an automated payout job that finalizes and distributes winnings after the 30-minute dispute window.
 - **Data Storage**: Firebase Firestore for real-time data synchronization of markets, pledges, users, and votes.
-- **Web3 Integration**: Ethers.js for MetaMask wallet connection, network switching (BSC Testnet and opBNB Testnet), and on-chain balance fetching. Smart contract deployed on BSC Testnet at `0x7AB69aA7543e9ae43b5D01c5622868392252EAAd` handles all on-chain betting and payouts.
+- **Authentication**: Privy authentication with social logins (Google, X/Twitter) and email OTP. Privy embedded wallets provide self-custodial wallet access with secure iframe postMessage bridge.
+- **Web3 Integration**: Ethers.js for wallet interactions, network switching (BSC Testnet and opBNB Testnet), and on-chain balance fetching. Smart contract deployed on BSC Testnet at `0x7AB69aA7543e9ae43b5D01c5622868392252EAAd` handles all on-chain betting and payouts.
 - **Smart Contract**: PredictionMarket.sol includes automatic payout distribution with duplicate prevention via `hasReceivedPayout` mapping, platform fee collection, and 30-minute dispute window before finalization.
 - **Auto-Payout System**: Backend job (`server/auto-payout-job.js`) monitors resolved markets and automatically calls `autoFinalizeAndPayout()` after 30 minutes, distributing winnings to all winners and collecting platform fees.
 - **AI Features**: Google Gemini AI is used for market generation, "Quick Play" generation, and auto-resolution with web search verification, providing rationale and sources. AI guardrails are implemented for duplicate detection, quality filtering, and Sybil detection.
 - **Jury System**: A fully functional jury voting system allows users to submit votes for disputed markets, with outcomes determined by majority rule. An admin dashboard provides oversight and manual override capabilities.
 - **Multiple Options Market Display**: Supports markets with 3-6 options, each displayed with individual percentages.
-- **Custodial Wallets**: Automatic server-side wallet creation on user signup using ethers.js v5, with AES-256-GCM encrypted private keys stored in Firebase Firestore. Keys never exposed to client.
-- **Account Abstraction**: Biconomy Smart Account SDK enables gasless transactions via ERC-4337 UserOperations, with sponsored gas from Biconomy Paymaster on BSC Testnet (Chain ID: 97).
+- **Custodial Wallets**: Server-side backup wallets created for fallback scenarios using ethers.js v5, with AES-256-GCM encrypted private keys stored in Firebase Firestore.
+- **Account Abstraction**: Future enhancement - Biconomy Smart Account integration requires client-side ESM module loading to use Privy embedded wallets as true owners (not custodial keys). Current backend-only implementation violates self-custody model.
 
 ### System Design Choices
 - **Vanilla JS**: Chosen to preserve the existing codebase, simplify deployment, and avoid a build step.
@@ -38,14 +39,15 @@ The platform uses a dual-workflow architecture:
 - **Jury Voting**: Implemented for decentralized dispute resolution, preventing single points of failure and AI oracle manipulation, fostering community-driven governance.
 
 ## External Dependencies
-- **Firebase**: Firestore for database, Authentication, and Client/Admin SDKs.
+- **Privy**: Authentication with social logins (Google, X/Twitter), email OTP, and embedded self-custodial wallets.
+- **Firebase**: Firestore for database and Client/Admin SDKs.
 - **Google Gemini AI API**: For market generation, resolution, and AI guardrails.
 - **Ethers.js**: For Web3 wallet interactions and blockchain communication.
 - **Web3Modal & WalletConnect**: Multi-wallet connection support with secure Project ID injection.
 - **Tailwind CSS (CDN)**: For styling.
 - **Chart.js**: For data visualization.
-- **Biconomy SDK**: Active ERC-4337 Account Abstraction implementation for gasless transactions on BSC Testnet.
-- **Custodial Wallet System**: Auto-generated encrypted wallets for seamless user onboarding.
+- **Biconomy SDK**: Backend implementation for gasless transactions (future: client-side integration needed for true self-custody).
+- **Custodial Wallet System**: Server-side backup wallets for fallback scenarios.
 - **Express.js**: Backend framework.
 - **Node.js**: Backend runtime.
 
