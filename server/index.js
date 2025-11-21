@@ -131,6 +131,9 @@ if (BICONOMY_PAYMASTER_API_KEY) {
 
 const app = express();
 
+// Serve static files from parent directory (frontend)
+app.use(express.static(path.join(__dirname, '..')));
+
 app.use(express.json());
 app.use(cors());
 

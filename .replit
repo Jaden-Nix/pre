@@ -9,14 +9,6 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 36789
-externalPort = 3002
-
-[[ports]]
-localPort = 37691
-externalPort = 5000
-
-[[ports]]
 localPort = 39619
 externalPort = 8008
 
@@ -57,5 +49,27 @@ channel = "stable-25_05"
 packages = ["killall"]
 
 [workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start Predora Backend"
+
+[[workflows.workflow]]
+name = "Start Predora Backend"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd server && npm install viem --legacy-peer-deps && node index.js"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 
