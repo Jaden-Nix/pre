@@ -6390,8 +6390,16 @@
                         break;
 
                     case 'walletconnect':
-                        if (typeof Web3Modal === 'undefined') {
-                            showToast("Web3Modal not loaded properly", "error");
+                        if (typeof window.Web3Modal === 'undefined') {
+                            console.error('Web3Modal not found in window');
+                            showToast("Web3Modal not loaded properly. Please refresh the page.", "error");
+                            showLoadingOverlay(false);
+                            return;
+                        }
+                        
+                        if (typeof window.WalletConnectProvider === 'undefined') {
+                            console.error('WalletConnectProvider not found in window');
+                            showToast("WalletConnect not loaded properly. Please refresh the page.", "error");
                             showLoadingOverlay(false);
                             return;
                         }
@@ -6405,11 +6413,11 @@
                             return;
                         }
                         
-                        const web3Modal = new Web3Modal({
+                        const web3Modal = new window.Web3Modal({
                             cacheProvider: false,
                             providerOptions: {
                                 walletconnect: {
-                                    package: WalletConnectProvider.default,
+                                    package: window.WalletConnectProvider.default || window.WalletConnectProvider,
                                     options: {
                                         projectId: walletConnectProjectId,
                                         rpc: {
