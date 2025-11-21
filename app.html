@@ -6183,7 +6183,14 @@
             const email = document.getElementById('email-auth-input').value.trim();
             const password = document.getElementById('password-auth-input').value;
 
-            if (!email || !email.includes('@')) {
+            if (!email || email.length === 0) {
+                showToast("Please enter your email address", "error");
+                return;
+            }
+            
+            // Simple email validation that won't trigger pattern errors
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
                 showToast("Please enter a valid email address", "error");
                 return;
             }
@@ -12985,7 +12992,9 @@ ${historyText}`;
                         const stanceIcon = market.stance === 'YES' ? '✅' : '❌';
                         
                         // Check for Skin in the Game badge (using cached data)
-                        const hasSkin = pledgesByMarket[market.id]?.[post.userId] || false;
+                        // Use both market.id and market.marketId for compatibility
+                        const marketKey = market.id || market.marketId;
+                        const hasSkin = pledgesByMarket[marketKey]?.[post.userId] || false;
                         const skinBadge = hasSkin 
                             ? '<span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-400/30">✅ Skin in the Game</span>' 
                             : '<span class="text-xs bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded-full border border-gray-400/30">⚠️ No Stake</span>';
@@ -13002,7 +13011,7 @@ ${historyText}`;
                                         <p class="font-semibold text-white text-sm">${sanitizeHTML(market.title)}</p>
                                     </div>
                                 </div>
-                                <button onclick="betWithUser('${market.id}', '${market.stance}')" class="w-full btn btn-primary py-2 text-sm">
+                                <button onclick="betWithUser('${market.id || market.marketId}', '${market.stance}')" class="w-full btn btn-primary py-2 text-sm">
                                     🎯 Bet on This Market
                                 </button>
                             </div>
@@ -13484,7 +13493,8 @@ ${historyText}`;
                 console.log('📎 Checking attachedMarket:', attachedMarket);
                 if (attachedMarket && attachedMarket.marketId) {
                     postData.attachedMarket = {
-                        marketId: attachedMarket.marketId,
+                        id: attachedMarket.marketId, // Save as 'id' for consistency
+                        marketId: attachedMarket.marketId, // Keep marketId for backwards compatibility
                         title: attachedMarket.title || '',
                         stance: attachedMarket.stance || 'YES',
                         category: attachedMarket.category || 'General'
