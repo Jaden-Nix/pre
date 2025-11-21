@@ -5,6 +5,7 @@ import express from 'express';
 import fetch from 'node-fetch';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import admin from 'firebase-admin';
 import OpenAI from 'openai';
@@ -115,6 +116,41 @@ app.use((req, res, next) => {
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     next();
+});
+
+// app.html routes MUST come before static middleware to enable Project ID injection
+app.get('/app.html', (req, res) => {
+    const appHtmlPath = path.join(__dirname, '..', 'app.html');
+    fs.readFile(appHtmlPath, 'utf8', (err, html) => {
+        if (err) {
+            console.error('Error reading app.html:', err);
+            return res.status(500).send('Error loading app');
+        }
+        // Inject WalletConnect Project ID
+        const projectId = process.env.WALLETCONNECT_PROJECT_ID || '';
+        const placeholder = '<!-- WALLETCONNECT_PROJECT_ID_PLACEHOLDER -->';
+        const replacement = `<script>window.WALLETCONNECT_PROJECT_ID = '${projectId}';</script>`;
+        const injectedHtml = html.replace(placeholder, replacement);
+        res.set('Cache-Control', 'no-store');
+        res.send(injectedHtml);
+    });
+});
+
+app.get('/app', (req, res) => {
+    const appHtmlPath = path.join(__dirname, '..', 'app.html');
+    fs.readFile(appHtmlPath, 'utf8', (err, html) => {
+        if (err) {
+            console.error('Error reading app.html:', err);
+            return res.status(500).send('Error loading app');
+        }
+        // Inject WalletConnect Project ID
+        const projectId = process.env.WALLETCONNECT_PROJECT_ID || '';
+        const placeholder = '<!-- WALLETCONNECT_PROJECT_ID_PLACEHOLDER -->';
+        const replacement = `<script>window.WALLETCONNECT_PROJECT_ID = '${projectId}';</script>`;
+        const injectedHtml = html.replace(placeholder, replacement);
+        res.set('Cache-Control', 'no-store');
+        res.send(injectedHtml);
+    });
 });
 
 app.use(express.static(path.join(__dirname, '..')));
@@ -233,14 +269,6 @@ async function checkSybilBehavior(userId, userMarkets, timeWindow = 3600000) {
 // --- ROUTES ---
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'index.html'));
-});
-
-app.get('/app.html', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'app.html'));
-});
-
-app.get('/app', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'app.html'));
 });
 
 app.get('/pitch-deck', (req, res) => {

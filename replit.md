@@ -39,9 +39,13 @@ The platform uses a dual-workflow architecture:
 - **Firebase**: Firestore for database, Authentication, and Client/Admin SDKs.
 - **Google Gemini AI API**: For market generation, resolution, and AI guardrails.
 - **Ethers.js**: For Web3 wallet interactions and blockchain communication.
+- **Web3Modal & WalletConnect**: Multi-wallet connection support with secure Project ID injection.
 - **Tailwind CSS (CDN)**: For styling.
 - **Chart.js**: For data visualization.
 - **Biconomy SDK / Particle Network SDK (Planned)**: For Account Abstraction and gasless transactions.
 - **Express.js**: Backend framework.
 - **Node.js**: Backend runtime.
+
+## Security & Secrets
+- **WALLETCONNECT_PROJECT_ID**: Stored securely in Replit Secrets, dynamically injected into app.html at runtime.
 ```
