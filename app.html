@@ -13493,7 +13493,10 @@ ${historyText}`;
          * Toggle reaction on a post
          */
         window.toggleReaction = async (postId, reactionType) => {
-            if (!currentUserId) return;
+            if (!currentUserId) {
+                showToast("Please sign in to react to posts", "info");
+                return;
+            }
 
             try {
                 const { doc: firestoreDoc, getDoc, updateDoc, arrayUnion, arrayRemove, setDoc } = window.firebase.firestore;
@@ -13694,6 +13697,11 @@ ${historyText}`;
          * Submit a comment on a post
          */
         window.submitComment = async () => {
+            if (!currentUserId) {
+                showToast("Please sign in to comment on posts", "info");
+                return;
+            }
+            
             if (!currentPostId) return;
 
             const content = document.getElementById('comment-input').value.trim();
