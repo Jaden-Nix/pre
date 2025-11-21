@@ -1641,33 +1641,55 @@
                 </div>
             </div>
 
-            <div id="email-password-screen" class="screen screen-inactive space-y-6 max-w-md mx-auto lg:max-w-lg">
+            <div id="email-entry-screen" class="screen screen-inactive space-y-6 max-w-md mx-auto lg:max-w-lg">
                 <button onclick="showScreen('login-screen')" class="flex items-center text-sky-400 font-medium lg:text-lg">
                     <svg class="w-5 h-5 mr-1 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                     Back
                 </button>
 
                 <div class="text-center">
-                    <h1 class="text-2xl lg:text-3xl font-bold gradient-text">Email & Password</h1>
-                    <p class="text-gray-300 mt-2">Sign in or create a new account</p>
+                    <h1 class="text-2xl lg:text-3xl font-bold gradient-text">Sign In with Email</h1>
+                    <p class="text-gray-300 mt-2">We'll send you a verification code</p>
                 </div>
 
                 <div class="ui-panel space-y-4">
                     <div>
-                        <label class="text-sm font-medium text-gray-300 mb-2 block">Email</label>
+                        <label class="text-sm font-medium text-gray-300 mb-2 block">Email Address</label>
                         <input id="email-auth-input" type="email" class="ui-input" placeholder="your-email@example.com" autocomplete="email">
                     </div>
 
-                    <div>
-                        <label class="text-sm font-medium text-gray-300 mb-2 block">Password</label>
-                        <input id="password-auth-input" type="password" class="ui-input" placeholder="Enter your password" autocomplete="current-password">
-                    </div>
-
-                    <button onclick="emailPasswordAuth()" class="btn btn-primary w-full">Continue</button>
+                    <button onclick="requestOTP()" class="btn btn-primary w-full">Send Verification Code</button>
 
                     <p class="text-xs text-center text-gray-400">
-                        New user? We'll create your account automatically
+                        🔒 No password needed • Secure passwordless login
                     </p>
+                </div>
+            </div>
+
+            <div id="otp-entry-screen" class="screen screen-inactive space-y-6 max-w-md mx-auto lg:max-w-lg">
+                <button onclick="showScreen('email-entry-screen')" class="flex items-center text-sky-400 font-medium lg:text-lg">
+                    <svg class="w-5 h-5 mr-1 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    Back
+                </button>
+
+                <div class="text-center">
+                    <h1 class="text-2xl lg:text-3xl font-bold gradient-text">Enter Verification Code</h1>
+                    <p class="text-gray-300 mt-2">We sent a 6-digit code to</p>
+                    <p class="text-sky-400 font-semibold mt-1" id="otp-email-display"></p>
+                </div>
+
+                <div class="ui-panel space-y-4">
+                    <div>
+                        <label class="text-sm font-medium text-gray-300 mb-2 block">Verification Code</label>
+                        <input id="otp-code-input" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" class="ui-input text-center text-2xl tracking-widest font-bold" placeholder="000000" autocomplete="one-time-code">
+                        <p class="text-xs text-gray-400 mt-1 text-center">Check your email for the code</p>
+                    </div>
+
+                    <button onclick="verifyOTP()" class="btn btn-primary w-full">Verify & Continue</button>
+
+                    <button onclick="resendOTP()" id="resend-button" class="btn btn-secondary w-full">
+                        <span id="resend-timer">Resend Code</span>
+                    </button>
                 </div>
             </div>
 
@@ -3930,6 +3952,10 @@
             balance: 100, bnbBalance: 0.2, cakeBalance: 150 
         };
 
+        // --- GUEST MODE STATE ---
+        let isGuestMode = false;
+        let pendingAction = null; // Store what user wanted to do before auth
+
         // --- Firestore Real-time Listeners (for cleanup) ---
         let userProfileUnsubscribe = null;
         let standardMarketsUnsubscribe = null;
@@ -4767,15 +4793,30 @@
                 startMockAliveFeatures(); // Starts the " online" counter
 
                 // --- Session Resume Logic ---
-                // DISABLED: Always show login screen to let users choose between:
-                // 1. Connect with MetaMask (real wallet)
-                // 2. Try Demo Mode (mock data)
-                // This enables both worlds - real and demo data
+                // Browse-First UX: Check for existing session or enable guest mode
+                const savedUserId = localStorage.getItem('demoUserId');
+                const savedFirebaseUid = localStorage.getItem('firebaseUid');
                 
-                localStorage.removeItem('demoUserId');
-                localStorage.removeItem('demoDisplayName');
-                console.log("Login screen shown - user can choose real wallet or demo mode");
-                showScreen('login-screen');
+                if (savedUserId && savedFirebaseUid) {
+                    // Existing session found - attempt to resume
+                    console.log('Existing session found, attempting to resume...');
+                    currentUserId = savedUserId;
+                    isGuestMode = false;
+                    
+                    // Restore user session
+                    initializeUserProfile().then(() => {
+                        showScreen('home-screen');
+                        console.log('Session resumed successfully');
+                    }).catch(err => {
+                        console.error('Error resuming session:', err);
+                        // If resume fails, enable guest mode
+                        enableGuestMode();
+                    });
+                } else {
+                    // No session - enable guest mode (browse without login)
+                    console.log('No existing session - enabling guest mode');
+                    enableGuestMode();
+                }
                 
                 // Check if admin session exists and restore it
                 if (adminSecret) {
@@ -4931,6 +4972,40 @@
         // =====================================================================
 
         /**
+         * Enables guest/browse mode - allows users to explore without authentication
+         */
+        function enableGuestMode() {
+            isGuestMode = true;
+            currentUserId = null;
+            
+            // Show home screen with markets (no login required)
+            showScreen('home-screen');
+            
+            // Load markets without auth requirement
+            console.log('Guest mode enabled - users can browse markets without login');
+        }
+
+        /**
+         * Ensures user is authenticated before executing protected actions
+         * If not authenticated, prompts login and stores the action for later
+         */
+        function ensureAuthenticated(actionName, callback) {
+            if (currentUserId && !isGuestMode) {
+                // User is authenticated, proceed with action
+                callback();
+            } else {
+                // Store what they wanted to do
+                pendingAction = callback;
+                
+                // Show login prompt
+                showToast("Please sign in to continue", "info");
+                showScreen('login-screen');
+                
+                console.log(`Authentication required for: ${actionName}`);
+            }
+        }
+
+        /**
          * Helper function to complete authentication and initialize user
          */
         async function completeAuthentication(firebaseUser, authMethod = 'firebase') {
@@ -4967,6 +5042,9 @@
                 const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
                 const profileSnap = await getDoc(profileRef);
 
+                // Disable guest mode now that user is authenticated
+                isGuestMode = false;
+
                 if (!profileSnap.exists() || !profileSnap.data().displayName) {
                     showScreen('onboarding-screen');
                 } else {
@@ -4975,6 +5053,18 @@
                 }
 
                 showLoadingOverlay(false);
+
+                // Resume pending action if user was trying to do something before login
+                if (pendingAction) {
+                    const action = pendingAction;
+                    pendingAction = null;
+                    console.log('Resuming pending action after authentication');
+                    
+                    // Execute the pending action after a brief delay to ensure UI is ready
+                    setTimeout(() => {
+                        action();
+                    }, 100);
+                }
 
             } catch (error) {
                 console.error('Error completing authentication:', error);
@@ -5068,15 +5158,198 @@
         };
 
         /**
-         * Navigate to email/password screen
+         * Navigate to email OTP entry screen
          */
         window.signInWithEmail = () => {
-            showScreen('email-password-screen');
+            showScreen('email-entry-screen');
         };
 
         /**
-         * Email/Password authentication (Firebase)
+         * OTP Authentication - Request OTP code via email
          */
+        let resendCountdown = 60;
+        let resendTimer = null;
+
+        window.requestOTP = async () => {
+            const email = document.getElementById('email-auth-input').value.trim();
+            
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showToast("Please enter a valid email address", "error");
+                return;
+            }
+            
+            showLoadingOverlay(true, 'Sending verification code...');
+            
+            try {
+                const response = await fetch('/api/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to send OTP');
+                }
+                
+                // Store email for verification step
+                sessionStorage.setItem('otp-email', email);
+                
+                // Show OTP entry screen
+                document.getElementById('otp-email-display').textContent = email;
+                document.getElementById('otp-code-input').value = '';
+                showScreen('otp-entry-screen');
+                startResendTimer();
+                
+                showToast("Verification code sent to your email! 📧", "success");
+            } catch (error) {
+                console.error('OTP request error:', error);
+                showToast(error.message || "Failed to send code. Please try again.", "error");
+            } finally {
+                showLoadingOverlay(false);
+            }
+        };
+
+        window.verifyOTP = async () => {
+            const email = sessionStorage.getItem('otp-email');
+            const otp = document.getElementById('otp-code-input').value.trim();
+            
+            if (!otp || otp.length !== 6) {
+                showToast("Please enter the 6-digit code", "error");
+                return;
+            }
+            
+            showLoadingOverlay(true, 'Verifying code...');
+            
+            try {
+                const response = await fetch('/api/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otp })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Invalid verification code');
+                }
+                
+                // OTP verified! Create user session
+                const userId = data.userId;
+                currentUserId = userId;
+                
+                // Store auth info
+                localStorage.setItem('demoUserId', userId);
+                localStorage.setItem('userEmail', email);
+                
+                // Generate Smart Contract Wallet (Account Abstraction) for this user
+                const walletData = await generateBSCWallet(userId);
+                userProfile.walletAddress = walletData.address;
+                userProfile.isSmartWallet = true;
+                localStorage.setItem('userWalletAddress', walletData.address);
+                localStorage.setItem('isSmartWallet', 'true');
+
+                showLoadingOverlay(true, `Setting up your account...`);
+
+                // Initialize user profile in Firestore
+                await initializeUserProfile();
+                
+                // Check if user needs onboarding
+                const { getDoc, doc } = window.firebase.firestore;
+                const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
+                const profileSnap = await getDoc(profileRef);
+                
+                if (!profileSnap.exists() || !profileSnap.data().displayName) {
+                    showScreen('onboarding-screen');
+                } else {
+                    userProfile = { ...userProfile, ...profileSnap.data() };
+                    
+                    // Execute pending action if guest was trying to do something
+                    if (pendingAction) {
+                        const action = pendingAction;
+                        pendingAction = null;
+                        isGuestMode = false;
+                        action();
+                    }
+                    
+                    showScreen('home-screen');
+                }
+                
+                sessionStorage.removeItem('otp-email');
+                showToast("Welcome to Predora! 🎉", "success");
+                
+            } catch (error) {
+                console.error('OTP verification error:', error);
+                showToast(error.message || "Invalid code. Please try again.", "error");
+            } finally {
+                showLoadingOverlay(false);
+            }
+        };
+
+        function startResendTimer() {
+            resendCountdown = 60;
+            const btn = document.getElementById('resend-button');
+            const timerText = document.getElementById('resend-timer');
+            
+            if (resendTimer) {
+                clearInterval(resendTimer);
+            }
+            
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            
+            resendTimer = setInterval(() => {
+                resendCountdown--;
+                
+                if (resendCountdown > 0) {
+                    timerText.textContent = `Resend in ${resendCountdown}s`;
+                } else {
+                    clearInterval(resendTimer);
+                    timerText.textContent = 'Resend Code';
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }, 1000);
+        }
+
+        window.resendOTP = async () => {
+            const email = sessionStorage.getItem('otp-email');
+            if (!email) {
+                showToast("Session expired. Please start again.", "error");
+                showScreen('email-entry-screen');
+                return;
+            }
+            
+            showLoadingOverlay(true, 'Resending code...');
+            
+            try {
+                const response = await fetch('/api/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to resend OTP');
+                }
+                
+                startResendTimer();
+                document.getElementById('otp-code-input').value = '';
+                showToast("New code sent! Check your email 📧", "success");
+            } catch (error) {
+                console.error('OTP resend error:', error);
+                showToast(error.message || "Failed to resend. Please try again.", "error");
+            } finally {
+                showLoadingOverlay(false);
+            }
+        };
+
+        /**
+         * OLD Email/Password authentication (DEPRECATED - replaced with OTP)
+         * Commented out but kept for reference
+         */
+        /*
         window.emailPasswordAuth = async () => {
             const email = document.getElementById('email-auth-input').value.trim();
             const password = document.getElementById('password-auth-input').value;
@@ -5148,6 +5421,7 @@
                 showToast(errorMessage, "error");
             }
         };
+        */
 
         /**
          * Connect Web3 wallet (MetaMask, WalletConnect, etc.)
@@ -7329,37 +7603,39 @@
         //
 
         window.stakeMarket = async function(pick) {
-            // 1. Get all Firebase functions
-            const { doc, updateDoc, increment, addDoc, collection, serverTimestamp, runTransaction } = window.firebase.firestore;
+            // Ensure user is authenticated before placing a bet
+            ensureAuthenticated('place-bet', async () => {
+                // 1. Get all Firebase functions
+                const { doc, updateDoc, increment, addDoc, collection, serverTimestamp, runTransaction } = window.firebase.firestore;
 
-            // 2. Get Form Values
-            const amount = parseFloat(dom.stakeAmountInput.value);
-            const selectedAsset = dom.stakeAssetSelect.value;
+                // 2. Get Form Values
+                const amount = parseFloat(dom.stakeAmountInput.value);
+                const selectedAsset = dom.stakeAssetSelect.value;
 
-            // Determine if this is a multi-option pick
-            const isMultiOption = currentMarket.marketStructure === 'multi-option';
-            const optionLabel = isMultiOption ? currentMarket.options.find(o => o.id === pick)?.label : null;
+                // Determine if this is a multi-option pick
+                const isMultiOption = currentMarket.marketStructure === 'multi-option';
+                const optionLabel = isMultiOption ? currentMarket.options.find(o => o.id === pick)?.label : null;
 
-            // 3. --- VALIDATION ---
-            if (!amount || amount <= 0) {
-                showToast("Please enter a valid stake amount.", "warning");
-                return;
-            }
-            if (!currentMarketId || !currentMarket) {
-                showToast("Error: No market selected.", "error");
-                return;
-            }
-            if (currentMarket.isResolved) {
-                showToast("This market is closed and no longer accepting stakes.", "warning");
-                return;
-            }
+                // 3. --- VALIDATION ---
+                if (!amount || amount <= 0) {
+                    showToast("Please enter a valid stake amount.", "warning");
+                    return;
+                }
+                if (!currentMarketId || !currentMarket) {
+                    showToast("Error: No market selected.", "error");
+                    return;
+                }
+                if (currentMarket.isResolved) {
+                    showToast("This market is closed and no longer accepting stakes.", "warning");
+                    return;
+                }
 
-            // 4. --- MOCK DELAY ---
-            showLoadingOverlay(true, "Confirming on-chain...");
-            await new Promise(res => setTimeout(res, 1500)); // Shortened delay
+                // 4. --- MOCK DELAY ---
+                showLoadingOverlay(true, "Confirming on-chain...");
+                await new Promise(res => setTimeout(res, 1500)); // Shortened delay
 
-            // 5. --- MAIN LOGIC (NOW INSIDE A TRANSACTION) ---
-            try {
+                // 5. --- MAIN LOGIC (NOW INSIDE A TRANSACTION) ---
+                try {
                 const balanceFieldToUpdate = getBalanceField(selectedAsset);
                 const amountInUsd = amount * getMockPrice(selectedAsset);
                 const xpToAward = getRandomXP(10);
@@ -7544,6 +7820,7 @@
                 showLoadingOverlay(false);
                 showToast(`Staking failed: ${error.message}`, "error"); // This will now show "Insufficient balance"
             }
+            }); // Close ensureAuthenticated callback
         }
 
         // =====================================================================
@@ -8480,11 +8757,13 @@
 
 
         async function createMarket() {
-            // 1. Get all Firebase functions
-            const { addDoc, collection, doc, updateDoc, increment, serverTimestamp, runTransaction } = window.firebase.firestore;
+            // Ensure user is authenticated before creating a market
+            ensureAuthenticated('create-market', async () => {
+                // 1. Get all Firebase functions
+                const { addDoc, collection, doc, updateDoc, increment, serverTimestamp, runTransaction } = window.firebase.firestore;
 
-            // 2. Get all form values
-            const title = document.getElementById('market-title-input').value;
+                // 2. Get all form values
+                const title = document.getElementById('market-title-input').value;
             const insight = document.getElementById('market-insight-input').value;
             const stakingDeadline = document.getElementById('staking-deadline-input').value;
             const resolutionDate = document.getElementById('market-resolution-date').value;
@@ -8662,6 +8941,7 @@
                 showLoadingOverlay(false);
                 showToast(`Market creation failed: ${error.message}`, "error");
             }
+            }); // Close ensureAuthenticated callback
         }
 
         // =====================================================================
