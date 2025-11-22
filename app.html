@@ -7880,6 +7880,19 @@
                 
                 dom.profileXpBadge.innerText = `${profile.xp.toLocaleString()} XP`;
                 dom.mockBalance.innerText = `$${(profile.predBalance || 100).toFixed(2)}`;
+                
+                // Update faucet balance display
+                const faucetBalanceEl = document.getElementById('faucet-pred-balance');
+                if (faucetBalanceEl) {
+                    faucetBalanceEl.textContent = `${(profile.predBalance || 100).toFixed(2)} $PRED`;
+                }
+                
+                // Update Platform Balances in Assets tab
+                const mockBnbEl = document.getElementById('mock-bnb');
+                const mockCakeEl = document.getElementById('mock-cake');
+                if (mockBnbEl) mockBnbEl.textContent = (profile.bnbBalance || 0.2).toFixed(2);
+                if (mockCakeEl) mockCakeEl.textContent = (profile.cakeBalance || 150).toFixed(0);
+                
                 // Fetch actual rank from leaderboard
                 fetchUserRank(currentUserId).then(rank => {
                     dom.profileRankBadge.innerText = `Rank: #${rank || 'N/A'}`;
@@ -7918,6 +7931,31 @@
         }
 
         /**
+         * Updates real blockchain balances for Assets tab
+         */
+        async function updateRealBalancesForAssetsTab() {
+            console.log('🔄 Fetching real balances for assets screen...');
+            
+            // Update BNB balance if wallet is connected
+            if (window.ethereum && connectedAddress) {
+                try {
+                    await updateRealBNBBalance();
+                } catch (err) {
+                    console.error('Error fetching real BNB balance:', err);
+                }
+            } else {
+                console.log('ℹ️ Blockchain disabled - using Firestore balance only');
+            }
+            
+            // Always fetch and display Firestore balances
+            if (userProfile) {
+                const bnbBalance = userProfile.bnbBalance || 0.2;
+                const cakeBalance = userProfile.cakeBalance || 150;
+                console.log('✅ Real balances loaded:', { bnbBalance, cakeBalance });
+            }
+        }
+
+        /**
          * Handles the tab switching on the profile screen (Active, History, Assets).
          */
         window.handleProfileTab = (tabName) => {
@@ -7952,6 +7990,23 @@
             if (tabName === 'active') renderActiveStakes();
             if (tabName === 'notifications') loadNotifications();
             else if (tabName === 'history') renderHistoryStakes();
+            else if (tabName === 'assets') {
+                // Update balance displays when assets tab is shown
+                if (userProfile) {
+                    const faucetBalanceEl = document.getElementById('faucet-pred-balance');
+                    const mockBnbEl = document.getElementById('mock-bnb');
+                    const mockCakeEl = document.getElementById('mock-cake');
+                    const mockBalanceEl = document.getElementById('mock-busd');
+                    
+                    if (faucetBalanceEl) faucetBalanceEl.textContent = `${(userProfile.predBalance || 100).toFixed(2)} $PRED`;
+                    if (mockBalanceEl) mockBalanceEl.textContent = `$${(userProfile.predBalance || 100).toFixed(2)}`;
+                    if (mockBnbEl) mockBnbEl.textContent = (userProfile.bnbBalance || 0.2).toFixed(2);
+                    if (mockCakeEl) mockCakeEl.textContent = (userProfile.cakeBalance || 150).toFixed(0);
+                }
+                
+                // Fetch and update blockchain balances if wallet is connected
+                updateRealBalancesForAssetsTab();
+            }
                 else if (tabName === 'networking') {
                     // Show the networking panel and load its default sub-tab
                     if(networkingContent) networkingContent.classList.remove('hidden');
