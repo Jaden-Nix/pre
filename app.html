@@ -3568,7 +3568,7 @@
             <button id="bottom-nav-create-button" onclick="showScreen('create-market-screen')" class="nav-button flex flex-col items-center text-gray-400 -mt-2 bg-gradient-to-br from-indigo-600 to-blue-600 p-3 rounded-full shadow-lg shadow-blue-500/30 border-2 border-sky-400">
                 <svg class="w-5 h-5" fill="none" stroke="white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
             </button>
-            <button onclick="showScreen('quick-play-screen')" class="nav-button flex flex-col items-center text-gray-400">
+            <button onclick="showScreen('pledge-pool-screen')" class="nav-button flex flex-col items-center text-gray-400">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                 <span class="text-xs mt-1">Quick</span>
             </button>
@@ -13508,15 +13508,19 @@ ${historyText}`;
             // Clean up old listener
             if (socialFeedUnsubscribe) socialFeedUnsubscribe();
 
-            const { collection, query, orderBy, limit, onSnapshot, getDocs, doc: firestoreDoc, getDoc } = window.firebase.firestore;
+            try {
+                const { collection, query, orderBy, limit, onSnapshot, getDocs, doc: firestoreDoc, getDoc } = window.firebase.firestore;
 
-            let q = query(
-                collection(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION),
-                orderBy('timestamp', 'desc'),
-                limit(50)
-            );
+                console.log('🔥 Setting up Firestore query for social posts...');
+                let q = query(
+                    collection(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION),
+                    orderBy('timestamp', 'desc'),
+                    limit(50)
+                );
 
-            socialFeedUnsubscribe = onSnapshot(q, async (snapshot) => {
+                console.log('👂 Attaching onSnapshot listener...');
+                socialFeedUnsubscribe = onSnapshot(q, async (snapshot) => {
+                    console.log('📬 Social feed snapshot received:', snapshot.docs.length, 'posts');
                 let posts = [];
                 snapshot.forEach(doc => {
                     posts.push({
@@ -13763,7 +13767,14 @@ ${historyText}`;
                     `;
                 }
                 container.innerHTML = html;
-            });
+                }, (error) => {
+                    console.error('❌ Firestore onSnapshot error:', error);
+                    container.innerHTML = '<p class="text-red-400 text-center py-8">Error loading posts. Please try again.</p>';
+                });
+            } catch (error) {
+                console.error('❌ Error setting up social feed:', error);
+                container.innerHTML = '<p class="text-red-400 text-center py-8">Error loading social feed. Please refresh the page.</p>';
+            }
         }
 
         /**
