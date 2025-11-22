@@ -2,9 +2,27 @@
 
 ## 🚨 IMPORTANT: Current Architecture Status (Technical Screening Mode)
 
-**As of November 21, 2025 - Hybrid Blockchain + Enhanced Oracle**
+**As of November 22, 2025 - Batch Betting + AMM Ready for Deployment**
 
-Platform operates in **HYBRID MODE** for technical screening: Wallet-connected users get real BSC Testnet transactions, email users use Firestore betting. Browse-first UX allows market exploration without login. Advanced 3-tier oracle resolution system with multi-model scoring ensures accurate outcomes.
+Platform operates in **HYBRID MODE** with batch betting capability: Wallet-connected users can vote YES/NO on multiple Quick Play markets, all pledges pool together, then confirm in ONE blockchain transaction. All markets use AMM (Automated Market Maker) pricing. Browse-first UX allows market exploration without login. Advanced 3-tier oracle resolution system with multi-model scoring ensures accurate outcomes.
+
+### ✅ Batch Betting Implementation (READY - Awaiting Contract Deployment)
+
+**Code Status: Production-Ready**
+- ✅ Smart contract `placeBatchBets()` function implemented (PredictionMarket.sol lines 169-238)
+- ✅ Frontend pledge pool conversion to single transaction (app.html lines 9572-9631)
+- ✅ Separate on-chain vs Firestore pledge processing (no double-charging)
+- ✅ AMM pool updates in smart contract (constant product formula: x * y = k)
+- ✅ Comprehensive documentation (BATCH_BETTING_GUIDE.md)
+- ⏳ **NEEDS**: Contract redeployment to BSC Testnet with new `placeBatchBets()` function
+- ⏳ **NEEDS**: ABI regeneration and frontend address update
+
+**User Flow:**
+1. Browse Quick Play markets without login
+2. Vote YES/NO on multiple markets → all added to pledge pool
+3. Click "Confirm" → ONE blockchain transaction sends all bets via `placeBatchBets()`
+4. Wallet pays total BNB for on-chain markets, Firestore balance for mock markets
+5. AMM pools update for each bet, user receives confirmation
 
 ### Hybrid Mode Features:
 
