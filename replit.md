@@ -142,12 +142,19 @@ The platform uses a dual-workflow architecture:
 
 ## Contract Deployment
 
-**BSC Testnet Deployment:**
-- Contract Address: `0xdaAf91610e33355c9Cd9258219C6A4822E693f55`
+**BSC Testnet Deployment (Latest - With Batch Betting):**
+- Contract Address: `0xd292Ce8a4596438C8c3e5Dd5D8AbF5cf3B6c1EB2`
 - Deployer: `0xe47Dce1b7e31333329734E24089C0472c030d95B`
-- Deployed: November 21, 2025
+- Deployed: November 22, 2025
 - Network: BSC Testnet (Chain ID: 97)
-- BSCScan: https://testnet.bscscan.com/address/0xdaAf91610e33355c9Cd9258219C6A4822E693f55
+- BSCScan: https://testnet.bscscan.com/address/0xd292Ce8a4596438C8c3e5Dd5D8AbF5cf3B6c1EB2
+- **NEW**: Includes `placeBatchBets()` function for Quick Play batch betting
+- **NEW**: BNB withdrawal feature (send to any address)
+
+**Previous Deployment (Deprecated):**
+- Contract Address: `0xdaAf91610e33355c9Cd9258219C6A4822E693f55`
+- Deployed: November 21, 2025
+- Status: Replaced by new deployment with batch betting support
 
 ## Security & Secrets
 - **WALLETCONNECT_PROJECT_ID**: Stored securely in Replit Secrets, dynamically injected into app.html at runtime.
