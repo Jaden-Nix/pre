@@ -3585,7 +3585,7 @@
             </button>
             <button id="bottom-nav-profile-button" onclick="showScreen('profile-screen')" class="nav-button flex flex-col items-center text-gray-400">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                <span class="text-xs mt-1">Profile</span>
+                <span class="text-xs mt-1" id="bottom-nav-profile-text">Profile</span>
             </button>
         </nav>
 
@@ -4435,6 +4435,7 @@
             
             // Bottom nav buttons (mobile only)
             const bottomNavProfile = document.getElementById('bottom-nav-profile-button');
+            const bottomNavProfileText = document.getElementById('bottom-nav-profile-text');
             const bottomNavSocial = document.getElementById('bottom-nav-social-button');
             const bottomNavCreate = document.getElementById('bottom-nav-create-button');
             const bottomNavQuick = document.querySelector('button[onclick*="pledge-pool-screen"]');
@@ -4449,7 +4450,11 @@
                 if (mobileNavSignInButton) mobileNavSignInButton.classList.add('hidden');
                 
                 // Show all bottom nav buttons for logged-in users
-                if (bottomNavProfile) bottomNavProfile.classList.remove('hidden');
+                if (bottomNavProfile) {
+                    bottomNavProfile.classList.remove('hidden');
+                    bottomNavProfile.setAttribute('onclick', "showScreen('profile-screen')");
+                }
+                if (bottomNavProfileText) bottomNavProfileText.textContent = 'Profile';
                 if (bottomNavSocial) bottomNavSocial.classList.remove('hidden');
                 if (bottomNavCreate) bottomNavCreate.classList.remove('hidden');
                 if (bottomNavQuick) bottomNavQuick.classList.remove('hidden');
@@ -4462,8 +4467,13 @@
                 if (mobileNavProfileButton) mobileNavProfileButton.classList.add('hidden');
                 if (mobileNavSignInButton) mobileNavSignInButton.classList.remove('hidden');
                 
-                // Guests can see Home, Social, Profile only (no Create, no Quick Play)
-                if (bottomNavProfile) bottomNavProfile.classList.remove('hidden');  // ✅ Show profile for guests (browse only)
+                // Guests can see Home, Social, Sign In only (no Create, no Quick Play)
+                if (bottomNavProfile) {
+                    bottomNavProfile.classList.remove('hidden');
+                    // Change to "Sign In" button for guests
+                    bottomNavProfile.setAttribute('onclick', "showScreen('login-screen')");
+                }
+                if (bottomNavProfileText) bottomNavProfileText.textContent = 'Sign In';
                 if (bottomNavSocial) bottomNavSocial.classList.remove('hidden');  // ✅ Show social for guests
                 if (bottomNavCreate) bottomNavCreate.classList.add('hidden');  // ❌ Hide Create (requires login)
                 if (bottomNavQuick) bottomNavQuick.classList.add('hidden');  // ❌ Hide Quick Play (requires login)
@@ -7695,6 +7705,25 @@
             }
             if (desktopAppTitle) {
                 desktopAppTitle.style.display = isHomeScreen ? 'block' : 'none';
+            }
+
+            // Show/hide Sign In buttons - only visible on home screen for guests
+            const navSignInButton = document.getElementById('nav-signin-button');
+            const mobileNavSignInButton = document.getElementById('mobile-nav-signin-button');
+            
+            if (navSignInButton && mobileNavSignInButton) {
+                // Only show Sign In buttons on home screen AND if user is not logged in
+                const shouldShowSignIn = isHomeScreen && !currentUserId;
+                
+                if (shouldShowSignIn) {
+                    navSignInButton.classList.remove('hidden');
+                    mobileNavSignInButton.classList.remove('hidden');
+                } else if (!currentUserId) {
+                    // Guest user on non-home screen - hide Sign In buttons
+                    navSignInButton.classList.add('hidden');
+                    mobileNavSignInButton.classList.add('hidden');
+                }
+                // For logged-in users, the buttons are already hidden by updateNavBar()
             }
 
             // --- RACE CONDITION FIX ---
