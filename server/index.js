@@ -40,7 +40,12 @@ let db = null;
 try {
     const serviceAccountString = process.env.GOOGLE_APPLICATION_CREDENTIALS;
     if (serviceAccountString) {
+        // Parse JSON - at this point private_key has literal \n in it
         const serviceAccount = JSON.parse(serviceAccountString);
+        
+        // The private_key from JSON.parse will have actual newline characters already
+        // No need to replace anything - Firebase Admin SDK should handle it
+        
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
@@ -52,6 +57,9 @@ try {
     }
 } catch (e) {
     console.error("❌ Firebase Admin initialization failed:", e.message);
+    // The private key might be malformed - let's try to work without Firebase
+    console.warn("⚠️  Continuing without Firebase Admin SDK");
+    console.warn("   Custodial wallet features will be unavailable");
 }
 
 // --- SendGrid Initialization ---
