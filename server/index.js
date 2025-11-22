@@ -467,14 +467,14 @@ app.post('/api/custodial-wallet/info', async (req, res) => {
 
 // 🪙 $PRED Token Faucet - NOW MINTS REAL ERC20 TOKENS ON-CHAIN
 app.post('/api/faucet/claim-pred', async (req, res) => {
-    const { userId, firebaseUid } = req.body;
+    const { userId, idToken } = req.body;
     
     if (!userId) {
         return res.status(400).json({ error: 'User ID is required' });
     }
     
-    if (!firebaseUid) {
-        return res.status(400).json({ error: 'Firebase UID is required for authentication' });
+    if (!idToken) {
+        return res.status(401).json({ error: 'Authentication token is required' });
     }
     
     if (!custodialWalletService) {
@@ -482,6 +482,17 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
     }
     
     try {
+        // ✅ SECURITY: Verify Firebase ID token to authenticate the caller
+        let decodedToken;
+        try {
+            decodedToken = await admin.auth().verifyIdToken(idToken);
+        } catch (tokenError) {
+            console.warn('🚨 Invalid Firebase token:', tokenError.message);
+            return res.status(401).json({ error: 'Invalid or expired authentication token' });
+        }
+        
+        const authenticatedUid = decodedToken.uid;
+        
         // ✅ SECURITY: Verify the wallet belongs to the authenticated user
         const walletMapping = await admin.firestore()
             .collection('custodial_wallets')
@@ -493,8 +504,8 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
         }
         
         const mappingData = walletMapping.data();
-        if (mappingData.firebaseUid !== firebaseUid) {
-            console.warn(`🚨 Authorization failed: User ${firebaseUid} attempted to claim for ${userId}`);
+        if (mappingData.firebaseUid !== authenticatedUid) {
+            console.warn(`🚨 Authorization failed: User ${authenticatedUid} attempted to claim for wallet owned by ${mappingData.firebaseUid}`);
             return res.status(403).json({ error: 'Not authorized to claim for this wallet' });
         }
         

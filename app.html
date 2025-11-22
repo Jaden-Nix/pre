@@ -5954,19 +5954,25 @@
                 claimBtn.disabled = true;
                 claimBtn.innerHTML = '⏳ Claiming...';
                 
-                // Get Firebase UID for authentication
-                const firebaseUid = localStorage.getItem('firebaseUid');
-                if (!firebaseUid) {
-                    showToast('Authentication error. Please sign in again.', 'error');
+                // Get Firebase ID token for authentication
+                const currentAuth = getAuth();
+                const firebaseUser = currentAuth.currentUser;
+                
+                if (!firebaseUser) {
+                    showToast('Please sign in to claim tokens', 'error');
+                    claimBtn.disabled = false;
+                    claimBtn.innerHTML = '💰 Claim 50 $PRED';
                     return;
                 }
+                
+                const idToken = await firebaseUser.getIdToken();
                 
                 const response = await fetch('/api/faucet/claim-pred', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         userId: currentUserId,
-                        firebaseUid: firebaseUid
+                        idToken: idToken
                     })
                 });
                 
