@@ -6051,6 +6051,7 @@
             dom.navButtons = document.querySelectorAll('.nav-button');
             dom.topNav = document.getElementById('top-nav');
             dom.bottomNav = document.getElementById('bottom-nav');
+            dom.mobileHeader = document.getElementById('mobile-header');
             dom.loadingOverlay = document.getElementById('loading-overlay');
             dom.loadingMessage = document.getElementById('loading-message');
             dom.mockWalletModal = document.getElementById('mock-wallet-modal');
@@ -7256,6 +7257,7 @@
                     showLoadingOverlay(false);
                     dom.topNav.classList.remove('hidden');
                     dom.bottomNav.classList.remove('hidden');
+                    if (dom.mobileHeader) dom.mobileHeader.classList.remove('hidden');
                 }
 
                 // Sync with the public leaderboard collection (for both paths)
@@ -7633,7 +7635,7 @@
             }
 
             // Special case: Hide nav bars on full-screen game modes and auth screens
-            if (dom.topNav && dom.bottomNav) {
+            if (dom.topNav && dom.bottomNav && dom.mobileHeader) {
                 // List of screens that should NOT have nav bars
                 const noNavScreens = [
                     'quick-play-screen', 
@@ -7648,6 +7650,7 @@
 
                 dom.topNav.classList.toggle('hidden', shouldHideNavs);
                 dom.bottomNav.classList.toggle('hidden', shouldHideNavs);
+                dom.mobileHeader.classList.toggle('hidden', shouldHideNavs);  // ✅ Also hide mobile header on auth screens
             }
 
 
