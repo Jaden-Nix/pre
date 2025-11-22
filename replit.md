@@ -24,6 +24,7 @@ Platform now uses **CUSTODIAL WALLETS** with production-grade security for all u
 - ✅ Dual currency support: BNB + $PRED token
 - ✅ Batch betting via `placeBatchBets()` function
 - ✅ **Secure BNB withdrawals** to any address (Firebase Auth + UID mapping required)
+- ✅ **Secure $PRED withdrawals** to any address (Firebase Auth + UID mapping required)
 - ✅ Real blockchain balances fetched via JSON-RPC
 - ✅ AMM pool updates (constant product formula: x * y = k)
 - ✅ **All transactions signed by backend** with encrypted private keys
@@ -43,7 +44,7 @@ Platform now uses **CUSTODIAL WALLETS** with production-grade security for all u
 4. Click "Confirm" → ONE blockchain transaction (batch betting)
 5. Backend signs transaction with encrypted private key (UID-verified ownership)
 6. AMM pools update, user receives on-chain confirmation
-7. Withdraw BNB/PRED to external wallet (requires Firebase ID token + UID mapping verification)
+7. Withdraw both BNB and $PRED to any external wallet (requires Firebase ID token + UID mapping verification)
 8. All actions logged for security audit trail
 
 ---

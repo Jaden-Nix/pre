@@ -175,6 +175,28 @@ For manual testing:
 
 ---
 
+## 🪙 PRED Token Withdrawal Support
+
+**Added**: November 22, 2025  
+**Status**: ✅ Complete & Secured
+
+Users can now withdraw both **BNB** and **$PRED tokens** from their custodial wallets to any external address!
+
+**Implementation:**
+- ERC20 token transfer support in custodial wallet service
+- Secure PRED withdrawal endpoint (`/api/custodial-wallet/send-pred`)
+- Same security as BNB: Firebase Auth + UID mapping + audit logging
+- Frontend UI in Assets tab (Profile → Assets)
+
+**How to Withdraw:**
+1. Go to Profile → Assets tab
+2. Enter recipient address and amount
+3. Click "Withdraw $PRED" button
+4. Transaction signed by backend, sent to blockchain
+5. All withdrawals logged for security audit
+
+---
+
 ## 📚 Documentation
 
 - Full implementation details: `SECURITY_IMPLEMENTATION.md`
@@ -183,4 +205,4 @@ For manual testing:
 
 ---
 
-**Phase 2 Status**: ✅ **COMPLETE & SECURED**
+**Phase 2 Status**: ✅ **COMPLETE & SECURED** (with BNB + PRED withdrawals)
