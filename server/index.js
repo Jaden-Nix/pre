@@ -405,12 +405,9 @@ app.post('/api/verify-otp', async (req, res) => {
     const crypto = await import('crypto');
     const userId = crypto.createHash('sha256').update(email.toLowerCase()).digest('hex').substring(0, 16);
     
-    if (custodialWalletService) {
-        const walletResult = await custodialWalletService.createWallet(userId);
-        if (walletResult.success) {
-            console.log(`🔑 Auto-created custodial wallet for user ${userId}: ${walletResult.address}`);
-        }
-    }
+    // ✅ SECURITY: DO NOT create wallet here - no Firebase UID yet!
+    // Wallet will be created securely after Firebase auth in completeAuthentication
+    // when we have a Firebase UID for proper mapping
     
     res.status(200).json({ 
         success: true, 
@@ -426,11 +423,19 @@ app.post('/api/custodial-wallet/create', async (req, res) => {
         return res.status(400).json({ error: 'User ID is required' });
     }
     
+    // ✅ CRITICAL SECURITY: Require Firebase UID for all wallet creation
+    if (!firebaseUid) {
+        console.warn(`🚨 Wallet creation attempted without Firebase UID for userId: ${userId}`);
+        return res.status(400).json({ 
+            error: 'Firebase UID is required for secure wallet creation' 
+        });
+    }
+    
     if (!custodialWalletService) {
         return res.status(503).json({ error: 'Custodial wallet service unavailable' });
     }
     
-    // ✅ Pass Firebase UID for mapping creation
+    // ✅ Create wallet with Firebase UID for mapping
     const result = await custodialWalletService.createWallet(userId, firebaseUid);
     
     if (result.success) {
@@ -536,7 +541,7 @@ app.post('/api/custodial-wallet/balance', async (req, res) => {
     }
 });
 
-// ✅ Send BNB from custodial wallet (SECURED V3 - Authoritative Mapping)
+// ✅ Send BNB from custodial wallet (SECURED V4 - Fixed Authorization Bypass)
 app.post('/api/custodial-wallet/send-bnb', async (req, res) => {
     const { userId, to, amount, authToken } = req.body;
     
@@ -548,6 +553,14 @@ app.post('/api/custodial-wallet/send-bnb', async (req, res) => {
         timestamp: new Date().toISOString(),
         success: false
     };
+    
+    // ✅ CRITICAL: Require userId to prevent undefined bypass
+    if (!userId) {
+        console.warn('🚨 Withdrawal attempt without userId');
+        attemptLog.error = 'Missing userId';
+        if (db) await db.collection('custodialWithdrawals').add(attemptLog);
+        return res.status(400).json({ error: 'User ID is required' });
+    }
     
     if (!to || !amount) {
         return res.status(400).json({ error: 'Recipient address and amount are required' });
@@ -570,14 +583,14 @@ app.post('/api/custodial-wallet/send-bnb', async (req, res) => {
         const authenticatedUid = decodedToken.uid;
         attemptLog.firebaseUid = authenticatedUid;
         
-        console.log(`🔐 Withdrawal request from UID: ${authenticatedUid}`);
+        console.log(`🔐 Withdrawal request from UID: ${authenticatedUid} for userId: ${userId}`);
         
         // ✅ SECURITY: Look up authoritative wallet mapping by Firebase UID
         const mappingDoc = await db.collection('walletMappings').doc(authenticatedUid).get();
         
         if (!mappingDoc.exists) {
             console.warn(`🚨 No wallet mapping found for UID: ${authenticatedUid}`);
-            attemptLog.error = 'No wallet mapping';
+            attemptLog.error = 'No wallet mapping - wallet may be insecure';
             await db.collection('custodialWithdrawals').add(attemptLog);
             return res.status(404).json({ error: 'Wallet not found. Please contact support.' });
         }
@@ -585,8 +598,8 @@ app.post('/api/custodial-wallet/send-bnb', async (req, res) => {
         const mapping = mappingDoc.data();
         const authorizedUserId = mapping.userId;
         
-        // ✅ SECURITY: Verify requested userId matches the mapping
-        if (userId && userId !== authorizedUserId) {
+        // ✅ CRITICAL SECURITY: Strict comparison - requested userId MUST match mapping
+        if (userId !== authorizedUserId) {
             console.warn(`🚨 Authorization failed: UID ${authenticatedUid} tried to access ${userId} but owns ${authorizedUserId}`);
             attemptLog.error = 'Unauthorized wallet access';
             attemptLog.authorizedUserId = authorizedUserId;
@@ -594,7 +607,7 @@ app.post('/api/custodial-wallet/send-bnb', async (req, res) => {
             return res.status(403).json({ error: 'Unauthorized: Cannot access another user\'s wallet' });
         }
         
-        // ✅ Use the authoritative userId from the mapping
+        // ✅ Use the authoritative userId (verified to match request)
         const walletUserId = authorizedUserId;
         attemptLog.authorizedUserId = walletUserId;
         
