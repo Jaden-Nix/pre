@@ -2727,24 +2727,30 @@
                         <p class="text-xs text-center text-gray-500">$PRED tokens are used for betting on Firestore markets. Value: $600/token</p>
                     </div>
                     
-                    <!-- Mock Balances -->
+                    <!-- Platform Balances -->
                     <div class="ui-panel p-4 space-y-3">
-                        <h3 class="text-base font-semibold text-sky-300">Platform Balances</h3>
-                        <div class="grid grid-cols-3 gap-3">
-                            <div class="text-center p-3 bg-white/5 rounded-lg">
-                                <span class="text-xs text-gray-400">$PRED</span>
-                                <p id="mock-busd" class="text-lg font-semibold text-green-400">$100</p>
+                        <h3 class="text-base font-semibold text-sky-300">💰 Platform Balances</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="text-center p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-lg">
+                                <span class="text-xs text-gray-400 uppercase tracking-wide">$PRED Balance</span>
+                                <p id="mock-busd" class="text-2xl font-bold text-green-400 mt-1">$100</p>
                             </div>
-                            <div class="text-center p-3 bg-white/5 rounded-lg">
-                                <span class="text-xs text-gray-400">BNB</span>
-                                <p id="mock-bnb" class="text-lg font-semibold text-yellow-400">0.2</p>
-                            </div>
-                            <div class="text-center p-3 bg-white/5 rounded-lg">
-                                <span class="text-xs text-gray-400">CAKE</span>
-                                <p id="mock-cake" class="text-lg font-semibold text-purple-400">150</p>
+                            <div class="text-center p-4 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-lg">
+                                <span class="text-xs text-gray-400 uppercase tracking-wide">BNB Balance</span>
+                                <p id="mock-bnb" class="text-2xl font-bold text-yellow-400 mt-1">0.2</p>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-400">$PRED is a platform token valued at $600 each</p>
+                        <p class="text-xs text-gray-400 text-center">$PRED is a platform token valued at $600 each</p>
+                    </div>
+
+                    <!-- Logout Button -->
+                    <div class="pt-2 pb-4">
+                        <button onclick="signOut()" class="btn w-full bg-gradient-to-r from-red-500/20 to-pink-500/20 border-2 border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 font-semibold transition-all duration-300 hover:scale-[1.02] active:scale-95">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                            </svg>
+                            Sign Out
+                        </button>
                     </div>
                 </div> 
 
@@ -4431,6 +4437,7 @@
             const bottomNavProfile = document.getElementById('bottom-nav-profile-button');
             const bottomNavSocial = document.getElementById('bottom-nav-social-button');
             const bottomNavCreate = document.getElementById('bottom-nav-create-button');
+            const bottomNavQuick = document.querySelector('button[onclick*="pledge-pool-screen"]');
             
             if (isLoggedIn) {
                 // Logged in: Show profile & user section, hide sign in
@@ -4441,10 +4448,11 @@
                 if (mobileNavProfileButton) mobileNavProfileButton.classList.remove('hidden');
                 if (mobileNavSignInButton) mobileNavSignInButton.classList.add('hidden');
                 
-                // Show all bottom nav buttons
+                // Show all bottom nav buttons for logged-in users
                 if (bottomNavProfile) bottomNavProfile.classList.remove('hidden');
                 if (bottomNavSocial) bottomNavSocial.classList.remove('hidden');
                 if (bottomNavCreate) bottomNavCreate.classList.remove('hidden');
+                if (bottomNavQuick) bottomNavQuick.classList.remove('hidden');
             } else {
                 // Guest mode: Show sign in, hide user section
                 if (navUserSection) navUserSection.classList.add('hidden');
@@ -4454,10 +4462,11 @@
                 if (mobileNavProfileButton) mobileNavProfileButton.classList.add('hidden');
                 if (mobileNavSignInButton) mobileNavSignInButton.classList.remove('hidden');
                 
-                // Hide profile/create buttons for guests, but SHOW social (browse-only)
-                if (bottomNavProfile) bottomNavProfile.classList.add('hidden');
+                // Guests can see Home, Social, Profile only (no Create, no Quick Play)
+                if (bottomNavProfile) bottomNavProfile.classList.remove('hidden');  // ✅ Show profile for guests (browse only)
                 if (bottomNavSocial) bottomNavSocial.classList.remove('hidden');  // ✅ Show social for guests
-                if (bottomNavCreate) bottomNavCreate.classList.add('hidden');
+                if (bottomNavCreate) bottomNavCreate.classList.add('hidden');  // ❌ Hide Create (requires login)
+                if (bottomNavQuick) bottomNavQuick.classList.add('hidden');  // ❌ Hide Quick Play (requires login)
             }
         }
 

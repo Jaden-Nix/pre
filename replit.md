@@ -10,13 +10,14 @@ Platform now uses **CUSTODIAL WALLETS** with production-grade security for all u
 
 **Authentication & Wallet Creation (PRODUCTION-GRADE SECURITY):**
 - ✅ Email + password authentication
-- ✅ Passwordless OTP authentication  
+- ✅ **Smart OTP verification**: New users verify via email OTP, returning users skip OTP for faster login
 - ✅ **Auto-generated custodial wallets** on signup with Firebase UID mapping
 - ✅ **Authoritative UID→userId mapping** in Firestore (prevents unauthorized access)
 - ✅ Private keys encrypted with AES-256-GCM (WALLET_ENCRYPTION_KEY)
 - ✅ Keys stored securely in Firebase (never exposed to client)
 - ✅ **Strict withdrawal authorization** via Firebase ID token + mapping verification
 - ✅ **Comprehensive audit logging** for all wallet operations
+- ✅ **Logout button** in Profile → Assets tab for easy sign-out
 - ✅ Demo account (predorademo@gmail.com / demo1234)
 
 **Blockchain Integration:**
@@ -31,9 +32,10 @@ Platform now uses **CUSTODIAL WALLETS** with production-grade security for all u
 
 **Universal Features:**
 - ✅ Browse-first UX (no login required to view markets & social feed)
-- ✅ **Guest Mode Navigation**: Home, Quick Play, and Social visible (Profile/Create hidden until login)
-- ✅ **Sign In button** in top nav (always visible for guests)
+- ✅ **Guest Mode Navigation**: Home, Social, and Profile visible (Create & Quick Play hidden until login)
+- ✅ **Sign In button** in top nav (always visible for guests, hidden on auth screens)
 - ✅ **Social Feed Protection**: Guests can browse posts but must sign in to like/comment
+- ✅ **Improved Assets Tab**: Better layout with gradient balance cards and prominent logout button
 - ✅ **Enhanced 3-Tier Oracle System** with multi-model scoring
 - ✅ Advanced jury system with second-pass request capability
 - ✅ Multi-option markets (3-6 choices)
