@@ -30,7 +30,10 @@ Platform now uses **CUSTODIAL WALLETS** with production-grade security for all u
 - ✅ **All transactions signed by backend** with encrypted private keys
 
 **Universal Features:**
-- ✅ Browse-first UX (no login required to view markets)
+- ✅ Browse-first UX (no login required to view markets & social feed)
+- ✅ **Guest Mode Navigation**: Home, Quick Play, and Social visible (Profile/Create hidden until login)
+- ✅ **Sign In button** in top nav (always visible for guests)
+- ✅ **Social Feed Protection**: Guests can browse posts but must sign in to like/comment
 - ✅ **Enhanced 3-Tier Oracle System** with multi-model scoring
 - ✅ Advanced jury system with second-pass request capability
 - ✅ Multi-option markets (3-6 choices)

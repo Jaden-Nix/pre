@@ -1440,7 +1440,7 @@
                         </button>
 
                         <!-- Sign In Button (shown when logged out) -->
-                        <button id="nav-signin-button" class="hidden px-4 py-2 bg-gradient-to-r from-sky-500 to-cyan-500 rounded-full text-white font-semibold text-sm shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-sky-500/50 active:scale-95">
+                        <button id="nav-signin-button" onclick="showScreen('login-screen')" class="hidden px-4 py-2 bg-gradient-to-r from-sky-500 to-cyan-500 rounded-full text-white font-semibold text-sm shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-sky-500/50 active:scale-95">
                             Sign In
                         </button>
 
@@ -4431,9 +4431,9 @@
                 if (navUserSection) navUserSection.classList.add('hidden');
                 if (navSignInButton) navSignInButton.classList.remove('hidden');
                 
-                // Hide profile/social/create buttons for guests
+                // Hide profile/create buttons for guests, but SHOW social (browse-only)
                 if (bottomNavProfile) bottomNavProfile.classList.add('hidden');
-                if (bottomNavSocial) bottomNavSocial.classList.add('hidden');
+                if (bottomNavSocial) bottomNavSocial.classList.remove('hidden');  // ✅ Show social for guests
                 if (bottomNavCreate) bottomNavCreate.classList.add('hidden');
             }
         }
