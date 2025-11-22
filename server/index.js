@@ -541,6 +541,9 @@ app.post('/api/custodial-wallet/balance', async (req, res) => {
     }
 });
 
+// ✅ PRED Token Address (BSC Testnet)
+const PRED_TOKEN_ADDRESS = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+
 // ✅ Send BNB from custodial wallet (SECURED V4 - Fixed Authorization Bypass)
 app.post('/api/custodial-wallet/send-bnb', async (req, res) => {
     const { userId, to, amount, authToken } = req.body;
@@ -653,6 +656,125 @@ app.post('/api/custodial-wallet/send-bnb', async (req, res) => {
         }
         
         console.error('Error sending BNB:', error);
+        attemptLog.error = error.message;
+        if (db) await db.collection('custodialWithdrawals').add(attemptLog);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ✅ Send PRED tokens from custodial wallet (SECURED V4)
+app.post('/api/custodial-wallet/send-pred', async (req, res) => {
+    const { userId, to, amount, authToken } = req.body;
+    
+    // ✅ Log all withdrawal attempts for audit
+    const attemptLog = {
+        requestedUserId: userId,
+        to,
+        amount,
+        currency: 'PRED',
+        timestamp: new Date().toISOString(),
+        success: false
+    };
+    
+    // ✅ CRITICAL: Require userId to prevent undefined bypass
+    if (!userId) {
+        console.warn('🚨 PRED withdrawal attempt without userId');
+        attemptLog.error = 'Missing userId';
+        if (db) await db.collection('custodialWithdrawals').add(attemptLog);
+        return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    if (!to || !amount) {
+        return res.status(400).json({ error: 'Recipient address and amount are required' });
+    }
+    
+    if (!authToken) {
+        console.warn('🚨 PRED withdrawal attempt without auth token');
+        attemptLog.error = 'No auth token';
+        if (db) await db.collection('custodialWithdrawals').add(attemptLog);
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    if (!custodialWalletService || !db) {
+        return res.status(503).json({ error: 'Service unavailable' });
+    }
+    
+    try {
+        // ✅ SECURITY: Verify Firebase auth token
+        const decodedToken = await admin.auth().verifyIdToken(authToken);
+        const authenticatedUid = decodedToken.uid;
+        attemptLog.firebaseUid = authenticatedUid;
+        
+        console.log(`🔐 PRED withdrawal request from UID: ${authenticatedUid} for userId: ${userId}`);
+        
+        // ✅ SECURITY: Look up authoritative wallet mapping by Firebase UID
+        const mappingDoc = await db.collection('walletMappings').doc(authenticatedUid).get();
+        
+        if (!mappingDoc.exists) {
+            console.warn(`🚨 No wallet mapping found for UID: ${authenticatedUid}`);
+            attemptLog.error = 'No wallet mapping - wallet may be insecure';
+            await db.collection('custodialWithdrawals').add(attemptLog);
+            return res.status(404).json({ error: 'Wallet not found. Please contact support.' });
+        }
+        
+        const mapping = mappingDoc.data();
+        const authorizedUserId = mapping.userId;
+        
+        // ✅ CRITICAL SECURITY: Strict comparison - requested userId MUST match mapping
+        if (userId !== authorizedUserId) {
+            console.warn(`🚨 Authorization failed: UID ${authenticatedUid} tried to access ${userId} but owns ${authorizedUserId}`);
+            attemptLog.error = 'Unauthorized wallet access';
+            attemptLog.authorizedUserId = authorizedUserId;
+            await db.collection('custodialWithdrawals').add(attemptLog);
+            return res.status(403).json({ error: 'Unauthorized: Cannot access another user\'s wallet' });
+        }
+        
+        // ✅ Use the authoritative userId (verified to match request)
+        const walletUserId = authorizedUserId;
+        attemptLog.authorizedUserId = walletUserId;
+        
+        // ✅ Validate recipient address and amount
+        if (!ethers.utils.isAddress(to)) {
+            attemptLog.error = 'Invalid recipient address';
+            await db.collection('custodialWithdrawals').add(attemptLog);
+            return res.status(400).json({ error: 'Invalid recipient address' });
+        }
+        
+        if (parseFloat(amount) <= 0) {
+            attemptLog.error = 'Invalid amount';
+            await db.collection('custodialWithdrawals').add(attemptLog);
+            return res.status(400).json({ error: 'Amount must be positive' });
+        }
+        
+        // ✅ Execute PRED token withdrawal using authoritative userId
+        console.log(`🪙 Authorized PRED withdrawal: ${amount} PRED from ${walletUserId} to ${to}`);
+        const result = await custodialWalletService.sendERC20Token(walletUserId, PRED_TOKEN_ADDRESS, to, amount);
+        
+        if (result.success) {
+            // ✅ Log successful withdrawal
+            attemptLog.success = true;
+            attemptLog.txHash = result.txHash;
+            attemptLog.blockNumber = result.blockNumber;
+            await db.collection('custodialWithdrawals').add(attemptLog);
+            
+            res.status(200).json(result);
+        } else {
+            // ✅ Log failed transaction
+            attemptLog.error = result.error;
+            await db.collection('custodialWithdrawals').add(attemptLog);
+            
+            res.status(400).json(result);
+        }
+    } catch (error) {
+        // ✅ Log all failures
+        if (error.code === 'auth/argument-error' || error.code === 'auth/id-token-expired') {
+            console.warn(`🚨 Invalid auth token for PRED withdrawal attempt`);
+            attemptLog.error = 'Invalid or expired auth token';
+            if (db) await db.collection('custodialWithdrawals').add(attemptLog);
+            return res.status(401).json({ error: 'Invalid or expired authentication token' });
+        }
+        
+        console.error('Error sending PRED:', error);
         attemptLog.error = error.message;
         if (db) await db.collection('custodialWithdrawals').add(attemptLog);
         res.status(500).json({ error: error.message });
