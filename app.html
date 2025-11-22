@@ -1439,9 +1439,20 @@
                             </svg>
                         </button>
 
-                        <button onclick="showScreen('profile-screen')" data-screen="profile-screen" id="nav-profile-button" class="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-indigo-500/50 active:scale-95">
-                            P
+                        <!-- Sign In Button (shown when logged out) -->
+                        <button id="nav-signin-button" onclick="showScreen('login-screen')" class="hidden px-4 py-2 bg-gradient-to-r from-sky-500 to-cyan-500 rounded-full text-white font-semibold text-sm shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-sky-500/50 active:scale-95">
+                            Sign In
                         </button>
+
+                        <!-- Profile & Sign Out (shown when logged in) -->
+                        <div id="nav-user-section" class="hidden flex items-center gap-2">
+                            <button onclick="showScreen('profile-screen')" data-screen="profile-screen" id="nav-profile-button" class="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-indigo-500/50 active:scale-95">
+                                P
+                            </button>
+                            <button onclick="signOut()" class="px-3 py-1.5 bg-gray-700/50 hover:bg-gray-600/50 rounded-lg text-gray-300 hover:text-white font-medium text-sm transition-all duration-200">
+                                Sign Out
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -4333,6 +4344,55 @@
             content.classList.toggle('hidden');
             chevron.classList.toggle('rotate-180');
         };
+
+        // Sign Out Function
+        async function signOut() {
+            try {
+                const { signOut: firebaseSignOut } = window.firebase.auth;
+                await firebaseSignOut(auth);
+                
+                // Clear user data
+                currentUserId = null;
+                userProfile = {};
+                
+                // Clear localStorage
+                localStorage.removeItem('currentUserId');
+                localStorage.removeItem('userProfile');
+                localStorage.removeItem('pledgePool');
+                
+                // Reset UI
+                const navUserSection = document.getElementById('nav-user-section');
+                const navSignInButton = document.getElementById('nav-signin-button');
+                
+                if (navUserSection) navUserSection.classList.add('hidden');
+                if (navSignInButton) navSignInButton.classList.remove('hidden');
+                
+                // Show login screen
+                showScreen('login-screen');
+                showToast('✅ Signed out successfully', 'success');
+                
+                console.log('✅ User signed out');
+            } catch (error) {
+                console.error('❌ Sign out failed:', error);
+                showToast('❌ Failed to sign out', 'error');
+            }
+        }
+
+        // Update Nav Bar based on auth state
+        function updateNavBar(isLoggedIn) {
+            const navUserSection = document.getElementById('nav-user-section');
+            const navSignInButton = document.getElementById('nav-signin-button');
+            
+            if (isLoggedIn) {
+                if (navUserSection) navUserSection.classList.remove('hidden');
+                if (navSignInButton) navSignInButton.classList.add('hidden');
+            } else {
+                if (navUserSection) navUserSection.classList.add('hidden');
+                if (navSignInButton) navSignInButton.classList.remove('hidden');
+            }
+        }
+
+        window.signOut = signOut;
 
         // === WEB3 SERVICE LAYER ===
         

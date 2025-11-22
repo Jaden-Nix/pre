@@ -1,97 +1,83 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.19;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title PredToken ($PRED)
- * @dev Simple ERC20 token for Predora prediction market
- * Initial supply: 1,000,000 PRED tokens
- * Decimals: 18 (standard)
+ * @title PredToken
+ * @dev $PRED token for Predora prediction markets
+ * Platform token valued at $600 each for betting and rewards
  */
-contract PredToken {
-    string public constant name = "Predora Token";
-    string public constant symbol = "PRED";
-    uint8 public constant decimals = 18;
-    uint256 public totalSupply;
+contract PredToken is ERC20, Ownable {
+    // Token decimals
+    uint8 private constant DECIMALS = 18;
     
-    mapping(address => uint256) public balanceOf;
-    mapping(address => mapping(address => uint256)) public allowance;
+    // Initial supply: 1 billion tokens
+    uint256 private constant INITIAL_SUPPLY = 1_000_000_000 * 10**DECIMALS;
     
-    address public owner;
+    // Faucet settings
+    uint256 public faucetAmount = 50 * 10**DECIMALS; // 50 $PRED per claim
+    uint256 public faucetCooldown = 24 hours;
+    mapping(address => uint256) public lastFaucetClaim;
     
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-    event Mint(address indexed to, uint256 amount);
-    
-    constructor(uint256 _initialSupply) {
-        owner = msg.sender;
-        totalSupply = _initialSupply * 10**uint256(decimals);
-        balanceOf[msg.sender] = totalSupply;
-        emit Transfer(address(0), msg.sender, totalSupply);
-    }
-    
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Only owner can call this");
-        _;
-    }
-    
-    function transfer(address _to, uint256 _value) public returns (bool success) {
-        require(balanceOf[msg.sender] >= _value, "Insufficient balance");
-        require(_to != address(0), "Invalid address");
-        
-        balanceOf[msg.sender] -= _value;
-        balanceOf[_to] += _value;
-        
-        emit Transfer(msg.sender, _to, _value);
-        return true;
-    }
-    
-    function approve(address _spender, uint256 _value) public returns (bool success) {
-        allowance[msg.sender][_spender] = _value;
-        emit Approval(msg.sender, _spender, _value);
-        return true;
-    }
-    
-    function transferFrom(address _from, address _to, uint256 _value) public returns (bool success) {
-        require(balanceOf[_from] >= _value, "Insufficient balance");
-        require(allowance[_from][msg.sender] >= _value, "Allowance exceeded");
-        require(_to != address(0), "Invalid address");
-        
-        balanceOf[_from] -= _value;
-        balanceOf[_to] += _value;
-        allowance[_from][msg.sender] -= _value;
-        
-        emit Transfer(_from, _to, _value);
-        return true;
+    constructor() ERC20("Predora Token", "PRED") Ownable(msg.sender) {
+        _mint(msg.sender, INITIAL_SUPPLY);
     }
     
     /**
-     * @dev Mint new tokens (only owner can call)
-     * Useful for airdrops or rewarding users
+     * @dev Allows users to claim free tokens from faucet
      */
-    function mint(address _to, uint256 _amount) public onlyOwner returns (bool) {
-        require(_to != address(0), "Invalid address");
+    function claimFromFaucet() external {
+        require(
+            block.timestamp >= lastFaucetClaim[msg.sender] + faucetCooldown,
+            "Faucet cooldown not expired"
+        );
         
-        uint256 amount = _amount * 10**uint256(decimals);
-        totalSupply += amount;
-        balanceOf[_to] += amount;
+        lastFaucetClaim[msg.sender] = block.timestamp;
+        _mint(msg.sender, faucetAmount);
         
-        emit Mint(_to, amount);
-        emit Transfer(address(0), _to, amount);
-        return true;
+        emit FaucetClaimed(msg.sender, faucetAmount);
     }
     
     /**
-     * @dev Airdrop tokens to multiple addresses
+     * @dev Admin can update faucet amount
      */
-    function airdrop(address[] memory _recipients, uint256 _amountEach) public onlyOwner {
-        uint256 amount = _amountEach * 10**uint256(decimals);
-        
-        for (uint256 i = 0; i < _recipients.length; i++) {
-            require(_recipients[i] != address(0), "Invalid address in list");
-            balanceOf[_recipients[i]] += amount;
-            totalSupply += amount;
-            emit Mint(_recipients[i], amount);
-            emit Transfer(address(0), _recipients[i], amount);
+    function setFaucetAmount(uint256 _amount) external onlyOwner {
+        faucetAmount = _amount;
+    }
+    
+    /**
+     * @dev Admin can update faucet cooldown
+     */
+    function setFaucetCooldown(uint256 _cooldown) external onlyOwner {
+        faucetCooldown = _cooldown;
+    }
+    
+    /**
+     * @dev Admin can mint tokens
+     */
+    function mint(address to, uint256 amount) external onlyOwner {
+        _mint(to, amount);
+    }
+    
+    /**
+     * @dev Check if user can claim from faucet
+     */
+    function canClaimFaucet(address user) external view returns (bool) {
+        return block.timestamp >= lastFaucetClaim[user] + faucetCooldown;
+    }
+    
+    /**
+     * @dev Get time until next faucet claim
+     */
+    function timeUntilNextClaim(address user) external view returns (uint256) {
+        uint256 nextClaimTime = lastFaucetClaim[user] + faucetCooldown;
+        if (block.timestamp >= nextClaimTime) {
+            return 0;
         }
+        return nextClaimTime - block.timestamp;
     }
+    
+    event FaucetClaimed(address indexed user, uint256 amount);
 }
