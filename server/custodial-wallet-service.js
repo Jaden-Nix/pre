@@ -1,14 +1,23 @@
 import { ethers } from 'ethers';
 import crypto from 'crypto';
 
-const ENCRYPTION_KEY = process.env.WALLET_ENCRYPTION_KEY || 'predora-default-encryption-key-change-in-production';
+const ENCRYPTION_KEY = process.env.WALLET_ENCRYPTION_KEY;
 const ALGORITHM = 'aes-256-gcm';
 
 export class CustodialWalletService {
     constructor(db) {
+        // 🔒 SECURITY CHECK: Validate encryption key before allowing any wallet operations
+        if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
+            console.error('🚨 SECURITY ERROR: WALLET_ENCRYPTION_KEY must be set and at least 32 characters long.');
+            console.error('   Generate a secure key with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+            console.error('   Set it in Replit Secrets as WALLET_ENCRYPTION_KEY');
+            throw new Error('Custodial wallet service requires secure WALLET_ENCRYPTION_KEY');
+        }
+        
         this.db = db;
         // ✅ BLOCKCHAIN RE-ENABLED FOR BSC TESTNET
         this.provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+        console.log('🔒 Custodial wallet service initialized with secure encryption');
     }
 
     encrypt(text) {

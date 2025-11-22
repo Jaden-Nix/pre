@@ -127,11 +127,16 @@ async function getSendGridClient() {
 // OTP storage (in-memory for simplicity, could use Redis or Firebase)
 const otpStore = new Map();
 
-// Initialize custodial wallet service
+// Initialize custodial wallet service with security validation
 let custodialWalletService = null;
 if (db) {
-    custodialWalletService = new CustodialWalletService(db);
-    console.log("✅ Custodial Wallet Service initialized");
+    try {
+        custodialWalletService = new CustodialWalletService(db);
+        console.log("✅ Custodial Wallet Service initialized with secure encryption");
+    } catch (error) {
+        console.warn("⚠️  Custodial Wallet Service not available:", error.message);
+        console.warn("   Custodial wallets will be disabled. Users can still use external wallets (MetaMask).");
+    }
 } else {
     console.warn("⚠️  Custodial Wallet Service not available (Firebase required)");
 }
