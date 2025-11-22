@@ -310,6 +310,44 @@
       "artifacts": [
         "IERC20Metadata"
       ]
+    },
+    "/home/runner/workspace/contracts/contracts/PredictionMarketV2.sol": {
+      "lastModificationDate": 1763795269405,
+      "contentHash": "3e6a8dae3f3643efc7e7cc1a0425f39f",
+      "sourceName": "contracts/PredictionMarketV2.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "IERC20",
+        "PredictionMarketV2"
+      ]
     }
   }
 }

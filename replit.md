@@ -142,19 +142,27 @@ The platform uses a dual-workflow architecture:
 
 ## Contract Deployment
 
-**BSC Testnet Deployment (Latest - With Batch Betting):**
-- Contract Address: `0xd292Ce8a4596438C8c3e5Dd5D8AbF5cf3B6c1EB2`
+**BSC Testnet Deployment V2 (Latest - Dual Currency Support):**
+- **PredictionMarketV2**: `0x02BE5025B416Ca3c7e2b5fbC6c9AbFe8669Ba574`
+- **PredToken (PRED)**: `0x45C229bF14A36aD14885148E62058C98284B2ae0`
 - Deployer: `0xe47Dce1b7e31333329734E24089C0472c030d95B`
 - Deployed: November 22, 2025
 - Network: BSC Testnet (Chain ID: 97)
-- BSCScan: https://testnet.bscscan.com/address/0xd292Ce8a4596438C8c3e5Dd5D8AbF5cf3B6c1EB2
-- **NEW**: Includes `placeBatchBets()` function for Quick Play batch betting
-- **NEW**: BNB withdrawal feature (send to any address)
+- BSCScan PredictionMarketV2: https://testnet.bscscan.com/address/0x02BE5025B416Ca3c7e2b5fbC6c9AbFe8669Ba574
+- BSCScan PredToken: https://testnet.bscscan.com/address/0x45C229bF14A36aD14885148E62058C98284B2ae0
+- **Features**:
+  - ✅ Dual currency support: bet with BNB OR $PRED token
+  - ✅ Batch betting (`placeBatchBets()`) for Quick Play  
+  - ✅ Separate pools for BNB and PRED bets
+  - ✅ **CORRECT payout formula**: Stake (minus fee) + proportional share of losing pool
+  - ✅ $PRED faucet: 50 PRED per claim (24h cooldown)
+  - ✅ Total supply: 1 billion PRED tokens
+  - ✅ BNB and PRED withdrawal support
 
-**Previous Deployment (Deprecated):**
-- Contract Address: `0xdaAf91610e33355c9Cd9258219C6A4822E693f55`
-- Deployed: November 21, 2025
-- Status: Replaced by new deployment with batch betting support
+**Previous Deployment V1 (Deprecated - BNB Only):**
+- Contract Address: `0xd292Ce8a4596438C8c3e5Dd5D8AbF5cf3B6c1EB2`
+- Deployed: November 22, 2025
+- Status: Replaced by V2 with dual currency support
 
 ## Security & Secrets
 - **WALLETCONNECT_PROJECT_ID**: Stored securely in Replit Secrets, dynamically injected into app.html at runtime.
