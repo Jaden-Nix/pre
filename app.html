@@ -6680,14 +6680,15 @@
                     showScreen('otp-entry-screen');
                     showToast("Account created! Check your email for verification code 📧", "success");
                 } else {
-                    // EXISTING USER: Skip OTP, proceed directly
+                    // EXISTING USER: Skip OTP, proceed directly to account setup
                     showLoadingOverlay(true, 'Setting up your account...');
                     showToast("✅ Welcome back!", "success");
-                    // Firebase Auth state listener (onAuthStateChanged) will handle the rest:
-                    // - Hide loading overlay
-                    // - Navigate to home screen
-                    // - Setup user profile
-                    // Note: Don't hide loading overlay here - let onAuthStateChanged do it
+                    
+                    // Complete authentication setup
+                    await completeAuthentication(result.user, 'firebase-email');
+                    
+                    // Update nav bar to show signed-in state
+                    updateNavBar(true);
                 }
 
             } catch (error) {
