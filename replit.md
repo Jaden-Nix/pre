@@ -2,27 +2,31 @@
 
 ## 🚨 IMPORTANT: Current Architecture Status
 
-**As of November 22, 2025 - Phase 2: Custodial Wallets LIVE**
+**As of November 22, 2025 - Phase 2: Custodial Wallets COMPLETE & SECURED**
 
-Platform now uses **CUSTODIAL WALLETS** for all users: Sign up with email, instantly get an encrypted wallet managed by the backend. No MetaMask needed! Users can withdraw BNB + $PRED to any address. All markets support dual-currency betting (BNB + $PRED) via batch transactions. Advanced 3-tier oracle resolution system with multi-model scoring ensures accurate outcomes.
+Platform now uses **CUSTODIAL WALLETS** with production-grade security for all users: Sign up with email, instantly get an encrypted wallet managed by the backend. No MetaMask needed! Users can withdraw BNB + $PRED to any address. All markets support dual-currency betting (BNB + $PRED) via batch transactions. Advanced 3-tier oracle resolution system with multi-model scoring ensures accurate outcomes.
 
-### ✅ Custodial Wallet Features (LIVE):
+### ✅ Custodial Wallet Features (LIVE & SECURED):
 
-**Authentication & Wallet Creation:**
+**Authentication & Wallet Creation (PRODUCTION-GRADE SECURITY):**
 - ✅ Email + password authentication
 - ✅ Passwordless OTP authentication  
-- ✅ **Auto-generated custodial wallets** on signup
-- ✅ Private keys encrypted with AES-256-GCM
+- ✅ **Auto-generated custodial wallets** on signup with Firebase UID mapping
+- ✅ **Authoritative UID→userId mapping** in Firestore (prevents unauthorized access)
+- ✅ Private keys encrypted with AES-256-GCM (WALLET_ENCRYPTION_KEY)
 - ✅ Keys stored securely in Firebase (never exposed to client)
+- ✅ **Strict withdrawal authorization** via Firebase ID token + mapping verification
+- ✅ **Comprehensive audit logging** for all wallet operations
 - ✅ Demo account (predorademo@gmail.com / demo1234)
 
 **Blockchain Integration:**
 - ✅ Real on-chain betting on BSC Testnet
 - ✅ Dual currency support: BNB + $PRED token
 - ✅ Batch betting via `placeBatchBets()` function
-- ✅ **BNB withdrawals** to any address
+- ✅ **Secure BNB withdrawals** to any address (Firebase Auth + UID mapping required)
 - ✅ Real blockchain balances fetched via JSON-RPC
 - ✅ AMM pool updates (constant product formula: x * y = k)
+- ✅ **All transactions signed by backend** with encrypted private keys
 
 **Universal Features:**
 - ✅ Browse-first UX (no login required to view markets)
@@ -32,14 +36,15 @@ Platform now uses **CUSTODIAL WALLETS** for all users: Sign up with email, insta
 - ✅ Real-time market visualization
 - ✅ TikTok-style Quick Play interface
 
-**User Flow:**
+**Secure User Flow:**
 1. Browse Quick Play markets without login
-2. Sign up with email → auto-get encrypted custodial wallet
+2. Sign up with email → Firebase authentication → auto-get encrypted custodial wallet with UID mapping
 3. Vote YES/NO on markets → pledge pool builds up
 4. Click "Confirm" → ONE blockchain transaction (batch betting)
-5. Backend signs transaction with encrypted private key
+5. Backend signs transaction with encrypted private key (UID-verified ownership)
 6. AMM pools update, user receives on-chain confirmation
-7. Withdraw BNB/PRED anytime to external wallet
+7. Withdraw BNB/PRED to external wallet (requires Firebase ID token + UID mapping verification)
+8. All actions logged for security audit trail
 
 ---
 
@@ -93,7 +98,14 @@ The platform uses a dual-workflow architecture:
   - AI guardrails: duplicate detection, quality filtering, Sybil detection
 - **Jury System**: A fully functional jury voting system allows users to submit votes for disputed markets, with outcomes determined by majority rule. An admin dashboard provides oversight and manual override capabilities.
 - **Multiple Options Market Display**: Supports markets with 3-6 options, each displayed with individual percentages.
-- **Custodial Wallets**: Automatic server-side wallet creation on user signup using ethers.js v5, with AES-256-GCM encrypted private keys stored in Firebase Firestore. Keys never exposed to client.
+- **Custodial Wallets (PRODUCTION-GRADE SECURITY)**: 
+  - Automatic server-side wallet creation on user signup using ethers.js v5
+  - AES-256-GCM encrypted private keys with WALLET_ENCRYPTION_KEY
+  - **Authoritative UID→userId mapping** stored in Firestore walletMappings collection
+  - **Strict withdrawal authorization**: Firebase ID token verification + mapping lookup
+  - **Comprehensive audit trail**: All wallet operations logged in custodialWithdrawals collection
+  - Private keys never exposed to client or logs
+  - Zero-trust security model: Server never trusts client-provided userId for sensitive operations
 - **Account Abstraction**: Biconomy Smart Account SDK enables gasless transactions via ERC-4337 UserOperations, with sponsored gas from Biconomy Paymaster on BSC Testnet (Chain ID: 97).
 
 ### System Design Choices
