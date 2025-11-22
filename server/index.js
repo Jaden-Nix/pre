@@ -816,6 +816,21 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
         console.log(`   Transaction: ${tx.hash}`);
         console.log(`   New balance: ${balance} $PRED`);
         
+        // Update Firebase profile with new balance and claim timestamp
+        try {
+            if (db) {
+                await db.collection('users').doc(userId).update({
+                    predBalance: balance,
+                    lastPredClaim: Date.now(),
+                    lastBalanceUpdate: Date.now()
+                });
+                console.log(`✅ Updated Firebase profile for ${userId}: predBalance=${balance}`);
+            }
+        } catch (dbError) {
+            console.warn(`⚠️  Could not update Firebase profile: ${dbError.message}`);
+            // Continue anyway - the balance is still on-chain
+        }
+        
         res.status(200).json({ 
             success: true, 
             amount: faucetAmount,
