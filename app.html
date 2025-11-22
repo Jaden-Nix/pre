@@ -6625,41 +6625,47 @@
                     }
                 }
 
-                // Password verified! Now send OTP for verification
-                showLoadingOverlay(true, 'Sending verification code...');
-                
-                // Store auth result temporarily for later completion
-                sessionStorage.setItem('pending-auth-user', JSON.stringify({
-                    uid: result.user.uid,
-                    email: result.user.email,
-                    isNewAccount: isNewAccount
-                }));
-                
-                // Send OTP to email
-                const otpResponse = await fetch('/api/send-otp', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email })
-                });
-                
-                if (!otpResponse.ok) {
-                    const errorData = await otpResponse.json();
-                    throw new Error(errorData.error || 'Failed to send verification code');
-                }
-                
-                // Store email for OTP verification
-                sessionStorage.setItem('otp-email', email);
-                
-                // Show OTP entry screen
-                showLoadingOverlay(false);
-                document.getElementById('otp-email-display').textContent = email;
-                document.getElementById('otp-code-input').value = '';
-                showScreen('otp-entry-screen');
+                // If NEW user → send OTP for verification
+                // If EXISTING user → skip OTP and proceed directly
                 
                 if (isNewAccount) {
+                    // NEW USER: Send OTP verification
+                    showLoadingOverlay(true, 'Sending verification code...');
+                    
+                    // Store auth result temporarily for later completion
+                    sessionStorage.setItem('pending-auth-user', JSON.stringify({
+                        uid: result.user.uid,
+                        email: result.user.email,
+                        isNewAccount: isNewAccount
+                    }));
+                    
+                    // Send OTP to email
+                    const otpResponse = await fetch('/api/send-otp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email })
+                    });
+                    
+                    if (!otpResponse.ok) {
+                        const errorData = await otpResponse.json();
+                        throw new Error(errorData.error || 'Failed to send verification code');
+                    }
+                    
+                    // Store email for OTP verification
+                    sessionStorage.setItem('otp-email', email);
+                    
+                    // Show OTP entry screen
+                    showLoadingOverlay(false);
+                    document.getElementById('otp-email-display').textContent = email;
+                    document.getElementById('otp-code-input').value = '';
+                    showScreen('otp-entry-screen');
                     showToast("Account created! Check your email for verification code 📧", "success");
                 } else {
-                    showToast("Check your email for verification code 📧", "success");
+                    // EXISTING USER: Skip OTP, proceed directly
+                    showLoadingOverlay(true, 'Welcome back...');
+                    // Firebase Auth state listener will handle the rest of setup
+                    showToast("✅ Welcome back!", "success");
+                    showLoadingOverlay(false);
                 }
 
             } catch (error) {
