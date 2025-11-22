@@ -2609,50 +2609,9 @@
                         </div>
 
                 <div id="assets-content" class="hidden space-y-3">
-                    <!-- Custodial Wallet Withdrawals Section -->
-                    <div class="ui-panel p-4 space-y-4">
-                        <h3 class="text-lg font-semibold gradient-text">🔐 Custodial Wallet</h3>
-                        <p class="text-sm text-gray-400">Your server-managed encrypted wallet. Withdraw BNB and $PRED to any address.</p>
-                        
-                        <!-- Wallet Info -->
-                        <div class="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/20">
-                            <span class="text-sm text-green-400">✓ Custodial Wallet Active</span>
-                            <span id="custodial-wallet-address-short" class="text-xs text-gray-400 font-mono">0x...</span>
-                        </div>
-
-                        <!-- Withdraw BNB Section -->
-                        <div class="space-y-3 pt-2">
-                            <h4 class="text-sm font-semibold text-sky-300">💸 Withdraw BNB</h4>
-                            <p class="text-xs text-gray-400">Send BNB from your custodial wallet to any address</p>
-                            <input type="text" id="withdraw-bnb-address" placeholder="Recipient Address (0x...)" 
-                                class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500">
-                            <input type="number" id="withdraw-bnb-amount" placeholder="Amount (BNB)" step="0.001" min="0.001"
-                                class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500">
-                            <button onclick="withdrawBNB()" class="btn bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 w-full">
-                                <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                                </svg>
-                                Withdraw BNB
-                            </button>
-                        </div>
-
-                        <!-- Withdraw PRED Section -->
-                        <div class="space-y-3 pt-4 border-t border-white/10">
-                            <h4 class="text-sm font-semibold text-purple-300">🪙 Withdraw $PRED</h4>
-                            <p class="text-xs text-gray-400">Send $PRED tokens from your custodial wallet to any address</p>
-                            <input type="text" id="withdraw-pred-address" placeholder="Recipient Address (0x...)" 
-                                class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500">
-                            <input type="number" id="withdraw-pred-amount" placeholder="Amount (PRED)" step="1" min="1"
-                                class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500">
-                            <button onclick="withdrawPRED()" class="btn bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 w-full">
-                                <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                                </svg>
-                                Withdraw $PRED
-                            </button>
-                        </div>
-                    </div>
-
+                    <!-- Assets content will be dynamically rendered by updateProfileUI() -->
+                    <!-- This prevents duplicate withdrawal forms -->
+                    
                     <!-- Optional: MetaMask Section (Hidden by default for custodial users) -->
                     <div class="ui-panel p-4 space-y-4 hidden">
                         <h3 class="text-lg font-semibold gradient-text">🔗 External Wallet (Optional)</h3>
@@ -6438,9 +6397,18 @@
                 }
 
             } catch (error) {
-                console.error('Error completing authentication:', error);
+                console.error('❌ Error completing authentication:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack,
+                    userId: currentUserId,
+                    firebaseUid: firebaseUser?.uid
+                });
                 showLoadingOverlay(false);
-                showToast("Authentication failed. Please try again.", "error");
+                
+                // Show specific error message to user
+                const errorMsg = error.message || "Authentication failed. Please try again.";
+                showToast(`Setup failed: ${errorMsg}`, "error");
             }
         }
 
