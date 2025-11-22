@@ -53,7 +53,7 @@ To re-enable blockchain features, simply uncomment all `// TODO: BLOCKCHAIN TEMP
 ---
 
 ## Overview
-Predora is an AI-native prediction market platform originally built on BNB Chain, featuring a TikTok-style "Quick Play" interface. Currently running in Firestore-only demo mode (blockchain temporarily disabled). Its core purpose is to offer a decentralized and engaging platform for users to predict outcomes. Predora leverages AI for market generation, resolution, and content moderation, alongside a community-driven jury system for dispute resolution.
+Predora is an AI-native prediction market platform built on BNB Chain, featuring a TikTok-style "Quick Play" interface. It uses a **hybrid architecture** supporting both on-chain (BSC Testnet with real BNB) and Firestore-only betting. On-chain betting works for markets with `onChainMarketId` when users connect MetaMask wallets. $PRED token is a Firestore display currency valued at $600, NOT currently integrated for on-chain betting (on-chain uses BNB only). Predora leverages AI for market generation, resolution, and content moderation, alongside a community-driven jury system for dispute resolution.
 
 ## User Preferences
 - Vanilla HTML/CSS/JS architecture (original design, not Next.js)

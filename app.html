@@ -2640,6 +2640,27 @@
                             <p class="text-xs text-center text-gray-500">Need BNB? Click the faucet button to get free testnet tokens!</p>
                         </div>
                     </div>
+
+                    <!-- $PRED Token Faucet Section -->
+                    <div class="ui-panel p-4 space-y-4">
+                        <h3 class="text-lg font-semibold gradient-text">🪙 $PRED Token Faucet</h3>
+                        <p class="text-sm text-gray-400">Claim free $PRED tokens for testing. One claim every 24 hours.</p>
+                        
+                        <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                            <span class="text-sm text-gray-400">Your $PRED Balance:</span>
+                            <span id="faucet-pred-balance" class="text-sm font-semibold text-green-400">100.00 $PRED</span>
+                        </div>
+                        
+                        <button id="claim-pred-btn" onclick="claimPredTokens()" class="btn bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 w-full">
+                            💰 Claim 50 $PRED
+                        </button>
+                        
+                        <div id="faucet-cooldown-msg" class="hidden p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                            <p class="text-xs text-yellow-400 text-center"></p>
+                        </div>
+                        
+                        <p class="text-xs text-center text-gray-500">$PRED tokens are used for betting on Firestore markets. Value: $600/token</p>
+                    </div>
                     
                     <!-- Mock Balances -->
                     <div class="ui-panel p-4 space-y-3">
@@ -5513,6 +5534,78 @@
         window.setupContractEventListeners = setupContractEventListeners;
         window.watchMarketEvents = watchMarketEvents;
         window.getMarketHistory = getMarketHistory;
+        
+        /**
+         * 🪙 Claim $PRED tokens from faucet
+         */
+        window.claimPredTokens = async function() {
+            if (!currentUserId || isGuestMode) {
+                showToast('Please sign in to claim tokens', 'info');
+                return;
+            }
+            
+            const claimBtn = document.getElementById('claim-pred-btn');
+            const cooldownMsg = document.getElementById('faucet-cooldown-msg');
+            const cooldownText = cooldownMsg.querySelector('p');
+            
+            try {
+                claimBtn.disabled = true;
+                claimBtn.innerHTML = '⏳ Claiming...';
+                
+                const response = await fetch('/api/faucet/claim-pred', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUserId })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Update balance display
+                    const balanceEl = document.getElementById('faucet-pred-balance');
+                    if (balanceEl) {
+                        balanceEl.textContent = `${data.newBalance.toFixed(2)} $PRED`;
+                    }
+                    
+                    // Update main balance display
+                    const mockBalanceEl = document.getElementById('mock-busd');
+                    if (mockBalanceEl) {
+                        mockBalanceEl.textContent = `$${data.newBalance.toFixed(2)}`;
+                    }
+                    
+                    // Update userProfile
+                    if (userProfile) {
+                        userProfile.predBalance = data.newBalance;
+                    }
+                    
+                    showToast(data.message, 'success');
+                    claimBtn.innerHTML = '✓ Claimed!';
+                    
+                    // Show cooldown message
+                    cooldownMsg.classList.remove('hidden');
+                    cooldownText.textContent = 'Next claim available in 24 hours';
+                    
+                    setTimeout(() => {
+                        claimBtn.disabled = false;
+                        claimBtn.innerHTML = '💰 Claim 50 $PRED';
+                    }, 3000);
+                } else if (response.status === 429) {
+                    // Cooldown error
+                    showToast(data.message, 'warning');
+                    cooldownMsg.classList.remove('hidden');
+                    cooldownText.textContent = data.message;
+                    claimBtn.disabled = false;
+                    claimBtn.innerHTML = '💰 Claim 50 $PRED';
+                } else {
+                    throw new Error(data.error || 'Failed to claim tokens');
+                }
+            } catch (error) {
+                console.error('Faucet claim error:', error);
+                showToast('Failed to claim tokens: ' + error.message, 'error');
+                claimBtn.disabled = false;
+                claimBtn.innerHTML = '💰 Claim 50 $PRED';
+            }
+        };
         
         // Expose admin functions globally
         window.authenticateAdmin = authenticateAdmin;
@@ -9173,6 +9266,14 @@
          */
         window.handleQuickPlay = (vote) => {
             if (isAnimating) return; // Prevent double-clicks
+            
+            // 🔒 GUEST MODE PROTECTION - Only for YES/NO votes, not SKIP
+            if (vote !== 'skip' && (!currentUserId || isGuestMode)) {
+                showToast('Please sign in to place predictions', 'info');
+                showScreen('profile-screen'); // Redirect to profile/login screen
+                return;
+            }
+            
             isAnimating = true;
 
             let animationClass = '';
@@ -9345,6 +9446,13 @@
          * [CORRECTED for "Reads Before Writes" Error]
          */
         window.stakeAllPledges = async () => {
+            // 🔒 GUEST MODE PROTECTION
+            if (!currentUserId || isGuestMode) {
+                showToast('Please sign in to place bets', 'info');
+                showScreen('profile-screen'); // Redirect to profile/login screen
+                return;
+            }
+            
             // 1. Get all Firebase functions
             const { doc, updateDoc, increment, collection, runTransaction, serverTimestamp, getDoc } = window.firebase.firestore;
 

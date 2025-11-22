@@ -459,6 +459,62 @@ app.post('/api/custodial-wallet/info', async (req, res) => {
     }
 });
 
+// 🪙 $PRED Token Faucet - For testing purposes
+app.post('/api/faucet/claim-pred', async (req, res) => {
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Database not available' });
+    }
+    
+    try {
+        const profileRef = db.collection(`artifacts/${APP_ID}/public/data/user_profiles`).doc(userId);
+        const profileDoc = await profileRef.get();
+        
+        if (!profileDoc.exists) {
+            return res.status(404).json({ error: 'User profile not found' });
+        }
+        
+        const profileData = profileDoc.data();
+        const lastClaim = profileData.lastPredClaim || 0;
+        const now = Date.now();
+        const cooldownMs = 24 * 60 * 60 * 1000; // 24 hours
+        
+        // Check cooldown (24 hours between claims)
+        if (now - lastClaim < cooldownMs) {
+            const timeLeft = Math.ceil((cooldownMs - (now - lastClaim)) / (60 * 60 * 1000));
+            return res.status(429).json({ 
+                error: 'Faucet on cooldown',
+                message: `You can claim again in ${timeLeft} hours`,
+                timeLeft: timeLeft 
+            });
+        }
+        
+        // Grant 50 $PRED tokens
+        const faucetAmount = 50;
+        await profileRef.update({
+            predBalance: (profileData.predBalance || 0) + faucetAmount,
+            lastPredClaim: now
+        });
+        
+        console.log(`✅ Faucet: Granted ${faucetAmount} $PRED to user ${userId}`);
+        
+        res.status(200).json({ 
+            success: true, 
+            amount: faucetAmount,
+            newBalance: (profileData.predBalance || 0) + faucetAmount,
+            message: `Successfully claimed ${faucetAmount} $PRED tokens!`
+        });
+    } catch (error) {
+        console.error('Error claiming from faucet:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/custodial-wallet/balance', async (req, res) => {
     const { userId } = req.body;
     
