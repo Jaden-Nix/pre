@@ -102,9 +102,7 @@ The workflow `Start Predora Backend` automatically runs when you save. It:
 
 **What to Do:**
 - [ ] Uncomment all `// TODO: BLOCKCHAIN TEMPORARILY DISABLED` sections
-- [ ] Restore Web3Modal and WalletConnect script tags
-- [ ] Re-enable `connectWallet()` function in app.html
-- [ ] Test MetaMask connection on BSC Testnet (Chain ID: 97)
+
 - [ ] Verify testnet BNB balance fetching
 - [ ] Create mock BUSD token contract or use existing test token
 - [ ] Add BUSD balance display in UI
@@ -133,8 +131,8 @@ The workflow `Start Predora Backend` automatically runs when you save. It:
    - Create notification system in `/api/post-reply` and `/api/create-market`
 
 2. **Frontend** (`app.html`):
-   - Add notification bell icon in navbar
-   - Create alerts screen showing all notifications
+   
+   - use alerts screen showing all notifications
    - Add alert preferences modal
 
 3. **Database** (Firestore):
