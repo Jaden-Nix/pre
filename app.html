@@ -2787,8 +2787,8 @@
             </div>
 
             <!-- Social Feed Screen -->
-            <div id="social-feed-screen" class="screen screen-inactive" style="min-height: 100vh; background: #0F1419;">
-                <div class="max-w-md mx-auto space-y-6 px-4 pb-24 pt-6">
+            <div id="social-feed-screen" class="screen screen-inactive" style="min-height: 100vh; background: #0F1419; position: relative; z-index: 1;">
+                <div class="max-w-md mx-auto space-y-6 px-4 pb-24 pt-6" style="position: relative; z-index: 10;">
                     <!-- Floating Action Button for Create Post -->
                     <button onclick="openCreatePost()" id="social-fab" class="social-fab hidden" title="Create Post">
                         <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -7716,8 +7716,18 @@
 
             // Loop over all screens and toggle their visibility
             dom.screens.forEach(screen => {
-                screen.classList.toggle('screen-active', screen.id === screenId);
-                screen.classList.toggle('screen-inactive', screen.id !== screenId);
+                const isActive = screen.id === screenId;
+                screen.classList.toggle('screen-active', isActive);
+                screen.classList.toggle('screen-inactive', !isActive);
+                
+                // ✅ FIX: Explicitly set inline styles to force visibility
+                if (isActive) {
+                    screen.style.display = 'block';
+                    screen.style.visibility = 'visible';
+                } else {
+                    screen.style.display = 'none';
+                    screen.style.visibility = 'hidden';
+                }
             });
 
             currentScreenId = screenId;
