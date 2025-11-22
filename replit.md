@@ -1,43 +1,28 @@
 # Predora - AI-Native Prediction Market Platform
 
-## 🚨 IMPORTANT: Current Architecture Status (Technical Screening Mode)
+## 🚨 IMPORTANT: Current Architecture Status
 
-**As of November 22, 2025 - Batch Betting + AMM Ready for Deployment**
+**As of November 22, 2025 - Phase 2: Custodial Wallets LIVE**
 
-Platform operates in **HYBRID MODE** with batch betting capability: Wallet-connected users can vote YES/NO on multiple Quick Play markets, all pledges pool together, then confirm in ONE blockchain transaction. All markets use AMM (Automated Market Maker) pricing. Browse-first UX allows market exploration without login. Advanced 3-tier oracle resolution system with multi-model scoring ensures accurate outcomes.
+Platform now uses **CUSTODIAL WALLETS** for all users: Sign up with email, instantly get an encrypted wallet managed by the backend. No MetaMask needed! Users can withdraw BNB + $PRED to any address. All markets support dual-currency betting (BNB + $PRED) via batch transactions. Advanced 3-tier oracle resolution system with multi-model scoring ensures accurate outcomes.
 
-### ✅ Batch Betting Implementation (READY - Awaiting Contract Deployment)
+### ✅ Custodial Wallet Features (LIVE):
 
-**Code Status: Production-Ready**
-- ✅ Smart contract `placeBatchBets()` function implemented (PredictionMarket.sol lines 169-238)
-- ✅ Frontend pledge pool conversion to single transaction (app.html lines 9572-9631)
-- ✅ Separate on-chain vs Firestore pledge processing (no double-charging)
-- ✅ AMM pool updates in smart contract (constant product formula: x * y = k)
-- ✅ Comprehensive documentation (BATCH_BETTING_GUIDE.md)
-- ⏳ **NEEDS**: Contract redeployment to BSC Testnet with new `placeBatchBets()` function
-- ⏳ **NEEDS**: ABI regeneration and frontend address update
-
-**User Flow:**
-1. Browse Quick Play markets without login
-2. Vote YES/NO on multiple markets → all added to pledge pool
-3. Click "Confirm" → ONE blockchain transaction sends all bets via `placeBatchBets()`
-4. Wallet pays total BNB for on-chain markets, Firestore balance for mock markets
-5. AMM pools update for each bet, user receives confirmation
-
-### Hybrid Mode Features:
-
-**Wallet-Connected Users (BSC Testnet):**
-- ✅ Real MetaMask wallet connection (Web3Modal)
-- ✅ On-chain betting via smart contract (0xdaAf91610e33355c9Cd9258219C6A4822E693f55)
-- ✅ Real BNB transactions on BSC Testnet
-- ✅ Blockchain balance fetching
-- ✅ Contract event listeners
-
-**Email-Authenticated Users:**
-- ✅ Password + email authentication
+**Authentication & Wallet Creation:**
+- ✅ Email + password authentication
 - ✅ Passwordless OTP authentication  
-- ✅ Firestore-only betting with mock balances
+- ✅ **Auto-generated custodial wallets** on signup
+- ✅ Private keys encrypted with AES-256-GCM
+- ✅ Keys stored securely in Firebase (never exposed to client)
 - ✅ Demo account (predorademo@gmail.com / demo1234)
+
+**Blockchain Integration:**
+- ✅ Real on-chain betting on BSC Testnet
+- ✅ Dual currency support: BNB + $PRED token
+- ✅ Batch betting via `placeBatchBets()` function
+- ✅ **BNB withdrawals** to any address
+- ✅ Real blockchain balances fetched via JSON-RPC
+- ✅ AMM pool updates (constant product formula: x * y = k)
 
 **Universal Features:**
 - ✅ Browse-first UX (no login required to view markets)
@@ -47,39 +32,27 @@ Platform operates in **HYBRID MODE** with batch betting capability: Wallet-conne
 - ✅ Real-time market visualization
 - ✅ TikTok-style Quick Play interface
 
-### Where Blockchain Code is Preserved:
-All blockchain code is commented out with `// TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO` markers in:
-- `app.html`: Lines with wallet connection, smart contract interactions, balance fetchers
-- `server/index.js`: Biconomy AA service initialization and `/api/aa/*` endpoints
-- `server/custodial-wallet-service.js`: Blockchain provider and RPC calls
-
-### Mock Balance System (Firestore-Only):
-- New users get default balances: `bnbBalance: 0.2`, `cakeBalance: 150`
-- All betting deducts from Firestore balance fields
-- All payouts add to Firestore balance fields
-- Mock wallet addresses generated for display: `0x{userId-hash}...`
-- No blockchain RPCs or ethers.js calls during normal operation
-
-### Re-enabling Blockchain (Post-Hackathon):
-To re-enable blockchain features, simply uncomment all `// TODO: BLOCKCHAIN TEMPORARILY DISABLED` sections and:
-1. Restore Web3Modal/WalletConnect script tags in app.html
-2. Uncomment Biconomy AA service initialization in server/index.js
-3. Restore blockchain provider in custodial-wallet-service.js
-4. Re-enable on-chain paths in `stakeMarket()` and `createMarket()`
-5. Restore balance fetchers and event listeners
+**User Flow:**
+1. Browse Quick Play markets without login
+2. Sign up with email → auto-get encrypted custodial wallet
+3. Vote YES/NO on markets → pledge pool builds up
+4. Click "Confirm" → ONE blockchain transaction (batch betting)
+5. Backend signs transaction with encrypted private key
+6. AMM pools update, user receives on-chain confirmation
+7. Withdraw BNB/PRED anytime to external wallet
 
 ---
 
 ## Overview
-Predora is an AI-native prediction market platform built on BNB Chain, featuring a TikTok-style "Quick Play" interface. It uses a **hybrid architecture** supporting both on-chain (BSC Testnet with real BNB) and Firestore-only betting. On-chain betting works for markets with `onChainMarketId` when users connect MetaMask wallets. $PRED token is a Firestore display currency valued at $600, NOT currently integrated for on-chain betting (on-chain uses BNB only). Predora leverages AI for market generation, resolution, and content moderation, alongside a community-driven jury system for dispute resolution.
+Predora is an AI-native prediction market platform built on BNB Chain, featuring a TikTok-style "Quick Play" interface. It uses **custodial wallets** for all users - sign up with email and instantly get a server-managed encrypted wallet. All betting happens on-chain (BSC Testnet) with real BNB and $PRED tokens. Users can withdraw to any external address. Predora leverages AI for market generation, resolution, and content moderation, alongside a community-driven jury system for dispute resolution.
 
 ## User Preferences
 - Vanilla HTML/CSS/JS architecture (original design, not Next.js)
-- Web3-native with MetaMask wallet integration
-- AI-powered features using Gemini API
+- Web3-native with **custodial wallets** (no external wallet needed)
+- AI-powered features using Gemini API + GPT-4
 - TikTok-style UX for Quick Play
 - Glassmorphism design with dark/light themes
-- Real testnet tokens (BNB) instead of mock balances
+- Real on-chain tokens (BNB + $PRED) on BSC Testnet
 - Jury-based dispute resolution system
 - Multi-option markets (3-6 choices)
 
