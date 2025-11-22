@@ -722,7 +722,7 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
         
         // ✅ SECURITY: Verify the wallet belongs to the authenticated user
         let walletMapping = await admin.firestore()
-            .collection('custodial_wallets')
+            .collection('custodialWallets')
             .doc(userId)
             .get();
         
@@ -731,12 +731,12 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
             console.log(`📱 Creating custodial wallet for ${userId}...`);
             const createResult = await custodialWalletService.createWallet(userId, authenticatedUid);
             if (!createResult.success) {
-                console.error(`❌ Failed to create wallet: ${createResult.message}`);
-                return res.status(400).json({ error: 'Could not create wallet: ' + createResult.message });
+                console.error(`❌ Failed to create wallet: ${createResult.error}`);
+                return res.status(400).json({ error: 'Could not create wallet: ' + createResult.error });
             }
             // Fetch the mapping again
             walletMapping = await admin.firestore()
-                .collection('custodial_wallets')
+                .collection('custodialWallets')
                 .doc(userId)
                 .get();
         }
@@ -747,20 +747,34 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
             return res.status(403).json({ error: 'Not authorized to claim for this wallet' });
         }
         
-        // Get user's custodial wallet signer
-        const signer = await custodialWalletService.loadWalletSigner(userId);
-        const walletAddress = await signer.getAddress();
+        // Get user's custodial wallet address (we'll use deployer to pay gas)
+        const walletInfo = await custodialWalletService.getWallet(userId);
+        if (!walletInfo.success) {
+            return res.status(400).json({ error: 'Could not get wallet: ' + walletInfo.error });
+        }
+        const walletAddress = walletInfo.address;
         
-        // PredToken contract ABI (just the faucet functions)
+        // PredToken contract ABI (faucet and mint functions)
         const predTokenAbi = [
-            'function claimFromFaucet() external',
+            'function mint(address to, uint256 amount) external',
             'function canClaimFaucet(address user) external view returns (bool)',
             'function timeUntilNextClaim(address user) external view returns (uint256)',
             'function balanceOf(address account) external view returns (uint256)',
             'function faucetAmount() external view returns (uint256)'
         ];
         
-        const predToken = new ethers.Contract(PRED_TOKEN_ADDRESS, predTokenAbi, signer);
+        // Use deployer wallet to pay for gas (gas-sponsored faucet claim)
+        const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
+        if (!DEPLOYER_PRIVATE_KEY) {
+            return res.status(503).json({ 
+                error: 'Faucet unavailable', 
+                message: 'Faucet service is temporarily unavailable' 
+            });
+        }
+        
+        const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+        const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
+        const predToken = new ethers.Contract(PRED_TOKEN_ADDRESS, predTokenAbi, deployerWallet);
         
         // Check if user can claim
         const canClaim = await predToken.canClaimFaucet(walletAddress);
@@ -775,18 +789,19 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
             });
         }
         
-        // Claim tokens from contract
-        console.log(`🪙 Claiming $PRED tokens for ${userId} (${walletAddress})...`);
-        const tx = await predToken.claimFromFaucet({ gasLimit: 200000 });
+        // Get faucet amount from contract
+        const faucetAmountWei = await predToken.faucetAmount();
+        const faucetAmount = Number(ethers.utils.formatEther(faucetAmountWei));
+        
+        // Mint tokens directly to user (deployer pays gas)
+        // This is gas-sponsored - user doesn't need BNB
+        console.log(`🪙 Minting ${faucetAmount} $PRED tokens for ${userId} (${walletAddress})...`);
+        const tx = await predToken.mint(walletAddress, faucetAmountWei, { gasLimit: 200000 });
         const receipt = await tx.wait();
         
         // Get new balance
         const balanceWei = await predToken.balanceOf(walletAddress);
         const balance = Number(ethers.utils.formatEther(balanceWei));
-        
-        // Get faucet amount from contract
-        const faucetAmountWei = await predToken.faucetAmount();
-        const faucetAmount = Number(ethers.utils.formatEther(faucetAmountWei));
         
         console.log(`✅ Faucet: Minted ${faucetAmount} $PRED tokens on-chain to ${walletAddress}`);
         console.log(`   Transaction: ${tx.hash}`);
