@@ -6231,6 +6231,9 @@
 
                 // Generate userId from Firebase UID
                 const userId = 'user_' + firebaseUser.uid.substring(0, 12);
+                
+                // ✅ Mark that user has logged in before (for "Welcome back!" message on next login)
+                localStorage.setItem('hasLoggedInBefore', 'true');
                 currentUserId = userId;
 
                 // Store auth info
@@ -6442,9 +6445,11 @@
                     body: JSON.stringify({ email })
                 });
                 
+                // ✅ Read response body once
+                const data = await response.json();
+                
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to send OTP');
+                    throw new Error(data.error || 'Failed to send OTP');
                 }
                 
                 // Store email for verification step
@@ -6456,7 +6461,12 @@
                 showScreen('otp-entry-screen');
                 startResendTimer();
                 
-                showToast("Verification code sent to your email! 📧", "success");
+                // ✅ Check if user has logged in before (client-side only, secure)
+                const hasLoggedInBefore = localStorage.getItem('hasLoggedInBefore') === 'true';
+                const message = hasLoggedInBefore
+                    ? "Welcome back! Check your email for the code 📧" 
+                    : "Verification code sent! Check your email 📧";
+                showToast(message, "success");
             } catch (error) {
                 console.error('OTP request error:', error);
                 showToast(error.message || "Failed to send code. Please try again.", "error");
@@ -8108,8 +8118,21 @@
                 { id: 'mock-qp-4', title: 'Will it rain in New York tomorrow?', duration: '12h', yesPercent: 20, noPercent: 80, isMock: true, isResolved: false },
             ];
 
+            // ✅ Check if user is in guest mode (global variable may not be initialized yet)
+            const userIsGuest = (typeof isGuestMode !== 'undefined' && isGuestMode) || !currentUserId;
+            
+            // ✅ For guests: Just show mock markets immediately, skip Firestore entirely
+            if (userIsGuest) {
+                console.log('✅ Quick Play: Guest mode - showing mock markets only');
+                window.quickPlayData = [...allMockMarkets];
+                loadQuickPlay(0);
+                return;
+            }
+
             try {
                 // 2. Get a list of ALL pledges (resolved or not) by the current user
+                let stakedMarketIds = new Set();
+                
                 const activePledgesQuery = query(
                     collection(db, 'artifacts', APP_ID, 'public', 'data', PLEDGES_COLLECTION),
                     where('userId', '==', currentUserId),
@@ -8117,7 +8140,7 @@
                 );
                 const activePledgeSnapshot = await getDocs(activePledgesQuery);
                 // This Set stores the IDs of markets the user has already successfully staked on
-                const stakedMarketIds = new Set(activePledgeSnapshot.docs.map(doc => doc.data().marketId));
+                stakedMarketIds = new Set(activePledgeSnapshot.docs.map(doc => doc.data().marketId));
 
                 const localPledgeIds = new Set(pledgePoolItems.map(item => item.id));
 
@@ -8152,6 +8175,10 @@
 
             } catch (error) {
                 console.error("Critical error in attachQuickPlayListener:", error);
+                // ✅ Fallback: Show mock markets if Firestore fails
+                console.log('⚠️ Firestore error - falling back to mock markets');
+                window.quickPlayData = [...allMockMarkets];
+                loadQuickPlay(0);
             }
         }
 
@@ -16567,7 +16594,7 @@ ${historyText}`;
          */
         function setupEventListeners() {
             // Make functions globally accessible for inline HTML `onclick`
-            window.showScreen = showScreen;
+            // Note: window.showScreen is already defined at line ~7679, so we don't redefine it here
             window.goBack = goBack;
             window.handleProfileTab = handleProfileTab;
 

@@ -339,6 +339,30 @@ app.post('/api/send-otp', async (req, res) => {
     }
     
     try {
+        // ✅ Check if user exists in Firebase (returning user)
+        let isExistingUser = false;
+        
+        // Only check Firebase if admin is initialized
+        if (admin && admin.apps && admin.apps.length > 0) {
+            try {
+                await admin.auth().getUserByEmail(email);
+                isExistingUser = true;
+                console.log(`✅ Returning user detected: ${email}`);
+            } catch (error) {
+                if (error.code === 'auth/user-not-found') {
+                    isExistingUser = false;
+                    console.log(`🆕 New user detected: ${email}`);
+                } else {
+                    // Firebase error but not "user not found" - log and default to new user
+                    console.warn(`⚠️ Firebase Admin error checking user:`, error.message);
+                    isExistingUser = false;
+                }
+            }
+        } else {
+            console.warn(`⚠️ Firebase Admin not initialized - treating all users as new`);
+            isExistingUser = false;
+        }
+        
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         
         otpStore.set(email, {
@@ -346,14 +370,18 @@ app.post('/api/send-otp', async (req, res) => {
             expiresAt: Date.now() + 10 * 60 * 1000
         });
         
+        // ✅ Different email messages for new vs returning users
+        const subject = isExistingUser ? 'Welcome Back to Predora!' : 'Your Predora Login Code';
+        const greeting = isExistingUser ? 'Welcome back!' : 'Welcome to Predora!';
+        
         const msg = {
             to: email,
             from: sendGrid.fromEmail,
-            subject: 'Your Predora Login Code',
+            subject: subject,
             text: `Your verification code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this code, please ignore this email.`,
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #38BDF8;">Welcome to Predora!</h2>
+                    <h2 style="color: #38BDF8;">${greeting}</h2>
                     <p style="font-size: 16px; color: #333;">Your verification code is:</p>
                     <div style="background: linear-gradient(to right, #38BDF8, #6366F1); color: white; font-size: 32px; font-weight: bold; text-align: center; padding: 20px; border-radius: 10px; letter-spacing: 8px; margin: 20px 0;">
                         ${otp}
@@ -367,7 +395,13 @@ app.post('/api/send-otp', async (req, res) => {
         await sendGrid.client.send(msg);
         
         console.log(`✉️ OTP sent to ${email}`);
-        res.status(200).json({ success: true, message: 'OTP sent successfully' });
+        
+        // ✅ SECURITY: Don't reveal if user exists (prevents account enumeration)
+        // All users get the same response message
+        res.status(200).json({ 
+            success: true, 
+            message: 'Verification code sent successfully'
+        });
         
     } catch (error) {
         console.error('Error sending OTP:', error);
