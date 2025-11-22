@@ -1,6 +1,12 @@
 [
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_predTokenAddress",
+        "type": "address"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "constructor"
   },
@@ -43,6 +49,12 @@
         "internalType": "bool",
         "name": "pick",
         "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum PredictionMarketV2.Currency",
+        "name": "currency",
+        "type": "uint8"
       }
     ],
     "name": "BetPlaced",
@@ -144,6 +156,12 @@
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum PredictionMarketV2.Currency",
+        "name": "currency",
+        "type": "uint8"
       }
     ],
     "name": "WinningsClaimed",
@@ -151,7 +169,20 @@
   },
   {
     "inputs": [],
-    "name": "accumulatedFees",
+    "name": "accumulatedFeesBnb",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "accumulatedFeesPred",
     "outputs": [
       {
         "internalType": "uint256",
@@ -181,47 +212,27 @@
         "internalType": "uint256",
         "name": "_marketId",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "_user",
+        "type": "address"
       }
     ],
-    "name": "autoFinalizeAndPayout",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
+    "name": "calculateUserPayout",
+    "outputs": [
       {
         "internalType": "uint256",
-        "name": "_marketId",
+        "name": "bnbPayout",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "startIdx",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "endIdx",
+        "name": "predPayout",
         "type": "uint256"
       }
     ],
-    "name": "batchDistributeWinnings",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_marketId",
-        "type": "uint256"
-      }
-    ],
-    "name": "cancelMarket",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -274,194 +285,9 @@
         "type": "uint256"
       }
     ],
-    "name": "disputeMarket",
+    "name": "finalizeMarket",
     "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_marketId",
-        "type": "uint256"
-      }
-    ],
-    "name": "getMarket",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "id",
-            "type": "uint256"
-          },
-          {
-            "internalType": "string",
-            "name": "title",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "description",
-            "type": "string"
-          },
-          {
-            "internalType": "address",
-            "name": "creator",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "createdAt",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "resolutionTime",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bool",
-            "name": "isResolved",
-            "type": "bool"
-          },
-          {
-            "internalType": "bool",
-            "name": "outcome",
-            "type": "bool"
-          },
-          {
-            "internalType": "uint256",
-            "name": "yesPool",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "noPool",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "totalVolume",
-            "type": "uint256"
-          },
-          {
-            "internalType": "enum PredictionMarket.MarketStatus",
-            "name": "status",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint256",
-            "name": "resolutionSubmittedAt",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bool",
-            "name": "autoPayoutTriggered",
-            "type": "bool"
-          }
-        ],
-        "internalType": "struct PredictionMarket.Market",
-        "name": "",
-        "type": "tuple"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_marketId",
-        "type": "uint256"
-      }
-    ],
-    "name": "getMarketBets",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "user",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "marketId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bool",
-            "name": "pick",
-            "type": "bool"
-          },
-          {
-            "internalType": "uint256",
-            "name": "timestamp",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bool",
-            "name": "claimed",
-            "type": "bool"
-          }
-        ],
-        "internalType": "struct PredictionMarket.Bet[]",
-        "name": "",
-        "type": "tuple[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_marketId",
-        "type": "uint256"
-      }
-    ],
-    "name": "getMarketOdds",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "yesPercent",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "noPercent",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_user",
-        "type": "address"
-      }
-    ],
-    "name": "getUserBets",
-    "outputs": [
-      {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      }
-    ],
-    "stateMutability": "view",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -522,6 +348,11 @@
         "internalType": "bool",
         "name": "pick",
         "type": "bool"
+      },
+      {
+        "internalType": "enum PredictionMarketV2.Currency",
+        "name": "currency",
+        "type": "uint8"
       },
       {
         "internalType": "uint256",
@@ -602,21 +433,36 @@
       },
       {
         "internalType": "uint256",
-        "name": "yesPool",
+        "name": "yesPoolBnb",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "noPool",
+        "name": "noPoolBnb",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "totalVolume",
+        "name": "yesPoolPred",
         "type": "uint256"
       },
       {
-        "internalType": "enum PredictionMarket.MarketStatus",
+        "internalType": "uint256",
+        "name": "noPoolPred",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalVolumeBnb",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalVolumePred",
+        "type": "uint256"
+      },
+      {
+        "internalType": "enum PredictionMarketV2.MarketStatus",
         "name": "status",
         "type": "uint8"
       },
@@ -650,6 +496,11 @@
         "internalType": "uint256[]",
         "name": "_amounts",
         "type": "uint256[]"
+      },
+      {
+        "internalType": "enum PredictionMarketV2.Currency[]",
+        "name": "_currencies",
+        "type": "uint8[]"
       }
     ],
     "name": "placeBatchBets",
@@ -668,6 +519,16 @@
         "internalType": "bool",
         "name": "_pick",
         "type": "bool"
+      },
+      {
+        "internalType": "enum PredictionMarketV2.Currency",
+        "name": "_currency",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
       }
     ],
     "name": "placeBet",
@@ -702,6 +563,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "predToken",
+    "outputs": [
+      {
+        "internalType": "contract IERC20",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -717,56 +591,6 @@
     "name": "resolveMarket",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_newAdmin",
-        "type": "address"
-      }
-    ],
-    "name": "setAdmin",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_feeBps",
-        "type": "uint256"
-      }
-    ],
-    "name": "setPlatformFee",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "userBetIndex",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {

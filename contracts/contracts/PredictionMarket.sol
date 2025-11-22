@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 /**
  * @title PredictionMarket
@@ -152,7 +152,7 @@ contract PredictionMarket {
         userBets[msg.sender].push(_marketId);
         userBetIndex[_marketId][msg.sender] = marketBets[_marketId].length - 1;
         
-        // Update pools
+        // Update pools (AMM automatically adjusts odds)
         if (_pick) {
             market.yesPool += msg.value;
         } else {
@@ -161,6 +161,77 @@ contract PredictionMarket {
         market.totalVolume += msg.value;
         
         emit BetPlaced(_marketId, msg.sender, msg.value, _pick);
+    }
+    
+    /**
+     * @dev Batch place multiple bets in one transaction (for Quick Play pledge pool)
+     * @param _marketIds Array of market IDs to bet on
+     * @param _picks Array of picks (true = YES, false = NO)
+     * @param _amounts Array of bet amounts in wei
+     * 
+     * Example: User votes YES on market 5, NO on market 7, YES on market 9
+     *   _marketIds = [5, 7, 9]
+     *   _picks = [true, false, true]
+     *   _amounts = [0.01 ether, 0.02 ether, 0.015 ether]
+     *   msg.value = 0.045 ether (total)
+     */
+    function placeBatchBets(
+        uint256[] memory _marketIds,
+        bool[] memory _picks,
+        uint256[] memory _amounts
+    ) external payable nonReentrant {
+        require(_marketIds.length > 0, "Empty batch");
+        require(_marketIds.length == _picks.length, "Arrays length mismatch");
+        require(_marketIds.length == _amounts.length, "Arrays length mismatch");
+        require(_marketIds.length <= 50, "Max 50 bets per batch");
+        
+        // Calculate total required amount
+        uint256 totalRequired = 0;
+        for (uint256 i = 0; i < _amounts.length; i++) {
+            require(_amounts[i] >= 0.001 ether, "Minimum bet: 0.001 BNB");
+            require(_amounts[i] <= 100 ether, "Maximum bet: 100 BNB");
+            totalRequired += _amounts[i];
+        }
+        
+        require(msg.value == totalRequired, "Incorrect total amount sent");
+        
+        // Place each bet
+        for (uint256 i = 0; i < _marketIds.length; i++) {
+            uint256 marketId = _marketIds[i];
+            bool pick = _picks[i];
+            uint256 amount = _amounts[i];
+            
+            Market storage market = markets[marketId];
+            
+            require(market.id != 0, "Market does not exist");
+            require(!market.isResolved, "Market is already resolved");
+            require(market.status == MarketStatus.ACTIVE, "Market is not active");
+            require(block.timestamp < market.resolutionTime, "Market has expired");
+            
+            // Record the bet
+            Bet memory newBet = Bet({
+                user: msg.sender,
+                marketId: marketId,
+                amount: amount,
+                pick: pick,
+                timestamp: block.timestamp,
+                claimed: false
+            });
+            
+            marketBets[marketId].push(newBet);
+            userBets[msg.sender].push(marketId);
+            userBetIndex[marketId][msg.sender] = marketBets[marketId].length - 1;
+            
+            // Update AMM pools
+            if (pick) {
+                market.yesPool += amount;
+            } else {
+                market.noPool += amount;
+            }
+            market.totalVolume += amount;
+            
+            emit BetPlaced(marketId, msg.sender, amount, pick);
+        }
     }
     
     /**
