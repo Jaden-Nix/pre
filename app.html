@@ -2652,17 +2652,33 @@
                             
                             <!-- Send BNB Section -->
                             <div class="mt-4 space-y-3">
-                                <h4 class="text-sm font-semibold text-sky-300">💸 Send BNB</h4>
-                                <p class="text-xs text-gray-400">Send BNB to any address on BSC Testnet</p>
-                                <input type="text" id="withdraw-address" placeholder="Recipient Address (0x...)" 
+                                <h4 class="text-sm font-semibold text-sky-300">💸 Withdraw BNB</h4>
+                                <p class="text-xs text-gray-400">Send BNB from your custodial wallet to any address</p>
+                                <input type="text" id="withdraw-bnb-address" placeholder="Recipient Address (0x...)" 
                                     class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500">
-                                <input type="number" id="withdraw-amount" placeholder="Amount (BNB)" step="0.001" min="0.001"
+                                <input type="number" id="withdraw-bnb-amount" placeholder="Amount (BNB)" step="0.001" min="0.001"
                                     class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500">
-                                <button onclick="sendBNB()" class="btn bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 w-full">
+                                <button onclick="withdrawBNB()" class="btn bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 w-full">
                                     <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                                     </svg>
-                                    Send BNB
+                                    Withdraw BNB
+                                </button>
+                            </div>
+
+                            <!-- Send PRED Section -->
+                            <div class="mt-4 space-y-3 pt-4 border-t border-white/10">
+                                <h4 class="text-sm font-semibold text-purple-300">🪙 Withdraw $PRED</h4>
+                                <p class="text-xs text-gray-400">Send $PRED tokens from your custodial wallet to any address</p>
+                                <input type="text" id="withdraw-pred-address" placeholder="Recipient Address (0x...)" 
+                                    class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <input type="number" id="withdraw-pred-amount" placeholder="Amount (PRED)" step="1" min="1"
+                                    class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <button onclick="withdrawPRED()" class="btn bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 w-full">
+                                    <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                    </svg>
+                                    Withdraw $PRED
                                 </button>
                             </div>
                         </div>
@@ -4398,9 +4414,9 @@
         // === WEB3 SERVICE LAYER ===
         
         /**
-         * ✅ Sends BNB from custodial wallet to any address (SECURED)
+         * ✅ Withdraws BNB from custodial wallet to any address (SECURED)
          */
-        async function sendBNB() {
+        window.withdrawBNB = async function() {
             try {
                 // 1. Check if user is logged in
                 if (!currentUserId) {
@@ -4419,8 +4435,8 @@
                 const authToken = await currentAuth.currentUser.getIdToken();
 
                 // 3. Get input values
-                const recipientAddress = document.getElementById('withdraw-address').value.trim();
-                const amount = document.getElementById('withdraw-amount').value.trim();
+                const recipientAddress = document.getElementById('withdraw-bnb-address').value.trim();
+                const amount = document.getElementById('withdraw-bnb-amount').value.trim();
 
                 // 4. Validate recipient address
                 if (!recipientAddress || !ethers.utils.isAddress(recipientAddress)) {
@@ -4434,7 +4450,7 @@
                     return;
                 }
 
-                showLoadingOverlay(true, '💸 Sending BNB from custodial wallet...');
+                showLoadingOverlay(true, '💸 Withdrawing BNB from custodial wallet...');
 
                 // 6. Call backend to send transaction from custodial wallet (with auth token)
                 const response = await fetch('/api/custodial-wallet/send-bnb', {
@@ -4455,24 +4471,111 @@
                 }
 
                 showLoadingOverlay(false);
-                showToast(`✅ Sent ${amount} BNB to ${recipientAddress.substring(0, 6)}...${recipientAddress.substring(38)}`, 'success');
+                showToast(`✅ Withdrew ${amount} BNB to ${recipientAddress.substring(0, 6)}...${recipientAddress.substring(38)}`, 'success');
                 showToast(`TX: ${result.txHash.substring(0, 10)}...`, 'info');
 
                 // 7. Clear inputs
-                document.getElementById('withdraw-address').value = '';
-                document.getElementById('withdraw-amount').value = '';
+                document.getElementById('withdraw-bnb-address').value = '';
+                document.getElementById('withdraw-bnb-amount').value = '';
 
                 // 8. Update balance display
                 await refreshAllBalances();
 
-                console.log('✅ BNB sent successfully:', result.txHash);
+                console.log('✅ BNB withdrawal successful:', result.txHash);
                 console.log('   Block:', result.blockNumber);
                 
             } catch (error) {
-                console.error('❌ Send BNB failed:', error);
+                console.error('❌ BNB withdrawal failed:', error);
                 showLoadingOverlay(false);
-                showToast('❌ Transaction failed: ' + (error.message || 'Unknown error'), 'error');
+                showToast('❌ Withdrawal failed: ' + (error.message || 'Unknown error'), 'error');
             }
+        }
+
+        /**
+         * ✅ Withdraws PRED tokens from custodial wallet to any address (SECURED)
+         */
+        window.withdrawPRED = async function() {
+            try {
+                // 1. Check if user is logged in
+                if (!currentUserId) {
+                    showToast('⚠️ Please sign in first', 'warning');
+                    return;
+                }
+
+                // 2. Get Firebase auth token for security
+                const { getAuth } = window.firebase.auth;
+                const currentAuth = getAuth();
+                if (!currentAuth.currentUser) {
+                    showToast('⚠️ Authentication required', 'warning');
+                    return;
+                }
+                
+                const authToken = await currentAuth.currentUser.getIdToken();
+
+                // 3. Get input values
+                const recipientAddress = document.getElementById('withdraw-pred-address').value.trim();
+                const amount = document.getElementById('withdraw-pred-amount').value.trim();
+
+                // 4. Validate recipient address
+                if (!recipientAddress || !ethers.utils.isAddress(recipientAddress)) {
+                    showToast('❌ Invalid recipient address', 'error');
+                    return;
+                }
+
+                // 5. Validate amount
+                if (!amount || parseFloat(amount) <= 0) {
+                    showToast('❌ Please enter a valid amount', 'error');
+                    return;
+                }
+
+                showLoadingOverlay(true, '🪙 Withdrawing $PRED tokens from custodial wallet...');
+
+                // 6. Call backend to send PRED tokens from custodial wallet (with auth token)
+                const response = await fetch('/api/custodial-wallet/send-pred', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        userId: currentUserId,
+                        to: recipientAddress,
+                        amount: amount,
+                        authToken: authToken  // ✅ SECURITY: Include auth token
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || 'Transaction failed');
+                }
+
+                showLoadingOverlay(false);
+                showToast(`✅ Withdrew ${amount} $PRED to ${recipientAddress.substring(0, 6)}...${recipientAddress.substring(38)}`, 'success');
+                showToast(`TX: ${result.txHash.substring(0, 10)}...`, 'info');
+
+                // 7. Clear inputs
+                document.getElementById('withdraw-pred-address').value = '';
+                document.getElementById('withdraw-pred-amount').value = '';
+
+                // 8. Update balance display
+                await refreshAllBalances();
+
+                console.log('✅ PRED withdrawal successful:', result.txHash);
+                console.log('   Block:', result.blockNumber);
+                
+            } catch (error) {
+                console.error('❌ PRED withdrawal failed:', error);
+                showLoadingOverlay(false);
+                showToast('❌ Withdrawal failed: ' + (error.message || 'Unknown error'), 'error');
+            }
+        }
+
+        /**
+         * LEGACY: Sends BNB from custodial wallet (OLD FIELD IDS)
+         * Kept for backwards compatibility
+         */
+        async function sendBNB() {
+            // Redirect to new function
+            await window.withdrawBNB();
         }
 
         /**
