@@ -2787,8 +2787,8 @@
             </div>
 
             <!-- Social Feed Screen -->
-            <div id="social-feed-screen" class="screen screen-inactive" style="min-height: 100vh; background: #0F1419; position: relative; z-index: 1; overflow: visible !important; height: auto !important;">
-                <div class="max-w-md mx-auto space-y-6 px-4 pb-24 pt-6" style="position: relative; z-index: 10; overflow: visible !important; height: auto !important;">
+            <div id="social-feed-screen" class="screen screen-inactive" style="min-height: 100vh !important; height: 100vh !important; background: red !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important; overflow-y: scroll !important;">
+                <div class="max-w-md mx-auto space-y-6 px-4 pb-24 pt-6" style="position: relative; z-index: 10; overflow: visible !important; min-height: 100vh !important;">
                     <!-- Floating Action Button for Create Post -->
                     <button onclick="openCreatePost()" id="social-fab" class="social-fab hidden" title="Create Post">
                         <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -7846,11 +7846,15 @@
                     // NUCLEAR TEST #2: Add visible element directly to social screen
                     setTimeout(() => {
                         const socialScreen = document.getElementById('social-feed-screen');
+                        console.log('🟡 Yellow box test - socialScreen found:', !!socialScreen);
                         if (socialScreen) {
+                            console.log('🟡 Yellow box - socialScreen computed style:', window.getComputedStyle(socialScreen).display);
+                            console.log('🟡 Yellow box - socialScreen height:', socialScreen.offsetHeight);
                             const testDiv = document.createElement('div');
                             testDiv.style.cssText = 'background: yellow; color: black; padding: 40px; font-size: 30px; font-weight: bold; text-align: center; border: 10px solid red; margin: 20px; position: relative; z-index: 99999;';
                             testDiv.textContent = '⚠️ INSIDE SOCIAL SCREEN - Can you see this yellow box?';
                             socialScreen.insertBefore(testDiv, socialScreen.firstChild);
+                            console.log('🟡 Yellow box added to DOM. Box height:', testDiv.offsetHeight);
                         }
                     }, 100);
                     break;
