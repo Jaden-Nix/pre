@@ -819,11 +819,12 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
         // Update Firebase profile with new balance and claim timestamp
         try {
             if (db) {
-                await db.collection('users').doc(userId).update({
+                await db.collection('users').doc(userId).set({
                     predBalance: balance,
                     lastPredClaim: Date.now(),
-                    lastBalanceUpdate: Date.now()
-                });
+                    lastBalanceUpdate: Date.now(),
+                    walletAddress: walletAddress
+                }, { merge: true });
                 console.log(`✅ Updated Firebase profile for ${userId}: predBalance=${balance}`);
             }
         } catch (dbError) {
