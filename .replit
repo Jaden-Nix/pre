@@ -41,6 +41,10 @@ localPort = 42969
 externalPort = 3003
 
 [[ports]]
+localPort = 44565
+externalPort = 8099
+
+[[ports]]
 localPort = 46419
 externalPort = 4200
 
@@ -87,5 +91,10 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[userenv]
+
+[userenv.shared]
+WALLET_ENCRYPTION_KEY = "068094a65aa531e97d8c284f8e45eb7f62368c06574bbbdb72850d02732930e7"
 
 
