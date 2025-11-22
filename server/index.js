@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url';
 import admin from 'firebase-admin';
 import OpenAI from 'openai';
 import sgMail from '@sendgrid/mail';
+import * as ethers from 'ethers';
 import { AutoPayoutJob } from './auto-payout-job.js';
 import { CustodialWalletService } from './custodial-wallet-service.js';
 import { BiconomyAAService } from './biconomy-aa-service.js';
