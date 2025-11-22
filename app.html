@@ -2739,16 +2739,8 @@
                         </div>
                         
                         <p class="text-xs text-center text-gray-500 mt-3">Value: $600 per token · Free testnet tokens</p>
-                        <!-- Logout Button (only shows below Assets tab) -->
-                        <div id="logout-button-container" class="pt-6">
-                            <button id="logout-or-login-btn" onclick="handleLogoutOrLogin()" class="btn bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 w-full lg:w-auto lg:px-8">
-                                <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                                </svg>
-                                <span id="logout-or-login-text">Log Out</span>
-                            </button>
-                        </div>
                     </div>
+                </div> 
 
                         <div id="networking-content" class="hidden space-y-4">
                             <div class="flex justify-around border-b border-white/10">
@@ -2764,97 +2756,107 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Logout Button for Profile Page -->
+                        <div id="logout-button-container" class="pt-6">
+                            <button id="logout-or-login-btn" onclick="handleLogoutOrLogin()" class="btn bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 w-full lg:w-auto lg:px-8">
+                                <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                </svg>
+                                <span id="logout-or-login-text">Log Out</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
     </div> 
 
 
-            <!-- REBUILT Quick Play Screen -->
-            <div id="quick-play-screen" class="screen screen-inactive" style="background: #0F1419; min-height: 100vh; padding: 20px;">
-                <!-- Back Button -->
-                <button onclick="goBack()" style="display: flex; align-items: center; color: #38bdf8; font-weight: 600; background: none; border: none; cursor: pointer; padding: 10px; margin-bottom: 20px;">
-                    <svg style="width: 20px; height: 20px; margin-right: 5px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                    </svg>
+            <div id="quick-play-screen" class="screen screen-inactive">
+                        <button onclick="goBack()" class="absolute top-4 left-4 z-10 flex items-center text-sky-400 font-medium transition-colors hover:text-sky-300">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                     Back to Home
                 </button>
-
-                <!-- Market Card Container -->
-                <div id="quick-play-card-container" style="max-width: 600px; margin: 0 auto; background: rgba(255,255,255,0.05); border-radius: 20px; padding: 30px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); min-height: 400px;">
-                    <div id="quick-play-card" style="color: white; text-align: center;">
-                        <p style="font-size: 18px; color: #94a3b8;">Loading Quick Play market...</p>
-                    </div>
+                <div id="quick-play-card-container">
+                    <div id="quick-play-card">
+                        </div>
                 </div>
-
-                <!-- Action Buttons -->
-                <div style="display: flex; justify-content: space-around; align-items: center; max-width: 600px; margin: 30px auto; gap: 15px;">
-                    <button onclick="handleQuickPlay('no')" class="quick-play-btn quick-play-btn-no" style="flex: 1; padding: 18px 30px; font-size: 18px; font-weight: bold; border-radius: 15px; border: none; cursor: pointer; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; transition: transform 0.2s;">NO</button>
-                    <button onclick="handleQuickPlay('skip')" class="quick-play-btn quick-play-btn-skip" style="flex: 1; padding: 18px 30px; font-size: 18px; font-weight: bold; border-radius: 15px; border: none; cursor: pointer; background: rgba(255,255,255,0.1); color: #94a3b8; transition: transform 0.2s;">SKIP</button>
-                    <button onclick="handleQuickPlay('yes')" class="quick-play-btn quick-play-btn-yes" style="flex: 1; padding: 18px 30px; font-size: 18px; font-weight: bold; border-radius: 15px; border: none; cursor: pointer; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; transition: transform 0.2s;">YES</button>
+                <div class="flex justify-around items-center p-6">
+                    <button onclick="handleQuickPlay('no')" class="quick-play-btn quick-play-btn-no">NO</button>
+                    <button onclick="handleQuickPlay('skip')" class="quick-play-btn quick-play-btn-skip">SKIP</button>
+                    <button onclick="handleQuickPlay('yes')" class="quick-play-btn quick-play-btn-yes">YES</button>
                 </div>
             </div>
 
-            <!-- REBUILT Social Feed Screen -->
-            <div id="social-feed-screen" class="screen screen-inactive" style="background: #0F1419; min-height: 100vh; padding: 20px 10px; overflow-y: auto;">
-                <div style="max-width: 600px; margin: 0 auto;">
-                    
-                    <!-- Header Tabs -->
-                    <div style="display: flex; border-bottom: 2px solid rgba(255,255,255,0.1); margin-bottom: 30px;">
-                        <button onclick="switchSocialTab('feed')" id="social-tab-feed" style="flex: 1; padding: 15px; font-weight: bold; font-size: 18px; border: none; background: none; color: #38bdf8; border-bottom: 4px solid #38bdf8; cursor: pointer;">
-                            Feed
+            <!-- Social Feed Screen -->
+            <div id="social-feed-screen" class="screen screen-inactive">
+                <div class="max-w-md mx-auto space-y-6 px-4 pb-6 pt-6">
+                    <!-- Floating Action Button for Create Post -->
+                    <button onclick="openCreatePost()" id="social-fab" class="social-fab hidden" title="Create Post">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                    </button>
+
+                    <!-- Feed / Leaderboard Toggle -->
+                    <div class="flex justify-between items-center border-b-2 border-white/10 relative">
+                        <button onclick="switchSocialTab('feed')" id="social-tab-feed" class="social-tab-btn pb-4 px-6 font-bold text-lg border-b-4 border-sky-400 text-sky-400 transition-all relative">
+                            <span class="relative z-10">Feed</span>
                         </button>
-                        <button onclick="switchSocialTab('leaderboard')" id="social-tab-leaderboard" style="flex: 1; padding: 15px; font-weight: bold; font-size: 18px; border: none; background: none; color: #94a3b8; border-bottom: 4px solid transparent; cursor: pointer;">
-                            Leaderboard
+                        <button onclick="switchSocialTab('leaderboard')" id="social-tab-leaderboard" class="social-tab-btn pb-4 px-6 font-bold text-lg border-b-4 border-transparent text-gray-400 hover:text-white hover:border-gray-600 transition-all relative">
+                            <span class="relative z-10">Leaderboard</span>
                         </button>
                     </div>
 
                     <!-- Feed Section -->
-                    <div id="social-feed-section" style="display: block;">
-                        <!-- Filter Pills -->
-                        <div style="display: flex; gap: 10px; margin-bottom: 25px; overflow-x: auto;">
-                            <button onclick="filterSocialFeed('all')" id="feed-filter-all" class="filter-pill-clean active" style="padding: 12px 20px; border-radius: 15px; font-weight: 600; font-size: 14px; white-space: nowrap; border: none; cursor: pointer; background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white;">All Posts</button>
-                            <button onclick="filterSocialFeed('following')" id="feed-filter-following" class="filter-pill-clean" style="padding: 12px 20px; border-radius: 15px; font-weight: 600; font-size: 14px; white-space: nowrap; border: none; cursor: pointer; background: rgba(255,255,255,0.1); color: #94a3b8;">Following</button>
-                            <button onclick="filterSocialFeed('trending')" id="feed-filter-trending" class="filter-pill-clean" style="padding: 12px 20px; border-radius: 15px; font-weight: 600; font-size: 14px; white-space: nowrap; border: none; cursor: pointer; background: rgba(255,255,255,0.1); color: #94a3b8;">🔥 Trending</button>
+                    <div id="social-feed-section" class="space-y-6">
+                        <!-- Filter Tabs -->
+                        <div class="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
+                            <button onclick="filterSocialFeed('all')" id="feed-filter-all" class="filter-pill-clean active px-5 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap shadow-lg">All Posts</button>
+                            <button onclick="filterSocialFeed('following')" id="feed-filter-following" class="filter-pill-clean px-5 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap">Following</button>
+                            <button onclick="filterSocialFeed('trending')" id="feed-filter-trending" class="filter-pill-clean px-5 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap">🔥 Trending</button>
                         </div>
 
-                        <!-- Posts Container -->
-                        <div id="social-feed-container" style="display: block; min-height: 200px;">
-                            <div style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 40px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
-                                <p style="color: #94a3b8; font-size: 18px;">Loading feed...</p>
+                        <!-- Posts Feed -->
+                        <div id="social-feed-container" class="space-y-5">
+                            <div class="ui-panel p-8 text-center">
+                                <div class="inline-block p-4 rounded-full bg-sky-500/10 mb-4">
+                                    <svg class="w-8 h-8 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                </div>
+                                <p class="text-gray-400 text-lg font-medium">Loading feed...</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Leaderboard Section -->
-                    <div id="social-leaderboard-section" style="display: none;">
-                        <!-- Leaderboard Timeframe Tabs -->
-                        <div style="display: flex; border-bottom: 2px solid rgba(255,255,255,0.1); margin-bottom: 25px;">
-                            <button class="leaderboard-tab-social" data-timeframe="all" onclick="switchLeaderboardTimeframeSocial('all')" style="flex: 1; padding: 15px; font-weight: bold; border: none; background: none; color: #38bdf8; border-bottom: 4px solid #38bdf8; cursor: pointer;">All-Time</button>
-                            <button class="leaderboard-tab-social" data-timeframe="weekly" onclick="switchLeaderboardTimeframeSocial('weekly')" style="flex: 1; padding: 15px; font-weight: bold; border: none; background: none; color: #94a3b8; border-bottom: 4px solid transparent; cursor: pointer;">Weekly</button>
-                            <button class="leaderboard-tab-social" data-timeframe="daily" onclick="switchLeaderboardTimeframeSocial('daily')" style="flex: 1; padding: 15px; font-weight: bold; border: none; background: none; color: #94a3b8; border-bottom: 4px solid transparent; cursor: pointer;">Daily</button>
+                    <div id="social-leaderboard-section" class="hidden space-y-6">
+                        <!-- Leaderboard Tabs -->
+                        <div class="flex items-center border-b-2 border-white/10">
+                            <button class="leaderboard-tab-social flex-1 pb-4 font-bold text-base border-b-4 border-sky-400 text-sky-400 text-left" data-timeframe="all" onclick="switchLeaderboardTimeframeSocial('all')">All-Time</button>
+                            <button class="leaderboard-tab-social flex-1 pb-4 font-bold text-base border-b-4 border-transparent text-gray-400 hover:text-white hover:border-gray-600 text-center" data-timeframe="weekly" onclick="switchLeaderboardTimeframeSocial('weekly')">Weekly</button>
+                            <button class="leaderboard-tab-social flex-1 pb-4 font-bold text-base border-b-4 border-transparent text-gray-400 hover:text-white hover:border-gray-600 text-right" data-timeframe="daily" onclick="switchLeaderboardTimeframeSocial('daily')">Daily</button>
                         </div>
-
-                        <!-- User Rank Panel -->
-                        <div id="social-user-rank-panel" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 30px; text-align: center; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 25px;">
-                            <p style="color: #94a3b8; font-size: 18px;">Loading your rank...</p>
+                        <div id="social-user-rank-panel" class="leaderboard-card-clean p-8 shadow-xl">
+                            <div class="inline-block p-4 rounded-full bg-sky-500/10 mb-4">
+                                <svg class="w-8 h-8 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                            </div>
+                            <p class="text-gray-400 text-lg">Loading your rank...</p>
                         </div>
-
-                        <!-- Rankings List -->
-                        <div id="social-ranking-list" style="display: block; min-height: 200px;">
-                            <div style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 40px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
-                                <p style="color: #94a3b8; font-size: 18px;">Fetching top players...</p>
+                        <div id="social-ranking-list" class="space-y-4">
+                            <div class="ui-panel p-8 text-center">
+                                <div class="inline-block p-4 rounded-full bg-yellow-500/10 mb-4">
+                                    <svg class="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                                    </svg>
+                                </div>
+                                <p class="text-gray-400 text-lg font-medium">Fetching top players...</p>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Floating Create Post Button (only visible when logged in) -->
-                    <button onclick="openCreatePost()" id="social-fab" class="social-fab" style="display: none; position: fixed; bottom: 80px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; border: none; box-shadow: 0 4px 20px rgba(14, 165, 233, 0.4); cursor: pointer; z-index: 100;">
-                        <svg style="width: 28px; height: 28px; margin: auto;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                    </button>
-
                 </div>
             </div>
 
@@ -3561,7 +3563,7 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6-4v4m0-4h4"></path></svg>
                 <span class="text-xs mt-1">Home</span>
             </button>
-            <button id="bottom-nav-social-button" onclick="showScreen('social-feed-screen')" class="nav-button flex flex-col items-center text-gray-400">
+            <button id="bottom-nav-social-button" onclick="showScreen('social-feed-screen'); loadSocialFeed();" class="nav-button flex flex-col items-center text-gray-400">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                 <span class="text-xs mt-1">Social</span>
             </button>
@@ -5881,16 +5883,10 @@
                 claimBtn.disabled = true;
                 claimBtn.innerHTML = '⏳ Claiming...';
                 
-                // Get user email from userProfile (stored in Firestore) for legacy fallback
-                const userEmail = userProfile?.email || localStorage.getItem('userEmail') || '';
-                
                 const response = await fetch('/api/faucet/claim-pred', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        userId: currentUserId,
-                        email: userEmail // For legacy user fallback
-                    })
+                    body: JSON.stringify({ userId: currentUserId })
                 });
                 
                 const data = await response.json();
@@ -6231,9 +6227,6 @@
 
                 // Generate userId from Firebase UID
                 const userId = 'user_' + firebaseUser.uid.substring(0, 12);
-                
-                // ✅ Mark that user has logged in before (for "Welcome back!" message on next login)
-                localStorage.setItem('hasLoggedInBefore', 'true');
                 currentUserId = userId;
 
                 // Store auth info
@@ -6445,11 +6438,9 @@
                     body: JSON.stringify({ email })
                 });
                 
-                // ✅ Read response body once
-                const data = await response.json();
-                
                 if (!response.ok) {
-                    throw new Error(data.error || 'Failed to send OTP');
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to send OTP');
                 }
                 
                 // Store email for verification step
@@ -6461,12 +6452,7 @@
                 showScreen('otp-entry-screen');
                 startResendTimer();
                 
-                // ✅ Check if user has logged in before (client-side only, secure)
-                const hasLoggedInBefore = localStorage.getItem('hasLoggedInBefore') === 'true';
-                const message = hasLoggedInBefore
-                    ? "Welcome back! Check your email for the code 📧" 
-                    : "Verification code sent! Check your email 📧";
-                showToast(message, "success");
+                showToast("Verification code sent to your email! 📧", "success");
             } catch (error) {
                 console.error('OTP request error:', error);
                 showToast(error.message || "Failed to send code. Please try again.", "error");
@@ -6518,11 +6504,6 @@
                 }
 
                 showLoadingOverlay(true, 'Setting up your account...');
-                
-                // Ensure email is stored in localStorage for faucet fallback (legacy users)
-                if (email) {
-                    localStorage.setItem('userEmail', email);
-                }
                 
                 // Complete authentication
                 await completeAuthentication(firebaseUser, 'firebase-email');
@@ -7245,12 +7226,8 @@
 
             try {
                 const docSnap = await getDoc(profileRef);
-                // Get email from localStorage (set during authentication)
-                const userEmail = localStorage.getItem('userEmail') || '';
-                
                 const defaultProfile = {
                     userId: currentUserId,
-                    email: userEmail, // Store email for legacy faucet fallback
                     displayName: userProfile.displayName, 
                     walletAddress: "0x" + [...Array(40)].map(() => Math.floor(Math.random() * 16).toString(16)).join(''), 
                     xp: 0,
@@ -7285,13 +7262,6 @@
                     // --- 2. EXISTING USER PATH ---
                     console.log("Demo profile loaded from Firebase.");
                     userProfile = { ...defaultProfile, ...docSnap.data() }; 
-
-                    // ✅ Patch existing profiles with email if missing (for legacy user support)
-                    if (!userProfile.email && userEmail) {
-                        console.log("Patching existing profile with email for faucet support...");
-                        await setDoc(profileRef, { email: userEmail }, { merge: true });
-                        userProfile.email = userEmail;
-                    }
 
                     // Ensure public profile exists
                     const publicProfileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', PUBLIC_LEADERBOARD_COLLECTION, currentUserId);
@@ -7716,18 +7686,8 @@
 
             // Loop over all screens and toggle their visibility
             dom.screens.forEach(screen => {
-                const isActive = screen.id === screenId;
-                screen.classList.toggle('screen-active', isActive);
-                screen.classList.toggle('screen-inactive', !isActive);
-                
-                // ✅ FIX: Explicitly set inline styles to force visibility
-                if (isActive) {
-                    screen.style.display = 'block';
-                    screen.style.visibility = 'visible';
-                } else {
-                    screen.style.display = 'none';
-                    screen.style.visibility = 'hidden';
-                }
+                screen.classList.toggle('screen-active', screen.id === screenId);
+                screen.classList.toggle('screen-inactive', screen.id !== screenId);
             });
 
             currentScreenId = screenId;
@@ -7752,8 +7712,14 @@
                 desktopAppTitle.style.display = isHomeScreen ? 'block' : 'none';
             }
 
-            // Logout button visibility is now managed by handleProfileTab() function
-            // It will show only when assets tab is active
+            // Manage logout button visibility - show on profile, hide everywhere else
+            if (dom.logoutButtonContainer) {
+                if (screenId === 'profile-screen' && currentUserId && !isGuestMode) {
+                    dom.logoutButtonContainer.classList.remove('hidden');
+                } else {
+                    dom.logoutButtonContainer.classList.add('hidden');
+                }
+            }
 
             // --- RACE CONDITION FIX ---
             // Clean up the single-market listener when we leave the detail screen
@@ -7836,12 +7802,6 @@
                     break;
                 case 'leaderboard-screen':
                     if (!leaderboardUnsubscribe) renderLeaderboard();
-                    break;
-                case 'social-feed-screen':
-                    // Load social feed posts when user navigates to social screen
-                    if (typeof loadSocialFeed === 'function') {
-                        loadSocialFeed();
-                    }
                     break;
                 case 'profile-screen':
                     // Update profile UI with latest data when screen is shown
@@ -8128,21 +8088,8 @@
                 { id: 'mock-qp-4', title: 'Will it rain in New York tomorrow?', duration: '12h', yesPercent: 20, noPercent: 80, isMock: true, isResolved: false },
             ];
 
-            // ✅ Check if user is in guest mode (global variable may not be initialized yet)
-            const userIsGuest = (typeof isGuestMode !== 'undefined' && isGuestMode) || !currentUserId;
-            
-            // ✅ For guests: Just show mock markets immediately, skip Firestore entirely
-            if (userIsGuest) {
-                console.log('✅ Quick Play: Guest mode - showing mock markets only');
-                window.quickPlayData = [...allMockMarkets];
-                loadQuickPlay(0);
-                return;
-            }
-
             try {
                 // 2. Get a list of ALL pledges (resolved or not) by the current user
-                let stakedMarketIds = new Set();
-                
                 const activePledgesQuery = query(
                     collection(db, 'artifacts', APP_ID, 'public', 'data', PLEDGES_COLLECTION),
                     where('userId', '==', currentUserId),
@@ -8150,7 +8097,7 @@
                 );
                 const activePledgeSnapshot = await getDocs(activePledgesQuery);
                 // This Set stores the IDs of markets the user has already successfully staked on
-                stakedMarketIds = new Set(activePledgeSnapshot.docs.map(doc => doc.data().marketId));
+                const stakedMarketIds = new Set(activePledgeSnapshot.docs.map(doc => doc.data().marketId));
 
                 const localPledgeIds = new Set(pledgePoolItems.map(item => item.id));
 
@@ -8185,10 +8132,6 @@
 
             } catch (error) {
                 console.error("Critical error in attachQuickPlayListener:", error);
-                // ✅ Fallback: Show mock markets if Firestore fails
-                console.log('⚠️ Firestore error - falling back to mock markets');
-                window.quickPlayData = [...allMockMarkets];
-                loadQuickPlay(0);
             }
         }
 
@@ -8374,6 +8317,9 @@
             if(dom.assetsContent) dom.assetsContent.classList.add('hidden'); 
             if(dom.aiProfileSummaryPanel) dom.aiProfileSummaryPanel.classList.add('hidden');
 
+            // Keep logout button visible during tab switches within profile screen
+            // (Don't hide it here - it's managed by loadDataForScreen/showScreen instead)
+
             // Hide the new networking panel
             const networkingContent = document.getElementById('networking-content');
             if(networkingContent) networkingContent.classList.add('hidden');
@@ -8382,15 +8328,6 @@
             const notificationsContent = document.getElementById('notifications-content');
             if(notificationsContent) notificationsContent.classList.add('hidden');
             // --- END NEW ---
-
-            // Manage logout button visibility - show only on assets tab
-            if (dom.logoutButtonContainer) {
-                if (tabName === 'assets' && currentUserId && !isGuestMode) {
-                    dom.logoutButtonContainer.classList.remove('hidden');
-                } else {
-                    dom.logoutButtonContainer.classList.add('hidden');
-                }
-            }
 
             // Show the correct content panel
             const contentEl = document.getElementById(`${tabName}-content`) || document.getElementById(`${tabName}-stakes-content`);
@@ -9614,16 +9551,8 @@
          * Loads a Quick Play card onto the screen.
          */
         function loadQuickPlay(index) {
-            console.log('🎯 loadQuickPlay called with index:', index);
             let data = window.quickPlayData;
-            console.log('📊 quickPlayData:', data ? data.length + ' markets' : 'null/undefined');
             const cardEl = dom.quickPlayCard;
-            console.log('🎴 cardEl:', cardEl ? 'found' : 'NULL - MISSING FROM DOM');
-            
-            if (!cardEl) {
-                console.error('❌ CRITICAL: #quick-play-card element not found in DOM!');
-                return;
-            }
 
             // --- HACKATHON FIX: Show "All Caught Up" message ---
             if (!data || data.length === 0) {
@@ -13505,66 +13434,49 @@ ${historyText}`;
          * Load and display social feed posts
          */
         window.loadSocialFeed = async () => {
-            console.log('📱 loadSocialFeed called');
             // Guest mode allowed - can view feed without auth
             const container = document.getElementById('social-feed-container');
-            console.log('📦 container:', container ? 'found' : 'NULL - MISSING FROM DOM');
-            
-            if (!container) {
-                console.error('❌ CRITICAL: #social-feed-container element not found in DOM!');
-                return;
-            }
             
             // Clean up old listener
             if (socialFeedUnsubscribe) socialFeedUnsubscribe();
 
-            try {
-                const { collection, query, orderBy, limit, onSnapshot, getDocs, doc: firestoreDoc, getDoc } = window.firebase.firestore;
+            const { collection, query, orderBy, limit, onSnapshot, getDocs, doc: firestoreDoc, getDoc } = window.firebase.firestore;
 
-                console.log('🔥 Setting up Firestore query for social posts...');
-                let q = query(
-                    collection(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION),
-                    orderBy('timestamp', 'desc'),
-                    limit(50)
-                );
+            let q = query(
+                collection(db, 'artifacts', APP_ID, 'public', 'data', SOCIAL_POSTS_COLLECTION),
+                orderBy('timestamp', 'desc'),
+                limit(50)
+            );
 
-                console.log('👂 Attaching onSnapshot listener...');
-                socialFeedUnsubscribe = onSnapshot(q, async (snapshot) => {
-                    console.log('📬 Social feed snapshot received:', snapshot.docs.length, 'posts');
-                    
-                    try {
-                        let posts = [];
-                        snapshot.forEach(doc => {
-                            posts.push({
-                                ...doc.data(),
-                                postId: doc.id
-                            });
-                        });
-                        console.log('✅ Posts extracted from snapshot:', posts.length);
+            socialFeedUnsubscribe = onSnapshot(q, async (snapshot) => {
+                let posts = [];
+                snapshot.forEach(doc => {
+                    posts.push({
+                        ...doc.data(),
+                        postId: doc.id
+                    });
+                });
 
-                        // Filter based on current filter
-                        if (currentFeedFilter === 'following') {
-                            const userDoc = await getDoc(firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId));
-                            const following = userDoc.data()?.following || [];
-                            posts = posts.filter(post => following.includes(post.userId));
-                        } else if (currentFeedFilter === 'trending') {
-                            posts.sort((a, b) => {
-                                const aScore = (a.reactions?.length || 0) + (a.commentCount || 0);
-                                const bScore = (b.reactions?.length || 0) + (b.commentCount || 0);
-                                return bScore - aScore;
-                            });
-                        }
+                // Filter based on current filter
+                if (currentFeedFilter === 'following') {
+                    const userDoc = await getDoc(firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId));
+                    const following = userDoc.data()?.following || [];
+                    posts = posts.filter(post => following.includes(post.userId));
+                } else if (currentFeedFilter === 'trending') {
+                    posts.sort((a, b) => {
+                        const aScore = (a.reactions?.length || 0) + (a.commentCount || 0);
+                        const bScore = (b.reactions?.length || 0) + (b.commentCount || 0);
+                        return bScore - aScore;
+                    });
+                }
 
-                        if (posts.length === 0) {
-                            console.log('⚠️ No posts after filtering');
-                            container.innerHTML = '<p class="text-gray-400 text-center py-8">No posts yet. Be the first to share!</p>';
-                            return;
-                        }
+                if (posts.length === 0) {
+                    container.innerHTML = '<p class="text-gray-400 text-center py-8">No posts yet. Be the first to share!</p>';
+                    return;
+                }
 
-                        console.log('📊 Fetching leaderboard data...');
-                        // Fetch leaderboard data once for all posts
-                        const leaderboardData = await getLeaderboardData();
-                        console.log('✅ Leaderboard data fetched');
+                // Fetch leaderboard data once for all posts
+                const leaderboardData = await getLeaderboardData();
 
                 // Batch fetch pledge data for whale/skin checks (performance optimization)
                 const { collection: col2, query: q2, where: w2, getDocs: getDocs2 } = window.firebase.firestore;
@@ -13782,28 +13694,8 @@ ${historyText}`;
                         </div>
                     `;
                 }
-                        console.log('🎨 Rendering', posts.length, 'posts to container...');
-                        container.innerHTML = html;
-                        console.log('✅ Social feed rendered successfully!');
-                        
-                        // Debug: Check if screen is visible
-                        const screen = document.getElementById('social-feed-screen');
-                        console.log('📺 Screen visibility check:');
-                        console.log('  - Has screen-active class:', screen?.classList.contains('screen-active'));
-                        console.log('  - Has screen-inactive class:', screen?.classList.contains('screen-inactive'));
-                        console.log('  - Computed display:', screen ? window.getComputedStyle(screen).display : 'N/A');
-                    } catch (renderError) {
-                        console.error('❌ Error rendering social feed:', renderError);
-                        container.innerHTML = '<p class="text-red-400 text-center py-8">Error rendering posts: ' + renderError.message + '</p>';
-                    }
-                }, (error) => {
-                    console.error('❌ Firestore onSnapshot error:', error);
-                    container.innerHTML = '<p class="text-red-400 text-center py-8">Error loading posts. Please try again.</p>';
-                });
-            } catch (error) {
-                console.error('❌ Error setting up social feed:', error);
-                container.innerHTML = '<p class="text-red-400 text-center py-8">Error loading social feed. Please refresh the page.</p>';
-            }
+                container.innerHTML = html;
+            });
         }
 
         /**
@@ -16649,7 +16541,7 @@ ${historyText}`;
          */
         function setupEventListeners() {
             // Make functions globally accessible for inline HTML `onclick`
-            // Note: window.showScreen is already defined at line ~7679, so we don't redefine it here
+            window.showScreen = showScreen;
             window.goBack = goBack;
             window.handleProfileTab = handleProfileTab;
 

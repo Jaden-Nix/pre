@@ -339,30 +339,6 @@ app.post('/api/send-otp', async (req, res) => {
     }
     
     try {
-        // ✅ Check if user exists in Firebase (returning user)
-        let isExistingUser = false;
-        
-        // Only check Firebase if admin is initialized
-        if (admin && admin.apps && admin.apps.length > 0) {
-            try {
-                await admin.auth().getUserByEmail(email);
-                isExistingUser = true;
-                console.log(`✅ Returning user detected: ${email}`);
-            } catch (error) {
-                if (error.code === 'auth/user-not-found') {
-                    isExistingUser = false;
-                    console.log(`🆕 New user detected: ${email}`);
-                } else {
-                    // Firebase error but not "user not found" - log and default to new user
-                    console.warn(`⚠️ Firebase Admin error checking user:`, error.message);
-                    isExistingUser = false;
-                }
-            }
-        } else {
-            console.warn(`⚠️ Firebase Admin not initialized - treating all users as new`);
-            isExistingUser = false;
-        }
-        
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         
         otpStore.set(email, {
@@ -370,18 +346,14 @@ app.post('/api/send-otp', async (req, res) => {
             expiresAt: Date.now() + 10 * 60 * 1000
         });
         
-        // ✅ Different email messages for new vs returning users
-        const subject = isExistingUser ? 'Welcome Back to Predora!' : 'Your Predora Login Code';
-        const greeting = isExistingUser ? 'Welcome back!' : 'Welcome to Predora!';
-        
         const msg = {
             to: email,
             from: sendGrid.fromEmail,
-            subject: subject,
+            subject: 'Your Predora Login Code',
             text: `Your verification code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this code, please ignore this email.`,
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #38BDF8;">${greeting}</h2>
+                    <h2 style="color: #38BDF8;">Welcome to Predora!</h2>
                     <p style="font-size: 16px; color: #333;">Your verification code is:</p>
                     <div style="background: linear-gradient(to right, #38BDF8, #6366F1); color: white; font-size: 32px; font-weight: bold; text-align: center; padding: 20px; border-radius: 10px; letter-spacing: 8px; margin: 20px 0;">
                         ${otp}
@@ -395,13 +367,7 @@ app.post('/api/send-otp', async (req, res) => {
         await sendGrid.client.send(msg);
         
         console.log(`✉️ OTP sent to ${email}`);
-        
-        // ✅ SECURITY: Don't reveal if user exists (prevents account enumeration)
-        // All users get the same response message
-        res.status(200).json({ 
-            success: true, 
-            message: 'Verification code sent successfully'
-        });
+        res.status(200).json({ success: true, message: 'OTP sent successfully' });
         
     } catch (error) {
         console.error('Error sending OTP:', error);
@@ -501,7 +467,7 @@ app.post('/api/custodial-wallet/info', async (req, res) => {
 
 // 🪙 $PRED Token Faucet - For testing purposes
 app.post('/api/faucet/claim-pred', async (req, res) => {
-    const { userId, email } = req.body;
+    const { userId } = req.body;
     
     if (!userId) {
         return res.status(400).json({ error: 'User ID is required' });
@@ -512,18 +478,8 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
     }
     
     try {
-        let profileRef = db.collection(`artifacts/${APP_ID}/public/data/user_profiles`).doc(userId);
-        let profileDoc = await profileRef.get();
-        
-        // Fallback for legacy users: Try hashed email format if provided
-        if (!profileDoc.exists && email) {
-            const crypto = await import('crypto');
-            const legacyUserId = crypto.createHash('sha256').update(email.toLowerCase()).digest('hex').substring(0, 16);
-            console.log(`⚠️ Profile not found for ${userId}, trying legacy ID: ${legacyUserId}`);
-            
-            profileRef = db.collection(`artifacts/${APP_ID}/public/data/user_profiles`).doc(legacyUserId);
-            profileDoc = await profileRef.get();
-        }
+        const profileRef = db.collection(`artifacts/${APP_ID}/public/data/user_profiles`).doc(userId);
+        const profileDoc = await profileRef.get();
         
         if (!profileDoc.exists) {
             return res.status(404).json({ error: 'User profile not found' });
