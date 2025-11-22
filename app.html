@@ -2665,44 +2665,8 @@
                         </div>
                     </div>
 
-                    <!-- $PRED Token Faucet Section -->
-                    <div class="ui-panel p-4 space-y-4">
-                        <h3 class="text-lg font-semibold gradient-text">🪙 $PRED Token Faucet</h3>
-                        <p class="text-sm text-gray-400">Claim free $PRED tokens for testing. One claim every 24 hours.</p>
-                        
-                        <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                            <span class="text-sm text-gray-400">Your $PRED Balance:</span>
-                            <span id="faucet-pred-balance" class="text-sm font-semibold text-green-400">100.00 $PRED</span>
-                        </div>
-                        
-                        <button id="claim-pred-btn" onclick="claimPredTokens()" class="btn bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 w-full">
-                            💰 Claim 50 $PRED
-                        </button>
-                        
-                        <div id="faucet-cooldown-msg" class="hidden p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
-                            <p class="text-xs text-yellow-400 text-center"></p>
-                        </div>
-                        
-                        <p class="text-xs text-center text-gray-500">$PRED tokens are used for betting on Firestore markets. Value: $600/token</p>
-                    </div>
-                    
-                    <!-- Platform Balances -->
-                    <div class="ui-panel p-4 space-y-3">
-                        <h3 class="text-base font-semibold text-sky-300">💰 Platform Balances</h3>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="text-center p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-lg">
-                                <span class="text-xs text-gray-400 uppercase tracking-wide">$PRED Balance</span>
-                                <p id="mock-busd" class="text-2xl font-bold text-green-400 mt-1">$100</p>
-                            </div>
-                            <div class="text-center p-4 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-lg">
-                                <span class="text-xs text-gray-400 uppercase tracking-wide">BNB Balance</span>
-                                <p id="mock-bnb" class="text-2xl font-bold text-yellow-400 mt-1">0.2</p>
-                            </div>
-                        </div>
-                        <p class="text-xs text-gray-400 text-center">$PRED is a platform token valued at $600 each</p>
-                    </div>
-
-                    <!-- Logout Button -->
+                    <!-- Assets content dynamically rendered by updateProfileUI() -->
+                    <!-- Removed duplicate static content to prevent showing two pages -->
                     <div class="pt-2 pb-4">
                         <button onclick="signOut()" class="btn w-full bg-gradient-to-r from-red-500/20 to-pink-500/20 border-2 border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 font-semibold transition-all duration-300 hover:scale-[1.02] active:scale-95">
                             <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -7347,8 +7311,9 @@
                 const docSnap = await getDoc(profileRef);
                 const defaultProfile = {
                     userId: currentUserId,
-                    displayName: userProfile.displayName, 
-                    walletAddress: "0x" + [...Array(40)].map(() => Math.floor(Math.random() * 16).toString(16)).join(''), 
+                    displayName: userProfile.displayName || 'User', 
+                    avatar: userProfile.avatar || selectedAvatar || '😀',
+                    walletAddress: userProfile.walletAddress || "0x" + [...Array(40)].map(() => Math.floor(Math.random() * 16).toString(16)).join(''), 
                     xp: 0,
                     balance: 0, 
                     predBalance: 100,
