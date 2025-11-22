@@ -13787,6 +13787,14 @@ ${historyText}`;
                         container.innerHTML = '<div style="background: red; color: white; padding: 50px; font-size: 24px; text-align: center; margin: 20px;">TEST: If you see this, the screen IS rendering!</div>' + html;
                         console.log('✅ Social feed rendered successfully!');
                         
+                        // NUCLEAR TEST: Add element directly to body to bypass all CSS
+                        const bodyTest = document.createElement('div');
+                        bodyTest.id = 'nuclear-test';
+                        bodyTest.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: lime; color: black; padding: 20px; font-size: 20px; font-weight: bold; text-align: center; z-index: 99999;';
+                        bodyTest.textContent = '🟢 NUCLEAR TEST: Can you see this green bar at the top?';
+                        document.body.appendChild(bodyTest);
+                        setTimeout(() => bodyTest.remove(), 5000); // Remove after 5 seconds
+                        
                         // Debug: Check if screen is visible
                         const screen = document.getElementById('social-feed-screen');
                         console.log('📺 Screen visibility check:');
