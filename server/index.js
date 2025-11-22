@@ -710,13 +710,13 @@ app.post('/api/market/create-onchain', async (req, res) => {
             // Write market
             transaction.set(marketRef, marketData);
             
-            // NOTE: XP awards removed to prevent zero-cost farming
-            // In production, only award XP if creator provides liquidity or if market reaches certain volume
-            
             return marketRef.id;
         });
         
         console.log(`✅ Firestore market created: ${marketId}`);
+        
+        // Award XP for creating market with liquidity
+        await addXpToUser(userId, XP_VALUES.CREATE_MARKET, `Created market: ${title}`);
         
         res.status(200).json({
             success: true,
@@ -1263,6 +1263,9 @@ app.post('/api/custodial/place-bet', async (req, res) => {
         // Wait for confirmation
         const receipt = await tx.wait();
         console.log(`✅ Bet confirmed in block ${receipt.blockNumber}`);
+        
+        // Award XP for placing bet
+        await addXpToUser(userId, XP_VALUES.PLACE_BET, `Placed a bet on market ${marketId}`);
         
         res.json({
             success: true,
