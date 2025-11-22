@@ -2608,48 +2608,62 @@
                             </div>
                         </div>
 
-                <div id="assets-content" class="hidden space-y-3">
-                    <!-- Custodial Wallet Withdrawals Section -->
-                    <div class="ui-panel p-4 space-y-4">
-                        <h3 class="text-lg font-semibold gradient-text">🔐 Custodial Wallet</h3>
-                        <p class="text-sm text-gray-400">Your server-managed encrypted wallet. Withdraw BNB and $PRED to any address.</p>
+                <div id="assets-content" class="hidden space-y-4">
+                    <!-- Platform Balances - Top Section -->
+                    <div class="ui-panel p-4">
+                        <h3 class="text-lg font-semibold gradient-text mb-4">💰 Your Balances</h3>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="text-center p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-xl border border-purple-500/20">
+                                <span class="text-xs text-gray-400 block mb-1">$PRED</span>
+                                <p id="mock-busd" class="text-xl font-bold text-purple-400">$100</p>
+                            </div>
+                            <div class="text-center p-4 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-xl border border-yellow-500/20">
+                                <span class="text-xs text-gray-400 block mb-1">BNB</span>
+                                <p id="mock-bnb" class="text-xl font-bold text-yellow-400">0.2</p>
+                            </div>
+                            <div class="text-center p-4 bg-gradient-to-br from-pink-500/10 to-rose-500/10 rounded-xl border border-pink-500/20">
+                                <span class="text-xs text-gray-400 block mb-1">CAKE</span>
+                                <p id="mock-cake" class="text-xl font-bold text-pink-400">150</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 text-center mt-3">$PRED valued at $600 each</p>
+                    </div>
+
+                    <!-- Withdraw Funds Section -->
+                    <div class="ui-panel p-4">
+                        <h3 class="text-lg font-semibold gradient-text mb-3">📤 Withdraw Funds</h3>
+                        <p class="text-sm text-gray-400 mb-4">Send funds from your custodial wallet to any external address</p>
                         
-                        <!-- Wallet Info -->
-                        <div class="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/20">
-                            <span class="text-sm text-green-400">✓ Custodial Wallet Active</span>
-                            <span id="custodial-wallet-address-short" class="text-xs text-gray-400 font-mono">0x...</span>
-                        </div>
+                        <div class="grid lg:grid-cols-2 gap-4">
+                            <!-- Withdraw BNB -->
+                            <div class="space-y-3 p-4 bg-gradient-to-br from-green-500/5 to-emerald-500/5 rounded-xl border border-green-500/20">
+                                <h4 class="text-sm font-semibold text-green-400 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8"/></svg>
+                                    Withdraw BNB
+                                </h4>
+                                <input type="text" id="withdraw-bnb-address" placeholder="Recipient Address (0x...)" 
+                                    class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                <input type="number" id="withdraw-bnb-amount" placeholder="Amount (BNB)" step="0.001" min="0.001"
+                                    class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                <button onclick="withdrawBNB()" class="btn bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 w-full text-sm">
+                                    💸 Send BNB
+                                </button>
+                            </div>
 
-                        <!-- Withdraw BNB Section -->
-                        <div class="space-y-3 pt-2">
-                            <h4 class="text-sm font-semibold text-sky-300">💸 Withdraw BNB</h4>
-                            <p class="text-xs text-gray-400">Send BNB from your custodial wallet to any address</p>
-                            <input type="text" id="withdraw-bnb-address" placeholder="Recipient Address (0x...)" 
-                                class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500">
-                            <input type="number" id="withdraw-bnb-amount" placeholder="Amount (BNB)" step="0.001" min="0.001"
-                                class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500">
-                            <button onclick="withdrawBNB()" class="btn bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 w-full">
-                                <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                                </svg>
-                                Withdraw BNB
-                            </button>
-                        </div>
-
-                        <!-- Withdraw PRED Section -->
-                        <div class="space-y-3 pt-4 border-t border-white/10">
-                            <h4 class="text-sm font-semibold text-purple-300">🪙 Withdraw $PRED</h4>
-                            <p class="text-xs text-gray-400">Send $PRED tokens from your custodial wallet to any address</p>
-                            <input type="text" id="withdraw-pred-address" placeholder="Recipient Address (0x...)" 
-                                class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500">
-                            <input type="number" id="withdraw-pred-amount" placeholder="Amount (PRED)" step="1" min="1"
-                                class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500">
-                            <button onclick="withdrawPRED()" class="btn bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 w-full">
-                                <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                                </svg>
-                                Withdraw $PRED
-                            </button>
+                            <!-- Withdraw PRED -->
+                            <div class="space-y-3 p-4 bg-gradient-to-br from-purple-500/5 to-pink-500/5 rounded-xl border border-purple-500/20">
+                                <h4 class="text-sm font-semibold text-purple-400 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8"/></svg>
+                                    Withdraw $PRED
+                                </h4>
+                                <input type="text" id="withdraw-pred-address" placeholder="Recipient Address (0x...)" 
+                                    class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <input type="number" id="withdraw-pred-amount" placeholder="Amount (PRED)" step="1" min="1"
+                                    class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <button onclick="withdrawPRED()" class="btn bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 w-full text-sm">
+                                    🪙 Send $PRED
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -2707,44 +2721,24 @@
                     </div>
 
                     <!-- $PRED Token Faucet Section -->
-                    <div class="ui-panel p-4 space-y-4">
-                        <h3 class="text-lg font-semibold gradient-text">🪙 $PRED Token Faucet</h3>
-                        <p class="text-sm text-gray-400">Claim free $PRED tokens for testing. One claim every 24 hours.</p>
+                    <div class="ui-panel p-4">
+                        <h3 class="text-lg font-semibold gradient-text mb-3">🎁 Free $PRED Faucet</h3>
+                        <p class="text-sm text-gray-400 mb-4">Claim 50 free $PRED tokens every 24 hours for testing</p>
                         
-                        <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                            <span class="text-sm text-gray-400">Your $PRED Balance:</span>
-                            <span id="faucet-pred-balance" class="text-sm font-semibold text-green-400">100.00 $PRED</span>
+                        <div class="flex items-center justify-between p-3 mb-3 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-lg border border-purple-500/20">
+                            <span class="text-sm text-gray-300">Your $PRED Balance:</span>
+                            <span id="faucet-pred-balance" class="text-lg font-bold text-purple-400">100.00 $PRED</span>
                         </div>
                         
                         <button id="claim-pred-btn" onclick="claimPredTokens()" class="btn bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 w-full">
-                            💰 Claim 50 $PRED
+                            💰 Claim 50 $PRED Tokens
                         </button>
                         
-                        <div id="faucet-cooldown-msg" class="hidden p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                        <div id="faucet-cooldown-msg" class="hidden mt-3 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
                             <p class="text-xs text-yellow-400 text-center"></p>
                         </div>
                         
-                        <p class="text-xs text-center text-gray-500">$PRED tokens are used for betting on Firestore markets. Value: $600/token</p>
-                    </div>
-                    
-                    <!-- Mock Balances -->
-                    <div class="ui-panel p-4 space-y-3">
-                        <h3 class="text-base font-semibold text-sky-300">Platform Balances</h3>
-                        <div class="grid grid-cols-3 gap-3">
-                            <div class="text-center p-3 bg-white/5 rounded-lg">
-                                <span class="text-xs text-gray-400">$PRED</span>
-                                <p id="mock-busd" class="text-lg font-semibold text-green-400">$100</p>
-                            </div>
-                            <div class="text-center p-3 bg-white/5 rounded-lg">
-                                <span class="text-xs text-gray-400">BNB</span>
-                                <p id="mock-bnb" class="text-lg font-semibold text-yellow-400">0.2</p>
-                            </div>
-                            <div class="text-center p-3 bg-white/5 rounded-lg">
-                                <span class="text-xs text-gray-400">CAKE</span>
-                                <p id="mock-cake" class="text-lg font-semibold text-purple-400">150</p>
-                            </div>
-                        </div>
-                        <p class="text-xs text-gray-400">$PRED is a platform token valued at $600 each</p>
+                        <p class="text-xs text-center text-gray-500 mt-3">Value: $600 per token · Free testnet tokens</p>
                     </div>
                 </div> 
 
@@ -2763,12 +2757,15 @@
                             </div>
                         </div>
 
-
-</div> </div> <div id="logout-button-container" class="pt-4 hidden">
-            <button id="logout-or-login-btn" onclick="handleLogoutOrLogin()" class="btn btn-secondary w-full lg:w-auto lg:px-8">
-                <span id="logout-or-login-text">Sign In</span>
-            </button>
-        </div>
+                        <!-- Logout Button for Profile Page -->
+                        <div id="logout-button-container" class="pt-6">
+                            <button id="logout-or-login-btn" onclick="handleLogoutOrLogin()" class="btn bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 w-full lg:w-auto lg:px-8">
+                                <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                </svg>
+                                <span id="logout-or-login-text">Log Out</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -4491,8 +4488,20 @@
                 const amount = document.getElementById('withdraw-bnb-amount').value.trim();
 
                 // 4. Validate recipient address
-                if (!recipientAddress || !ethers.utils.isAddress(recipientAddress)) {
-                    showToast('❌ Invalid recipient address', 'error');
+                if (!recipientAddress) {
+                    showToast('❌ Please enter a recipient address', 'error');
+                    return;
+                }
+                
+                // Check if ethers library is fully loaded (all required namespaces)
+                if (!window.ethers || !window.ethers.utils || !window.ethers.providers) {
+                    showToast('❌ Wallet library not loaded. Please refresh the page.', 'error');
+                    console.error('Ethers.js library not fully available');
+                    return;
+                }
+                
+                if (!window.ethers.utils.isAddress(recipientAddress)) {
+                    showToast('❌ Invalid recipient address format', 'error');
                     return;
                 }
 
@@ -4569,8 +4578,20 @@
                 const amount = document.getElementById('withdraw-pred-amount').value.trim();
 
                 // 4. Validate recipient address
-                if (!recipientAddress || !ethers.utils.isAddress(recipientAddress)) {
-                    showToast('❌ Invalid recipient address', 'error');
+                if (!recipientAddress) {
+                    showToast('❌ Please enter a recipient address', 'error');
+                    return;
+                }
+                
+                // Check if ethers library is fully loaded (all required namespaces)
+                if (!window.ethers || !window.ethers.utils || !window.ethers.providers) {
+                    showToast('❌ Wallet library not loaded. Please refresh the page.', 'error');
+                    console.error('Ethers.js library not fully available');
+                    return;
+                }
+                
+                if (!window.ethers.utils.isAddress(recipientAddress)) {
+                    showToast('❌ Invalid recipient address format', 'error');
                     return;
                 }
 
@@ -7169,6 +7190,12 @@
                 // Balances will be fetched from blockchain on next login
             };
             pledgePoolItems = [];
+            
+            // Hide logout button immediately on sign-out
+            if (dom.logoutButtonContainer) {
+                dom.logoutButtonContainer.classList.add('hidden');
+            }
+            
             enableGuestMode(); // Go to guest mode instead of login
         }
 
@@ -7685,6 +7712,15 @@
                 desktopAppTitle.style.display = isHomeScreen ? 'block' : 'none';
             }
 
+            // Manage logout button visibility - show on profile, hide everywhere else
+            if (dom.logoutButtonContainer) {
+                if (screenId === 'profile-screen' && currentUserId && !isGuestMode) {
+                    dom.logoutButtonContainer.classList.remove('hidden');
+                } else {
+                    dom.logoutButtonContainer.classList.add('hidden');
+                }
+            }
+
             // --- RACE CONDITION FIX ---
             // Clean up the single-market listener when we leave the detail screen
             if (screenId !== 'market-detail-screen' && detailMarketUnsubscribe) {
@@ -7772,6 +7808,7 @@
                     // Load active stakes to populate staking summary
                     if (!activeStakesUnsubscribe) renderActiveStakes();
                     if (!historyStakesUnsubscribe) renderHistoryStakes();
+                    // Logout button visibility is now managed in showScreen function
                     break;
                 case 'pledge-pool-screen': 
                     renderPledgePool();
@@ -8174,10 +8211,8 @@
                     walletAddressText.setAttribute('data-full-address', profile.walletAddress || '');
                 }
                 
-                // Show custodial wallet badge if applicable
-                if (custodialBadge && profile.walletAddress && profile.isSmartWallet) {
-                    custodialBadge.classList.remove('hidden');
-                } else if (custodialBadge) {
+                // Always hide custodial badge - just show wallet address
+                if (custodialBadge) {
                     custodialBadge.classList.add('hidden');
                 }
                 
@@ -8273,7 +8308,8 @@
             if(dom.assetsContent) dom.assetsContent.classList.add('hidden'); 
             if(dom.aiProfileSummaryPanel) dom.aiProfileSummaryPanel.classList.add('hidden');
 
-            if(dom.logoutButtonContainer) dom.logoutButtonContainer.classList.add('hidden');
+            // Keep logout button visible during tab switches within profile screen
+            // (Don't hide it here - it's managed by loadDataForScreen/showScreen instead)
 
             // Hide the new networking panel
             const networkingContent = document.getElementById('networking-content');
@@ -8317,11 +8353,6 @@
                 }
             else if (tabName === 'assets') { 
                 renderAssetsContent(); 
-
-                if(dom.logoutButtonContainer) {
-                    dom.logoutButtonContainer.classList.remove('hidden');
-                    updateAuthButton(); // Update button text/style when showing
-                }
             } 
         }
 
