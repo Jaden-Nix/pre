@@ -465,59 +465,103 @@ app.post('/api/custodial-wallet/info', async (req, res) => {
     }
 });
 
-// 🪙 $PRED Token Faucet - For testing purposes
+// 🪙 $PRED Token Faucet - NOW MINTS REAL ERC20 TOKENS ON-CHAIN
 app.post('/api/faucet/claim-pred', async (req, res) => {
-    const { userId } = req.body;
+    const { userId, firebaseUid } = req.body;
     
     if (!userId) {
         return res.status(400).json({ error: 'User ID is required' });
     }
     
-    if (!db) {
-        return res.status(503).json({ error: 'Database not available' });
+    if (!firebaseUid) {
+        return res.status(400).json({ error: 'Firebase UID is required for authentication' });
+    }
+    
+    if (!custodialWalletService) {
+        return res.status(503).json({ error: 'Custodial wallet service unavailable' });
     }
     
     try {
-        // ✅ FIX: Use correct collection name 'profile' not 'user_profiles'
-        const profileRef = db.collection(`artifacts/${APP_ID}/public/data/profile`).doc(userId);
-        const profileDoc = await profileRef.get();
+        // ✅ SECURITY: Verify the wallet belongs to the authenticated user
+        const walletMapping = await admin.firestore()
+            .collection('custodial_wallets')
+            .doc(userId)
+            .get();
         
-        if (!profileDoc.exists) {
-            return res.status(404).json({ error: 'User profile not found' });
+        if (!walletMapping.exists) {
+            return res.status(404).json({ error: 'Wallet not found' });
         }
         
-        const profileData = profileDoc.data();
-        const lastClaim = profileData.lastPredClaim || 0;
-        const now = Date.now();
-        const cooldownMs = 24 * 60 * 60 * 1000; // 24 hours
+        const mappingData = walletMapping.data();
+        if (mappingData.firebaseUid !== firebaseUid) {
+            console.warn(`🚨 Authorization failed: User ${firebaseUid} attempted to claim for ${userId}`);
+            return res.status(403).json({ error: 'Not authorized to claim for this wallet' });
+        }
         
-        // Check cooldown (24 hours between claims)
-        if (now - lastClaim < cooldownMs) {
-            const timeLeft = Math.ceil((cooldownMs - (now - lastClaim)) / (60 * 60 * 1000));
+        // Get user's custodial wallet signer
+        const signer = await custodialWalletService.loadWalletSigner(userId);
+        const walletAddress = await signer.getAddress();
+        
+        // PredToken contract ABI (just the faucet functions)
+        const predTokenAbi = [
+            'function claimFromFaucet() external',
+            'function canClaimFaucet(address user) external view returns (bool)',
+            'function timeUntilNextClaim(address user) external view returns (uint256)',
+            'function balanceOf(address account) external view returns (uint256)',
+            'function faucetAmount() external view returns (uint256)'
+        ];
+        
+        const predToken = new ethers.Contract(PRED_TOKEN_ADDRESS, predTokenAbi, signer);
+        
+        // Check if user can claim
+        const canClaim = await predToken.canClaimFaucet(walletAddress);
+        
+        if (!canClaim) {
+            const timeLeft = await predToken.timeUntilNextClaim(walletAddress);
+            const hoursLeft = Math.ceil(Number(timeLeft) / 3600);
             return res.status(429).json({ 
                 error: 'Faucet on cooldown',
-                message: `You can claim again in ${timeLeft} hours`,
-                timeLeft: timeLeft 
+                message: `You can claim again in ${hoursLeft} hours`,
+                timeLeft: hoursLeft
             });
         }
         
-        // Grant 50 $PRED tokens
-        const faucetAmount = 50;
-        await profileRef.update({
-            predBalance: (profileData.predBalance || 0) + faucetAmount,
-            lastPredClaim: now
-        });
+        // Claim tokens from contract
+        console.log(`🪙 Claiming $PRED tokens for ${userId} (${walletAddress})...`);
+        const tx = await predToken.claimFromFaucet({ gasLimit: 200000 });
+        const receipt = await tx.wait();
         
-        console.log(`✅ Faucet: Granted ${faucetAmount} $PRED to user ${userId}`);
+        // Get new balance
+        const balanceWei = await predToken.balanceOf(walletAddress);
+        const balance = Number(ethers.utils.formatEther(balanceWei));
+        
+        // Get faucet amount from contract
+        const faucetAmountWei = await predToken.faucetAmount();
+        const faucetAmount = Number(ethers.utils.formatEther(faucetAmountWei));
+        
+        console.log(`✅ Faucet: Minted ${faucetAmount} $PRED tokens on-chain to ${walletAddress}`);
+        console.log(`   Transaction: ${tx.hash}`);
+        console.log(`   New balance: ${balance} $PRED`);
         
         res.status(200).json({ 
             success: true, 
             amount: faucetAmount,
-            newBalance: (profileData.predBalance || 0) + faucetAmount,
-            message: `Successfully claimed ${faucetAmount} $PRED tokens!`
+            newBalance: balance,
+            message: `Successfully claimed ${faucetAmount} $PRED tokens!`,
+            txHash: tx.hash,
+            onChain: true
         });
     } catch (error) {
         console.error('Error claiming from faucet:', error);
+        
+        // Check for specific error messages
+        if (error.message && error.message.includes('Faucet cooldown not expired')) {
+            return res.status(429).json({ 
+                error: 'Faucet on cooldown',
+                message: 'You can claim again in 24 hours'
+            });
+        }
+        
         res.status(500).json({ error: error.message });
     }
 });

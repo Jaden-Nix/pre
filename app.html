@@ -5954,10 +5954,20 @@
                 claimBtn.disabled = true;
                 claimBtn.innerHTML = '⏳ Claiming...';
                 
+                // Get Firebase UID for authentication
+                const firebaseUid = localStorage.getItem('firebaseUid');
+                if (!firebaseUid) {
+                    showToast('Authentication error. Please sign in again.', 'error');
+                    return;
+                }
+                
                 const response = await fetch('/api/faucet/claim-pred', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: currentUserId })
+                    body: JSON.stringify({ 
+                        userId: currentUserId,
+                        firebaseUid: firebaseUid
+                    })
                 });
                 
                 const data = await response.json();
