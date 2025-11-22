@@ -4834,11 +4834,9 @@
             return;
         }
 
-        // TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
         /**
-         * Initializes BSC Testnet read-only provider for fetching balances - DISABLED FOR DEMO
+         * Initializes BSC Testnet read-only provider for fetching balances
          */
-        /*
         function initializeBSCProvider() {
             if (!bscProvider) {
                 try {
@@ -4852,13 +4850,6 @@
                 }
             }
             return bscProvider;
-        }
-        */
-        
-        // Stub function for demo mode
-        function initializeBSCProvider() {
-            console.log('ℹ️ BSC Provider disabled for hackathon demo');
-            return null;
         }
 
         /**
@@ -5316,8 +5307,14 @@
             const provider = bscProvider || ethersProvider;
             
             if (!provider) {
-                console.log('ℹ️ BSC Provider disabled for hackathon demo');
-                return 0;
+                console.warn('⚠️ No blockchain provider available - trying to initialize');
+                initializeBSCProvider();
+                const retryProvider = bscProvider || ethersProvider;
+                if (!retryProvider) {
+                    console.error('❌ Failed to get blockchain provider after retry');
+                    return 0;
+                }
+                return getRealBNBBalance(); // Retry with new provider
             }
             
             try {
@@ -5354,8 +5351,14 @@
             const provider = bscProvider || ethersProvider;
             
             if (!provider) {
-                console.log('ℹ️ BSC Provider disabled for hackathon demo');
-                return 0;
+                console.warn('⚠️ No blockchain provider available - trying to initialize');
+                initializeBSCProvider();
+                const retryProvider = bscProvider || ethersProvider;
+                if (!retryProvider) {
+                    console.error('❌ Failed to get blockchain provider after retry');
+                    return 0;
+                }
+                return getRealBNBBalance(); // Retry with new provider
             }
             
             try {
@@ -5393,8 +5396,14 @@
             const provider = bscProvider || ethersProvider;
             
             if (!provider) {
-                console.log('ℹ️ BSC Provider disabled for hackathon demo');
-                return 0;
+                console.warn('⚠️ No blockchain provider available - trying to initialize');
+                initializeBSCProvider();
+                const retryProvider = bscProvider || ethersProvider;
+                if (!retryProvider) {
+                    console.error('❌ Failed to get blockchain provider after retry');
+                    return 0;
+                }
+                return getRealBNBBalance(); // Retry with new provider
             }
             
             try {
@@ -5443,8 +5452,14 @@
             const provider = bscProvider || ethersProvider;
             
             if (!provider) {
-                console.log('ℹ️ BSC Provider disabled for hackathon demo');
-                return 0;
+                console.warn('⚠️ No blockchain provider available - trying to initialize');
+                initializeBSCProvider();
+                const retryProvider = bscProvider || ethersProvider;
+                if (!retryProvider) {
+                    console.error('❌ Failed to get blockchain provider after retry');
+                    return 0;
+                }
+                return getRealBNBBalance(); // Retry with new provider
             }
             
             try {
