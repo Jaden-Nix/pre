@@ -1440,7 +1440,7 @@
                         </button>
 
                         <!-- Sign In Button (shown when logged out) -->
-                        <button id="nav-signin-button" onclick="showScreen('login-screen')" class="hidden px-4 py-2 bg-gradient-to-r from-sky-500 to-cyan-500 rounded-full text-white font-semibold text-sm shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-sky-500/50 active:scale-95">
+                        <button id="nav-signin-button" class="hidden px-4 py-2 bg-gradient-to-r from-sky-500 to-cyan-500 rounded-full text-white font-semibold text-sm shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-sky-500/50 active:scale-95">
                             Sign In
                         </button>
 
@@ -16488,6 +16488,16 @@ ${historyText}`;
 
             // Setup admin features
             setupAdminFeatures();
+
+            // ✅ Attach sign-in button listener
+            const navSignInButton = document.getElementById('nav-signin-button');
+            if (navSignInButton) {
+                navSignInButton.addEventListener('click', () => {
+                    if (typeof window.showScreen === 'function') {
+                        window.showScreen('login-screen');
+                    }
+                });
+            }
 
             // Attach listeners to static buttons
             const aiGenerateBtn = document.getElementById('ai-generate-btn');
