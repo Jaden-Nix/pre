@@ -13775,6 +13775,13 @@ ${historyText}`;
                         console.log('🎨 Rendering', posts.length, 'posts to container...');
                         container.innerHTML = html;
                         console.log('✅ Social feed rendered successfully!');
+                        
+                        // Debug: Check if screen is visible
+                        const screen = document.getElementById('social-feed-screen');
+                        console.log('📺 Screen visibility check:');
+                        console.log('  - Has screen-active class:', screen?.classList.contains('screen-active'));
+                        console.log('  - Has screen-inactive class:', screen?.classList.contains('screen-inactive'));
+                        console.log('  - Computed display:', screen ? window.getComputedStyle(screen).display : 'N/A');
                     } catch (renderError) {
                         console.error('❌ Error rendering social feed:', renderError);
                         container.innerHTML = '<p class="text-red-400 text-center py-8">Error rendering posts: ' + renderError.message + '</p>';
