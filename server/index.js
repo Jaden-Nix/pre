@@ -841,6 +841,158 @@ app.post('/api/custodial-wallet/execute-transaction', async (req, res) => {
     }
 });
 
+// ✅ ON-CHAIN BETTING: Places real bets on PredictionMarketV2 contract
+app.post('/api/custodial/place-bet', async (req, res) => {
+    try {
+        const { userId, marketId, pick, amount, currency } = req.body;
+        
+        // Validation
+        if (!userId || !marketId || pick === undefined || !amount || !currency) {
+            return res.status(400).json({ 
+                error: 'Missing required fields: userId, marketId, pick, amount, currency' 
+            });
+        }
+        
+        if (!custodialWalletService) {
+            return res.status(503).json({ error: 'Custodial wallet service unavailable' });
+        }
+        
+        // ✅ FIX: Use loadWalletSigner() which returns decrypted signer
+        const signer = await custodialWalletService.loadWalletSigner(userId);
+        
+        // PredictionMarketV2 contract
+        const contractAddress = '0x5330cDAdA8417865B379C5E2Bce14f4D840F593a';
+        const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+        
+        // ✅ FIX: Add 'payable' keyword to ABI so BNB bets don't revert
+        const abi = [
+            'function placeBet(uint256 _marketId, bool _pick, uint8 _currency, uint256 _amount) external payable'
+        ];
+        
+        const contract = new ethers.Contract(contractAddress, abi, signer);
+        
+        let tx;
+        
+        if (currency === 'BNB') {
+            // Place BNB bet (Currency.BNB = 0)
+            const value = ethers.utils.parseEther(amount.toString());
+            tx = await contract.placeBet(marketId, pick, 0, value, { value, gasLimit: 300000 });
+            console.log(`📤 BNB bet placed: ${tx.hash}`);
+        } else if (currency === 'PRED') {
+            // Place PRED bet (Currency.PRED = 1)
+            const predAmount = ethers.utils.parseEther(amount.toString());
+            
+            // First approve PRED token spending
+            const predTokenAbi = ['function approve(address spender, uint256 amount) external returns (bool)'];
+            const predToken = new ethers.Contract(predTokenAddress, predTokenAbi, signer);
+            
+            const approveTx = await predToken.approve(contractAddress, predAmount, { gasLimit: 100000 });
+            await approveTx.wait();
+            console.log(`✅ PRED approved: ${approveTx.hash}`);
+            
+            // Then place bet
+            tx = await contract.placeBet(marketId, pick, 1, predAmount, { gasLimit: 300000 });
+            console.log(`📤 PRED bet placed: ${tx.hash}`);
+        } else {
+            return res.status(400).json({ error: 'Invalid currency. Use BNB or PRED' });
+        }
+        
+        // Wait for confirmation
+        const receipt = await tx.wait();
+        console.log(`✅ Bet confirmed in block ${receipt.blockNumber}`);
+        
+        res.json({
+            success: true,
+            txHash: tx.hash,
+            blockNumber: receipt.blockNumber,
+            gasUsed: receipt.gasUsed.toString(),
+            onChain: true
+        });
+        
+    } catch (error) {
+        console.error('On-chain bet error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ✅ ON-CHAIN BATCH BETTING: For Quick Play (multiple bets in one transaction)
+app.post('/api/custodial/place-batch-bets', async (req, res) => {
+    try {
+        const { userId, bets } = req.body;
+        
+        // Validation
+        if (!userId || !Array.isArray(bets) || bets.length === 0) {
+            return res.status(400).json({ error: 'Missing userId or bets array' });
+        }
+        
+        if (!custodialWalletService) {
+            return res.status(503).json({ error: 'Custodial wallet service unavailable' });
+        }
+        
+        // ✅ FIX: Use loadWalletSigner() which returns decrypted signer
+        const signer = await custodialWalletService.loadWalletSigner(userId);
+        
+        // PredictionMarketV2 contract
+        const contractAddress = '0x5330cDAdA8417865B379C5E2Bce14f4D840F593a';
+        const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+        
+        // ✅ FIX: Correct ABI signature - parameter order is: marketIds, picks, amounts, currencies (not currencies, amounts!)
+        const abi = [
+            'function placeBatchBets(uint256[] memory _marketIds, bool[] memory _picks, uint256[] memory _amounts, uint8[] memory _currencies) external payable'
+        ];
+        
+        const contract = new ethers.Contract(contractAddress, abi, signer);
+        
+        // ✅ FIX: Parse amounts once and use them consistently
+        const marketIds = bets.map(b => b.marketId);
+        const picks = bets.map(b => b.pick);
+        const amounts = bets.map(b => ethers.utils.parseEther(b.amount.toString()));
+        const currencies = bets.map(b => b.currency === 'BNB' ? 0 : 1);
+        
+        // Calculate total BNB and PRED needed (already parsed)
+        const totalBnb = amounts.reduce((sum, amount, i) => {
+            return bets[i].currency === 'BNB' ? sum.add(amount) : sum;
+        }, ethers.BigNumber.from(0));
+        
+        const totalPred = amounts.reduce((sum, amount, i) => {
+            return bets[i].currency === 'PRED' ? sum.add(amount) : sum;
+        }, ethers.BigNumber.from(0));
+        
+        if (totalPred.gt(0)) {
+            const predTokenAbi = ['function approve(address spender, uint256 amount) external returns (bool)'];
+            const predToken = new ethers.Contract(predTokenAddress, predTokenAbi, signer);
+            const approveTx = await predToken.approve(contractAddress, totalPred, { gasLimit: 100000 });
+            await approveTx.wait();
+            console.log(`✅ PRED approved for batch: ${approveTx.hash}`);
+        }
+        
+        // ✅ FIX: Call with correct parameter order: marketIds, picks, amounts, currencies
+        const tx = await contract.placeBatchBets(marketIds, picks, amounts, currencies, {
+            value: totalBnb,
+            gasLimit: 500000
+        });
+        
+        console.log(`📤 Batch bet placed: ${tx.hash} (${bets.length} bets)`);
+        
+        // Wait for confirmation
+        const receipt = await tx.wait();
+        console.log(`✅ Batch bet confirmed in block ${receipt.blockNumber}`);
+        
+        res.json({
+            success: true,
+            txHash: tx.hash,
+            blockNumber: receipt.blockNumber,
+            gasUsed: receipt.gasUsed.toString(),
+            betCount: bets.length,
+            onChain: true
+        });
+        
+    } catch (error) {
+        console.error('Batch bet error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Re-enabled for hybrid mode - wallet users get blockchain, email users get Firestore
 app.post('/api/aa/place-bet', async (req, res) => {
     const { userId, marketId, pick, amount } = req.body;
