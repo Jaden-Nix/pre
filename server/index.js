@@ -26,6 +26,36 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
 const APP_ID = process.env.APP_ID || 'predora-hackathon';
 
+// --- XP System Constants ---
+const XP_VALUES = {
+    PLACE_BET: 10,           // Base XP for placing any bet
+    CREATE_MARKET: 25,       // XP for creating a market with liquidity
+    WIN_BET: 5,             // Bonus XP for winning a bet
+    DAILY_LOGIN: 15         // XP for daily login (future feature)
+};
+
+// Helper function to add XP to user
+async function addXpToUser(userId, amount, reason) {
+    if (!db || !userId || amount <= 0) return false;
+    try {
+        const userRef = db.collection('users').doc(userId);
+        await userRef.set({
+            xp: admin.firestore.FieldValue.increment(amount),
+            lastXpUpdate: Date.now(),
+            xpHistory: admin.firestore.FieldValue.arrayUnion({
+                amount,
+                reason,
+                timestamp: Date.now()
+            })
+        }, { merge: true });
+        console.log(`✅ XP: Added ${amount} XP to ${userId} (${reason})`);
+        return true;
+    } catch (error) {
+        console.warn(`⚠️  Could not add XP: ${error.message}`);
+        return false;
+    }
+}
+
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 let openai = null;
 if (OPENAI_API_KEY) {
