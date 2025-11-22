@@ -7,9 +7,13 @@
 Platform now uses **CUSTODIAL WALLETS** with production-grade security for all users: Sign up with email, instantly get an encrypted wallet managed by the backend. No MetaMask needed! Users can withdraw BNB + $PRED to any address. All markets support dual-currency betting (BNB + $PRED) via batch transactions. Advanced 3-tier oracle resolution system with multi-model scoring ensures accurate outcomes.
 
 **Latest Fixes (November 22, 2025):**
-- ✅ **Faucet Legacy Support**: Complete 4-layer email persistence system ensures both new Firebase Auth users (user_<uid>) and legacy users (hashed email) can claim $PRED tokens. Email stored in Firestore, survives localStorage clear, automatic profile patching on login.
-- ✅ **Social Feed Loading**: Fixed posts not loading on navigation to social feed tab.
-- ✅ **Logout Button Placement**: Repositioned to appear only below assets tab (not on other profile tabs).
+- ✅ **Quick Play Navigation Fix**: Bottom nav "Quick" button now correctly navigates to `quick-play-screen` (was pointing to pledge-pool-screen)
+- ✅ **User Enumeration Security Fix**: OTP endpoint returns identical response for all users to prevent account enumeration attacks. "Welcome back!" message uses client-side localStorage flag.
+- ✅ **OTP Double-Read Bug Fix**: Fixed "body already used" error by reading response.json() only once
+- ✅ **Firebase Admin Guard**: OTP flow gracefully degrades when Firebase Admin unavailable (local/demo environments)
+- ✅ **Faucet Legacy Support**: Complete 4-layer email persistence system ensures both new Firebase Auth users (user_<uid>) and legacy users (hashed email) can claim $PRED tokens
+- ✅ **Social Feed Loading**: Posts load correctly via loadSocialFeed() in navigation router
+- ✅ **Defensive Logging**: Added null checks for DOM elements in loadQuickPlay() and loadSocialFeed() functions
 
 ### ✅ Custodial Wallet Features (LIVE & SECURED):
 

@@ -3568,7 +3568,7 @@
             <button id="bottom-nav-create-button" onclick="showScreen('create-market-screen')" class="nav-button flex flex-col items-center text-gray-400 -mt-2 bg-gradient-to-br from-indigo-600 to-blue-600 p-3 rounded-full shadow-lg shadow-blue-500/30 border-2 border-sky-400">
                 <svg class="w-5 h-5" fill="none" stroke="white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
             </button>
-            <button onclick="showScreen('pledge-pool-screen')" class="nav-button flex flex-col items-center text-gray-400">
+            <button onclick="showScreen('quick-play-screen')" class="nav-button flex flex-col items-center text-gray-400">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                 <span class="text-xs mt-1">Quick</span>
             </button>
@@ -9604,8 +9604,16 @@
          * Loads a Quick Play card onto the screen.
          */
         function loadQuickPlay(index) {
+            console.log('🎯 loadQuickPlay called with index:', index);
             let data = window.quickPlayData;
+            console.log('📊 quickPlayData:', data ? data.length + ' markets' : 'null/undefined');
             const cardEl = dom.quickPlayCard;
+            console.log('🎴 cardEl:', cardEl ? 'found' : 'NULL - MISSING FROM DOM');
+            
+            if (!cardEl) {
+                console.error('❌ CRITICAL: #quick-play-card element not found in DOM!');
+                return;
+            }
 
             // --- HACKATHON FIX: Show "All Caught Up" message ---
             if (!data || data.length === 0) {
@@ -13487,8 +13495,15 @@ ${historyText}`;
          * Load and display social feed posts
          */
         window.loadSocialFeed = async () => {
+            console.log('📱 loadSocialFeed called');
             // Guest mode allowed - can view feed without auth
             const container = document.getElementById('social-feed-container');
+            console.log('📦 container:', container ? 'found' : 'NULL - MISSING FROM DOM');
+            
+            if (!container) {
+                console.error('❌ CRITICAL: #social-feed-container element not found in DOM!');
+                return;
+            }
             
             // Clean up old listener
             if (socialFeedUnsubscribe) socialFeedUnsubscribe();
