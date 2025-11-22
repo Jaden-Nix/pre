@@ -3556,18 +3556,18 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6-4v4m0-4h4"></path></svg>
                 <span class="text-xs mt-1">Home</span>
             </button>
-            <button onclick="showScreen('social-feed-screen'); loadSocialFeed();" class="nav-button flex flex-col items-center text-gray-400">
+            <button id="bottom-nav-social-button" onclick="showScreen('social-feed-screen'); loadSocialFeed();" class="nav-button flex flex-col items-center text-gray-400">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                 <span class="text-xs mt-1">Social</span>
             </button>
-            <button onclick="showScreen('create-market-screen')" class="nav-button flex flex-col items-center text-gray-400 -mt-2 bg-gradient-to-br from-indigo-600 to-blue-600 p-3 rounded-full shadow-lg shadow-blue-500/30 border-2 border-sky-400">
+            <button id="bottom-nav-create-button" onclick="showScreen('create-market-screen')" class="nav-button flex flex-col items-center text-gray-400 -mt-2 bg-gradient-to-br from-indigo-600 to-blue-600 p-3 rounded-full shadow-lg shadow-blue-500/30 border-2 border-sky-400">
                 <svg class="w-5 h-5" fill="none" stroke="white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
             </button>
             <button onclick="showScreen('pledge-pool-screen')" class="nav-button flex flex-col items-center text-gray-400">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                 <span class="text-xs mt-1">Quick</span>
             </button>
-            <button onclick="showScreen('profile-screen')" class="nav-button flex flex-col items-center text-gray-400">
+            <button id="bottom-nav-profile-button" onclick="showScreen('profile-screen')" class="nav-button flex flex-col items-center text-gray-400">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                 <span class="text-xs mt-1">Profile</span>
             </button>
@@ -4412,12 +4412,29 @@
             const navUserSection = document.getElementById('nav-user-section');
             const navSignInButton = document.getElementById('nav-signin-button');
             
+            // Bottom nav buttons (mobile only)
+            const bottomNavProfile = document.getElementById('bottom-nav-profile-button');
+            const bottomNavSocial = document.getElementById('bottom-nav-social-button');
+            const bottomNavCreate = document.getElementById('bottom-nav-create-button');
+            
             if (isLoggedIn) {
+                // Logged in: Show profile & user section, hide sign in
                 if (navUserSection) navUserSection.classList.remove('hidden');
                 if (navSignInButton) navSignInButton.classList.add('hidden');
+                
+                // Show all bottom nav buttons
+                if (bottomNavProfile) bottomNavProfile.classList.remove('hidden');
+                if (bottomNavSocial) bottomNavSocial.classList.remove('hidden');
+                if (bottomNavCreate) bottomNavCreate.classList.remove('hidden');
             } else {
+                // Guest mode: Show sign in, hide user section
                 if (navUserSection) navUserSection.classList.add('hidden');
                 if (navSignInButton) navSignInButton.classList.remove('hidden');
+                
+                // Hide profile/social/create buttons for guests
+                if (bottomNavProfile) bottomNavProfile.classList.add('hidden');
+                if (bottomNavSocial) bottomNavSocial.classList.add('hidden');
+                if (bottomNavCreate) bottomNavCreate.classList.add('hidden');
             }
         }
 
