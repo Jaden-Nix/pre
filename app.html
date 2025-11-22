@@ -4433,7 +4433,13 @@
                 console.log('✅ User signed out');
             } catch (error) {
                 console.error('❌ Sign out failed:', error);
-                showToast('❌ Failed to sign out', 'error');
+                console.error('Error details:', {
+                    message: error?.message,
+                    stack: error?.stack,
+                    name: error?.name,
+                    code: error?.code
+                });
+                showToast('❌ Failed to sign out: ' + (error?.message || 'Unknown error'), 'error');
             }
         }
 
@@ -6057,7 +6063,12 @@
                 }
             } catch (error) {
                 console.error('Faucet claim error:', error);
-                showToast('Failed to claim tokens: ' + error.message, 'error');
+                console.error('Error details:', {
+                    message: error?.message,
+                    stack: error?.stack,
+                    name: error?.name
+                });
+                showToast('Failed to claim tokens: ' + (error?.message || 'Unknown error'), 'error');
                 claimBtn.disabled = false;
                 claimBtn.innerHTML = '💰 Claim 50 $PRED';
             }
@@ -8400,27 +8411,21 @@
         }
 
         /**
-         * Updates real blockchain balances for Assets tab
+         * Updates real blockchain balances for Assets tab (Custodial Wallet Support)
          */
         async function updateRealBalancesForAssetsTab() {
             console.log('🔄 Fetching real balances for assets screen...');
             
-            // Update BNB balance if wallet is connected
-            if (window.ethereum && connectedAddress) {
+            // Custodial wallets always work via backend, no MetaMask needed
+            const walletAddress = userProfile.walletAddress;
+            if (walletAddress) {
                 try {
                     await updateRealBNBBalance();
                 } catch (err) {
-                    console.error('Error fetching real BNB balance:', err);
+                    console.error('Error fetching real balances:', err);
                 }
             } else {
-                console.log('ℹ️ Blockchain disabled - using Firestore balance only');
-            }
-            
-            // Always fetch and display Firestore balances
-            if (userProfile) {
-                const bnbBalance = userProfile.bnbBalance || 0.2;
-                const cakeBalance = userProfile.cakeBalance || 150;
-                console.log('✅ Real balances loaded:', { bnbBalance, cakeBalance });
+                console.log('⚠️ No wallet address available');
             }
         }
 
