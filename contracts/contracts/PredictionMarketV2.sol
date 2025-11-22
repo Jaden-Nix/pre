@@ -57,6 +57,8 @@ contract PredictionMarketV2 {
     uint256 public platformFeeBps = 100;
     uint256 public accumulatedFeesBnb;
     uint256 public accumulatedFeesPred;
+    uint256 public lockedFundsBnb; // Funds from zero-winner markets
+    uint256 public lockedFundsPred; // Funds from zero-winner markets
     address public platformFeeRecipient;
     address public admin;
     
@@ -67,10 +69,11 @@ contract PredictionMarketV2 {
     event MarketCreated(uint256 indexed marketId, string title, address indexed creator);
     event BetPlaced(uint256 indexed marketId, address indexed user, uint256 amount, bool pick, Currency currency);
     event MarketResolved(uint256 indexed marketId, bool outcome);
-    event MarketFinalized(uint256 indexed marketId);
+    event MarketFinalized(uint256 indexed marketId, uint256 bnbToFees, uint256 predToFees, uint256 bnbLocked, uint256 predLocked);
     event AutoPayoutTriggered(uint256 indexed marketId);
     event WinningsClaimed(uint256 indexed marketId, address indexed user, uint256 amount, Currency currency);
     event MarketDisputed(uint256 indexed marketId, address indexed disputor);
+    event LockedFundsWithdrawn(uint256 bnbAmount, uint256 predAmount);
     
     constructor(address _predTokenAddress) {
         admin = msg.sender;
@@ -305,17 +308,37 @@ contract PredictionMarketV2 {
         
         market.status = MarketStatus.FINALIZED;
         
-        // Fees are only collected from the winning pool (not from losers)
         uint256 winningPoolBnb = market.outcome ? market.yesPoolBnb : market.noPoolBnb;
+        uint256 losingPoolBnb = market.outcome ? market.noPoolBnb : market.yesPoolBnb;
         uint256 winningPoolPred = market.outcome ? market.yesPoolPred : market.noPoolPred;
+        uint256 losingPoolPred = market.outcome ? market.noPoolPred : market.yesPoolPred;
         
-        uint256 feeBnb = (winningPoolBnb * platformFeeBps) / 10000;
-        uint256 feePred = (winningPoolPred * platformFeeBps) / 10000;
+        uint256 feeBnb = 0;
+        uint256 predFee = 0;
+        uint256 bnbLocked = 0;
+        uint256 predLocked = 0;
         
-        accumulatedFeesBnb += feeBnb;
-        accumulatedFeesPred += feePred;
+        // Handle BNB: If no winners, lock losing pool. Otherwise, collect fees from winners.
+        if (winningPoolBnb == 0 && losingPoolBnb > 0) {
+            // Zero winners: lock all losing funds for admin withdrawal
+            bnbLocked = losingPoolBnb;
+            lockedFundsBnb += bnbLocked;
+        } else if (winningPoolBnb > 0) {
+            // Normal case: collect fees from winning pool
+            feeBnb = (winningPoolBnb * platformFeeBps) / 10000;
+            accumulatedFeesBnb += feeBnb;
+        }
         
-        emit MarketFinalized(_marketId);
+        // Handle PRED: same logic
+        if (winningPoolPred == 0 && losingPoolPred > 0) {
+            predLocked = losingPoolPred;
+            lockedFundsPred += predLocked;
+        } else if (winningPoolPred > 0) {
+            predFee = (winningPoolPred * platformFeeBps) / 10000;
+            accumulatedFeesPred += predFee;
+        }
+        
+        emit MarketFinalized(_marketId, feeBnb, predFee, bnbLocked, predLocked);
     }
     
     function withdrawFees() external onlyAdmin {
@@ -333,5 +356,47 @@ contract PredictionMarketV2 {
         if (predFees > 0) {
             require(predToken.transfer(platformFeeRecipient, predFees), "PRED fee transfer failed");
         }
+    }
+    
+    /**
+     * @dev Withdraw locked funds from zero-winner markets
+     * These are funds where nobody bet on the winning side
+     */
+    function withdrawLockedFunds() external onlyAdmin nonReentrant {
+        uint256 bnbLocked = lockedFundsBnb;
+        uint256 predLocked = lockedFundsPred;
+        
+        lockedFundsBnb = 0;
+        lockedFundsPred = 0;
+        
+        if (bnbLocked > 0) {
+            (bool success, ) = platformFeeRecipient.call{value: bnbLocked}("");
+            require(success, "BNB locked funds transfer failed");
+        }
+        
+        if (predLocked > 0) {
+            require(predToken.transfer(platformFeeRecipient, predLocked), "PRED locked funds transfer failed");
+        }
+        
+        emit LockedFundsWithdrawn(bnbLocked, predLocked);
+    }
+    
+    /**
+     * @dev Get contract balances for accounting verification
+     */
+    function getContractBalances() external view returns (
+        uint256 bnbBalance,
+        uint256 predBalance,
+        uint256 bnbAccountedFor,
+        uint256 predAccountedFor
+    ) {
+        bnbBalance = address(this).balance;
+        predBalance = predToken.balanceOf(address(this));
+        
+        // All BNB should be: fees + locked funds + active market pools
+        bnbAccountedFor = accumulatedFeesBnb + lockedFundsBnb;
+        predAccountedFor = accumulatedFeesPred + lockedFundsPred;
+        
+        // Note: Active market pools are tracked separately in market.yesPool*/market.noPool*
     }
 }
