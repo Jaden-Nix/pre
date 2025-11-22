@@ -467,7 +467,7 @@ app.post('/api/custodial-wallet/info', async (req, res) => {
 
 // 🪙 $PRED Token Faucet - For testing purposes
 app.post('/api/faucet/claim-pred', async (req, res) => {
-    const { userId } = req.body;
+    const { userId, email } = req.body;
     
     if (!userId) {
         return res.status(400).json({ error: 'User ID is required' });
@@ -478,8 +478,18 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
     }
     
     try {
-        const profileRef = db.collection(`artifacts/${APP_ID}/public/data/user_profiles`).doc(userId);
-        const profileDoc = await profileRef.get();
+        let profileRef = db.collection(`artifacts/${APP_ID}/public/data/user_profiles`).doc(userId);
+        let profileDoc = await profileRef.get();
+        
+        // Fallback for legacy users: Try hashed email format if provided
+        if (!profileDoc.exists && email) {
+            const crypto = await import('crypto');
+            const legacyUserId = crypto.createHash('sha256').update(email.toLowerCase()).digest('hex').substring(0, 16);
+            console.log(`⚠️ Profile not found for ${userId}, trying legacy ID: ${legacyUserId}`);
+            
+            profileRef = db.collection(`artifacts/${APP_ID}/public/data/user_profiles`).doc(legacyUserId);
+            profileDoc = await profileRef.get();
+        }
         
         if (!profileDoc.exists) {
             return res.status(404).json({ error: 'User profile not found' });

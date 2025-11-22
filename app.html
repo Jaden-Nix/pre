@@ -2739,8 +2739,16 @@
                         </div>
                         
                         <p class="text-xs text-center text-gray-500 mt-3">Value: $600 per token · Free testnet tokens</p>
+                        <!-- Logout Button (only shows below Assets tab) -->
+                        <div id="logout-button-container" class="pt-6">
+                            <button id="logout-or-login-btn" onclick="handleLogoutOrLogin()" class="btn bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 w-full lg:w-auto lg:px-8">
+                                <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                </svg>
+                                <span id="logout-or-login-text">Log Out</span>
+                            </button>
+                        </div>
                     </div>
-                </div> 
 
                         <div id="networking-content" class="hidden space-y-4">
                             <div class="flex justify-around border-b border-white/10">
@@ -2755,16 +2763,6 @@
                                     <p class="text-gray-400 text-center pt-8">Loading following list...</p>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Logout Button for Profile Page -->
-                        <div id="logout-button-container" class="pt-6">
-                            <button id="logout-or-login-btn" onclick="handleLogoutOrLogin()" class="btn bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 w-full lg:w-auto lg:px-8">
-                                <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                                </svg>
-                                <span id="logout-or-login-text">Log Out</span>
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -5883,10 +5881,16 @@
                 claimBtn.disabled = true;
                 claimBtn.innerHTML = '⏳ Claiming...';
                 
+                // Get user email from userProfile (stored in Firestore) for legacy fallback
+                const userEmail = userProfile?.email || localStorage.getItem('userEmail') || '';
+                
                 const response = await fetch('/api/faucet/claim-pred', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: currentUserId })
+                    body: JSON.stringify({ 
+                        userId: currentUserId,
+                        email: userEmail // For legacy user fallback
+                    })
                 });
                 
                 const data = await response.json();
@@ -6504,6 +6508,11 @@
                 }
 
                 showLoadingOverlay(true, 'Setting up your account...');
+                
+                // Ensure email is stored in localStorage for faucet fallback (legacy users)
+                if (email) {
+                    localStorage.setItem('userEmail', email);
+                }
                 
                 // Complete authentication
                 await completeAuthentication(firebaseUser, 'firebase-email');
@@ -7226,8 +7235,12 @@
 
             try {
                 const docSnap = await getDoc(profileRef);
+                // Get email from localStorage (set during authentication)
+                const userEmail = localStorage.getItem('userEmail') || '';
+                
                 const defaultProfile = {
                     userId: currentUserId,
+                    email: userEmail, // Store email for legacy faucet fallback
                     displayName: userProfile.displayName, 
                     walletAddress: "0x" + [...Array(40)].map(() => Math.floor(Math.random() * 16).toString(16)).join(''), 
                     xp: 0,
@@ -7262,6 +7275,13 @@
                     // --- 2. EXISTING USER PATH ---
                     console.log("Demo profile loaded from Firebase.");
                     userProfile = { ...defaultProfile, ...docSnap.data() }; 
+
+                    // ✅ Patch existing profiles with email if missing (for legacy user support)
+                    if (!userProfile.email && userEmail) {
+                        console.log("Patching existing profile with email for faucet support...");
+                        await setDoc(profileRef, { email: userEmail }, { merge: true });
+                        userProfile.email = userEmail;
+                    }
 
                     // Ensure public profile exists
                     const publicProfileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', PUBLIC_LEADERBOARD_COLLECTION, currentUserId);
@@ -7712,14 +7732,8 @@
                 desktopAppTitle.style.display = isHomeScreen ? 'block' : 'none';
             }
 
-            // Manage logout button visibility - show on profile, hide everywhere else
-            if (dom.logoutButtonContainer) {
-                if (screenId === 'profile-screen' && currentUserId && !isGuestMode) {
-                    dom.logoutButtonContainer.classList.remove('hidden');
-                } else {
-                    dom.logoutButtonContainer.classList.add('hidden');
-                }
-            }
+            // Logout button visibility is now managed by handleProfileTab() function
+            // It will show only when assets tab is active
 
             // --- RACE CONDITION FIX ---
             // Clean up the single-market listener when we leave the detail screen
@@ -7802,6 +7816,12 @@
                     break;
                 case 'leaderboard-screen':
                     if (!leaderboardUnsubscribe) renderLeaderboard();
+                    break;
+                case 'social-feed-screen':
+                    // Load social feed posts when user navigates to social screen
+                    if (typeof loadSocialFeed === 'function') {
+                        loadSocialFeed();
+                    }
                     break;
                 case 'profile-screen':
                     // Update profile UI with latest data when screen is shown
@@ -8317,9 +8337,6 @@
             if(dom.assetsContent) dom.assetsContent.classList.add('hidden'); 
             if(dom.aiProfileSummaryPanel) dom.aiProfileSummaryPanel.classList.add('hidden');
 
-            // Keep logout button visible during tab switches within profile screen
-            // (Don't hide it here - it's managed by loadDataForScreen/showScreen instead)
-
             // Hide the new networking panel
             const networkingContent = document.getElementById('networking-content');
             if(networkingContent) networkingContent.classList.add('hidden');
@@ -8328,6 +8345,15 @@
             const notificationsContent = document.getElementById('notifications-content');
             if(notificationsContent) notificationsContent.classList.add('hidden');
             // --- END NEW ---
+
+            // Manage logout button visibility - show only on assets tab
+            if (dom.logoutButtonContainer) {
+                if (tabName === 'assets' && currentUserId && !isGuestMode) {
+                    dom.logoutButtonContainer.classList.remove('hidden');
+                } else {
+                    dom.logoutButtonContainer.classList.add('hidden');
+                }
+            }
 
             // Show the correct content panel
             const contentEl = document.getElementById(`${tabName}-content`) || document.getElementById(`${tabName}-stakes-content`);
