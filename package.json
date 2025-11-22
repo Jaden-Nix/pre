@@ -10,6 +10,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
     "http-server": "^14.1.1",
     "openai": "^6.9.1"
   }

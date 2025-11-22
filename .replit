@@ -1,4 +1,4 @@
-modules = ["web", "nodejs-20"]
+modules = ["web", "nodejs-20", "python-3.11"]
 
 [[ports]]
 localPort = 3001
@@ -37,7 +37,7 @@ localPort = 41045
 externalPort = 3000
 
 [[ports]]
-localPort = 41969
+localPort = 41995
 externalPort = 9000
 
 [[ports]]
