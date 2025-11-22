@@ -33,6 +33,13 @@ contract PredictionMarketV2 {
         MarketStatus status;
         uint256 resolutionSubmittedAt;
         bool autoPayoutTriggered;
+        // Separate tracking for initial liquidity (protocol-owned, not user bets)
+        uint256 initialLiquidityYesBnb;
+        uint256 initialLiquidityNoBnb;
+        uint256 initialLiquidityYesPred;
+        uint256 initialLiquidityNoPred;
+        // Oracle evidence hash for verifiable resolution
+        string evidenceHash;
     }
     
     enum MarketStatus { ACTIVE, DISPUTED, RESOLVED, FINALIZED, CANCELLED }
@@ -66,7 +73,7 @@ contract PredictionMarketV2 {
     uint256 private constant ENTERED = 2;
     uint256 private reentrancyStatus;
     
-    event MarketCreated(uint256 indexed marketId, string title, address indexed creator);
+    event MarketCreated(uint256 indexed marketId, string title, address indexed creator, uint256 initialYesBnb, uint256 initialNoBnb, uint256 initialYesPred, uint256 initialNoPred);
     event BetPlaced(uint256 indexed marketId, address indexed user, uint256 amount, bool pick, Currency currency);
     event MarketResolved(uint256 indexed marketId, bool outcome);
     event MarketFinalized(uint256 indexed marketId, uint256 bnbToFees, uint256 predToFees, uint256 bnbLocked, uint256 predLocked);
@@ -97,10 +104,23 @@ contract PredictionMarketV2 {
     function createMarket(
         string memory _title,
         string memory _description,
-        uint256 _resolutionTime
-    ) external returns (uint256) {
+        uint256 _resolutionTime,
+        uint256 _initialYesBnb,
+        uint256 _initialNoBnb,
+        uint256 _initialYesPred,
+        uint256 _initialNoPred
+    ) external payable returns (uint256) {
         require(_resolutionTime > block.timestamp, "Future time required");
         require(bytes(_title).length > 0, "Title required");
+        
+        uint256 totalBnb = _initialYesBnb + _initialNoBnb;
+        uint256 totalPred = _initialYesPred + _initialNoPred;
+        
+        require(msg.value == totalBnb, "Incorrect BNB amount");
+        
+        if (totalPred > 0) {
+            require(predToken.transferFrom(msg.sender, address(this), totalPred), "PRED transfer failed");
+        }
         
         marketCounter++;
         
@@ -113,18 +133,71 @@ contract PredictionMarketV2 {
             resolutionTime: _resolutionTime,
             isResolved: false,
             outcome: false,
-            yesPoolBnb: 0,
-            noPoolBnb: 0,
-            yesPoolPred: 0,
-            noPoolPred: 0,
-            totalVolumeBnb: 0,
+            yesPoolBnb: _initialYesBnb,
+            noPoolBnb: _initialNoBnb,
+            yesPoolPred: _initialYesPred,
+            noPoolPred: _initialNoPred,
+            totalVolumeBnb: 0,  // Volume tracks only user bets, not initial liquidity
             totalVolumePred: 0,
             status: MarketStatus.ACTIVE,
             resolutionSubmittedAt: 0,
-            autoPayoutTriggered: false
+            autoPayoutTriggered: false,
+            // Track initial liquidity separately (protocol-owned)
+            initialLiquidityYesBnb: _initialYesBnb,
+            initialLiquidityNoBnb: _initialNoBnb,
+            initialLiquidityYesPred: _initialYesPred,
+            initialLiquidityNoPred: _initialNoPred,
+            evidenceHash: "" // No evidence hash at creation
         });
         
-        emit MarketCreated(marketCounter, _title, msg.sender);
+        // Record initial liquidity as bets owned by msg.sender (deployer/creator)
+        // This ensures initial liquidity can be claimed if it wins
+        if (_initialYesBnb > 0) {
+            marketBets[marketCounter].push(Bet({
+                user: msg.sender,
+                marketId: marketCounter,
+                amount: _initialYesBnb,
+                pick: true,  // YES
+                currency: Currency.BNB,
+                timestamp: block.timestamp,
+                claimed: false
+            }));
+        }
+        if (_initialNoBnb > 0) {
+            marketBets[marketCounter].push(Bet({
+                user: msg.sender,
+                marketId: marketCounter,
+                amount: _initialNoBnb,
+                pick: false,  // NO
+                currency: Currency.BNB,
+                timestamp: block.timestamp,
+                claimed: false
+            }));
+        }
+        if (_initialYesPred > 0) {
+            marketBets[marketCounter].push(Bet({
+                user: msg.sender,
+                marketId: marketCounter,
+                amount: _initialYesPred,
+                pick: true,  // YES
+                currency: Currency.PRED,
+                timestamp: block.timestamp,
+                claimed: false
+            }));
+        }
+        if (_initialNoPred > 0) {
+            marketBets[marketCounter].push(Bet({
+                user: msg.sender,
+                marketId: marketCounter,
+                amount: _initialNoPred,
+                pick: false,  // NO
+                currency: Currency.PRED,
+                timestamp: block.timestamp,
+                claimed: false
+            }));
+        }
+        
+        emit MarketCreated(marketCounter, _title, msg.sender, _initialYesBnb, _initialNoBnb, _initialYesPred, _initialNoPred);
         return marketCounter;
     }
     
@@ -240,7 +313,13 @@ contract PredictionMarketV2 {
         }
     }
     
+    // Backwards-compatible wrapper (keeps old signature working)
     function resolveMarket(uint256 _marketId, bool _outcome) external onlyAdmin {
+        resolveMarketWithEvidence(_marketId, _outcome, "");
+    }
+    
+    // New version with evidence hash support
+    function resolveMarketWithEvidence(uint256 _marketId, bool _outcome, string memory _evidenceHash) public onlyAdmin {
         Market storage market = markets[_marketId];
         require(market.id != 0, "Market not found");
         require(!market.isResolved, "Already resolved");
@@ -249,6 +328,7 @@ contract PredictionMarketV2 {
         market.outcome = _outcome;
         market.status = MarketStatus.RESOLVED;
         market.resolutionSubmittedAt = block.timestamp;
+        market.evidenceHash = _evidenceHash; // Store oracle evidence hash (IPFS/SHA-256)
         
         emit MarketResolved(_marketId, _outcome);
     }
@@ -284,11 +364,13 @@ contract PredictionMarketV2 {
         uint256 winningPoolPred = market.outcome ? market.yesPoolPred : market.noPoolPred;
         uint256 losingPoolPred = market.outcome ? market.noPoolPred : market.yesPoolPred;
         
+        // Initial liquidity participates in payouts (acts like a "house bet")
+        // This prevents division by zero and ensures fair distribution
         for (uint256 i = 0; i < bets.length; i++) {
             if (bets[i].user == _user && bets[i].pick == market.outcome) {
                 if (bets[i].currency == Currency.BNB && winningPoolBnb > 0) {
                     uint256 fee = (bets[i].amount * platformFeeBps) / 10000;
-                    // Payout = stake (minus fee) + proportional share of losing pool
+                    // Payout = stake (minus fee) + proportional share of losing pool (including initial liquidity)
                     uint256 shareOfLosingPool = (bets[i].amount * losingPoolBnb) / winningPoolBnb;
                     bnbPayout += (bets[i].amount - fee + shareOfLosingPool);
                 } else if (bets[i].currency == Currency.PRED && winningPoolPred > 0) {
@@ -318,13 +400,14 @@ contract PredictionMarketV2 {
         uint256 bnbLocked = 0;
         uint256 predLocked = 0;
         
-        // Handle BNB: If no winners, lock losing pool. Otherwise, collect fees from winners.
+        // Handle BNB: Initial liquidity participates in payouts (treated as house bet)
+        // If no winners at all (including initial liquidity), lock losing pool
         if (winningPoolBnb == 0 && losingPoolBnb > 0) {
             // Zero winners: lock all losing funds for admin withdrawal
             bnbLocked = losingPoolBnb;
             lockedFundsBnb += bnbLocked;
         } else if (winningPoolBnb > 0) {
-            // Normal case: collect fees from winning pool
+            // Normal case: collect fees from winning pool (includes initial liquidity)
             feeBnb = (winningPoolBnb * platformFeeBps) / 10000;
             accumulatedFeesBnb += feeBnb;
         }

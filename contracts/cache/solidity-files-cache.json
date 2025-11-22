@@ -312,8 +312,8 @@
       ]
     },
     "/home/runner/workspace/contracts/contracts/PredictionMarketV2.sol": {
-      "lastModificationDate": 1763795539561,
-      "contentHash": "780567331b6026fc01a116231d2e3e24",
+      "lastModificationDate": 1763820425551,
+      "contentHash": "a4d83167c43458074c60cee19c3d6106",
       "sourceName": "contracts/PredictionMarketV2.sol",
       "solcConfig": {
         "version": "0.8.20",

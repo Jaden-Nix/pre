@@ -465,6 +465,233 @@ app.post('/api/custodial-wallet/info', async (req, res) => {
     }
 });
 
+// 🎯 On-Chain Market Creation - Creates markets on PredictionMarketV2 contract + Firestore
+app.post('/api/market/create-onchain', async (req, res) => {
+    const { title, description, category, endDate, liquidityBNB, marketStructure, initialOdds, options } = req.body;
+    
+    if (!title || !description || !category || !endDate || !liquidityBNB) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    // Get idToken from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+    const idToken = authHeader.split('Bearer ')[1];
+    
+    try {
+        // Verify Firebase ID token
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const userId = decodedToken.uid;
+        
+        // Convert endDate to Unix timestamp
+        const resolutionTime = Math.floor(new Date(endDate).getTime() / 1000);
+        
+        // Get deployer wallet to create market
+        const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY_V2;
+        if (!DEPLOYER_PRIVATE_KEY) {
+            return res.status(503).json({ error: 'Market creation service unavailable - missing deployer key' });
+        }
+        
+        const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+        const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
+        
+        // Initialize contract with updated ABI including initial liquidity support
+        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
+        const contractABI = [
+            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
+            'event MarketCreated(uint256 indexed marketId, string title, address indexed creator, uint256 initialYesBnb, uint256 initialNoBnb, uint256 initialYesPred, uint256 initialNoPred)'
+        ];
+        const predictionMarketContract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
+        
+        // Calculate initial liquidity split (50/50 YES/NO for balanced market)
+        // Dual currency support: BNB + PRED initial liquidity
+        const liquidityBnbWei = ethers.utils.parseEther(liquidityBNB.toString());
+        const halfLiquidityBnb = liquidityBnbWei.div(2);
+        
+        // Add PRED liquidity (10x the BNB amount for testing)
+        // Example: 0.1 BNB = $60 → 600 PRED tokens
+        const predLiquidityAmount = ethers.utils.parseEther((liquidityBNB * 600).toString());
+        const halfLiquidityPred = predLiquidityAmount.div(2);
+        
+        // Approve PRED token spending if we're adding PRED liquidity
+        const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+        if (predLiquidityAmount.gt(0)) {
+            const predTokenAbi = ['function approve(address spender, uint256 amount) external returns (bool)'];
+            const predToken = new ethers.Contract(predTokenAddress, predTokenAbi, deployerWallet);
+            const approveTx = await predToken.approve(contractAddress, predLiquidityAmount, { gasLimit: 100000 });
+            await approveTx.wait();
+            console.log(`✅ PRED approved for market creation: ${approveTx.hash}`);
+        }
+        
+        // Create market on-chain with dual currency initial liquidity
+        console.log(`🎯 Creating on-chain market: "${title}"`);
+        console.log(`   💰 BNB liquidity: ${liquidityBNB} BNB (${halfLiquidityBnb.toString()} per side)`);
+        console.log(`   🪙 PRED liquidity: ${predLiquidityAmount.toString()} PRED (${halfLiquidityPred.toString()} per side)`);
+        
+        const tx = await predictionMarketContract.createMarket(
+            title, 
+            description, 
+            resolutionTime,
+            halfLiquidityBnb,   // _initialYesBnb
+            halfLiquidityBnb,   // _initialNoBnb
+            halfLiquidityPred,  // _initialYesPred (dual currency support!)
+            halfLiquidityPred,  // _initialNoPred (dual currency support!)
+            {
+                value: liquidityBnbWei,
+                gasLimit: 500000
+            }
+        );
+        const receipt = await tx.wait();
+        
+        // Extract market ID from MarketCreated event
+        const marketCreatedEvent = receipt.events?.find(e => e.event === 'MarketCreated');
+        const onChainMarketId = marketCreatedEvent?.args?.marketId?.toNumber();
+        
+        if (onChainMarketId === undefined && onChainMarketId !== 0) {
+            console.error('❌ Failed to extract market ID from transaction receipt');
+            return res.status(500).json({ error: 'Failed to extract market ID from blockchain transaction' });
+        }
+        
+        console.log(`✅ On-chain market created: ID ${onChainMarketId}, TX: ${tx.hash}`);
+        
+        // NOTE: In this simplified flow, deployer wallet provides liquidity (not user)
+        // This allows gasless market creation for demo purposes
+        // TODO: For production, deduct liquidityBNB from user's balance and use their custodial wallet
+        
+        // Create Firestore document with market data + award XP to creator
+        const firestore = admin.firestore();
+        
+        // Use Firestore transaction to atomically create market + award XP
+        const marketId = await firestore.runTransaction(async (transaction) => {
+            // Get user profile for XP update
+            const profileRef = firestore
+                .collection('artifacts')
+                .doc(APP_ID)
+                .collection('public')
+                .doc('data')
+                .collection('user_profiles')
+                .doc(userId);
+            
+            const publicProfileRef = firestore
+                .collection('artifacts')
+                .doc(APP_ID)
+                .collection('public')
+                .doc('data')
+                .collection('public_leaderboard')
+                .doc(userId);
+            
+            // Read profile to get displayName
+            const profileSnap = await transaction.get(profileRef);
+            const displayName = profileSnap.exists ? (profileSnap.data().displayName || 'Anonymous') : 'Anonymous';
+            
+            // Create market document
+            const marketRef = firestore
+                .collection('artifacts')
+                .doc(APP_ID)
+                .collection('public')
+                .doc('data')
+                .collection('standard_markets')
+                .doc(); // Generate new doc ID
+            
+            // Markets now start with dual currency initial liquidity (BNB + PRED)
+            const initialLiquidityBnbUsd = liquidityBNB * 600; // Mock BNB price at $600
+            const initialLiquidityPredTokens = liquidityBNB * 600; // PRED tokens (1 PRED ≈ $1)
+            const totalInitialLiquidityUsd = initialLiquidityBnbUsd + initialLiquidityPredTokens;
+            const halfLiquidityUsd = totalInitialLiquidityUsd / 2;
+            
+            const marketData = {
+                title,
+                insight: description,
+                category,
+                marketStructure: marketStructure || 'binary',
+                resolutionDate: endDate,
+                stakingDeadline: endDate, // Same as resolution for on-chain markets
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdBy: userId,
+                createdByDisplayName: displayName,
+                isResolved: false,
+                winningOutcome: null,
+                onChainMarketId: onChainMarketId,
+                onChainTxHash: tx.hash,
+                onChainCreatedAt: Date.now(),
+                // Volume fields - track only user bets (initial liquidity is separate)
+                totalStakeVolume: 0,
+                totalVolume: 0,
+                uniqueStakerCount: 0,
+                // Initial liquidity tracking (protocol-owned, separate from user volume)
+                // Dual currency: BNB + PRED
+                initialLiquidityBnb: liquidityBNB,
+                initialLiquidityBnbUsd: initialLiquidityBnbUsd,
+                initialLiquidityPred: initialLiquidityPredTokens,
+                initialLiquidityPredUsd: initialLiquidityPredTokens, // 1 PRED ≈ $1
+                initialLiquidityTotalUsd: totalInitialLiquidityUsd,
+                // Market type fields
+                isFixedPot: false, // On-chain markets use AMM pools
+                yieldProtocol: null,
+                protocolApy: 0,
+                totalPrincipalUsd: 0,
+                lastAccrualAt: admin.firestore.FieldValue.serverTimestamp(),
+                accruedYieldUsd: 0,
+                // Dispute and admin fields
+                disputes: [],
+                resolutionSource: null,
+                adminEvents: [],
+                // Pool management
+                refundVolumeGoal: 100,
+                refundStakerGoal: 10
+            };
+            
+            // Add structure-specific fields
+            if (marketStructure === 'binary') {
+                const yesPercent = (initialOdds && initialOdds.yesPercent) || 50;
+                const noPercent = (initialOdds && initialOdds.noPercent) || 50;
+                marketData.yesPercent = yesPercent;
+                marketData.noPercent = noPercent;
+                // Pools display includes initial liquidity for AMM calculations
+                // But volume tracking excludes it (see totalVolume = 0 above)
+                marketData.yesPool = halfLiquidityUsd;
+                marketData.noPool = halfLiquidityUsd;
+            } else if (marketStructure === 'multi-option' && options) {
+                // Multi-option market - distribute liquidity equally across options
+                const liquidityPerOption = initialLiquidityUsd / options.length;
+                marketData.options = options.map(opt => ({
+                    ...opt,
+                    pool: liquidityPerOption
+                }));
+            } else {
+                // Default binary with 50/50 initial odds and liquidity
+                marketData.yesPercent = 50;
+                marketData.noPercent = 50;
+                marketData.yesPool = halfLiquidityUsd;
+                marketData.noPool = halfLiquidityUsd;
+            }
+            
+            // Write market
+            transaction.set(marketRef, marketData);
+            
+            // NOTE: XP awards removed to prevent zero-cost farming
+            // In production, only award XP if creator provides liquidity or if market reaches certain volume
+            
+            return marketRef.id;
+        });
+        
+        console.log(`✅ Firestore market created: ${marketId}`);
+        
+        res.status(200).json({
+            success: true,
+            marketId: marketId,
+            onChainMarketId: onChainMarketId,
+            txHash: tx.hash,
+            blockNumber: receipt.blockNumber
+        });
+    } catch (error) {
+        console.error('❌ Error creating on-chain market:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // 🪙 $PRED Token Faucet - NOW MINTS REAL ERC20 TOKENS ON-CHAIN
 app.post('/api/faucet/claim-pred', async (req, res) => {
     const { userId, idToken } = req.body;
@@ -494,13 +721,24 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
         const authenticatedUid = decodedToken.uid;
         
         // ✅ SECURITY: Verify the wallet belongs to the authenticated user
-        const walletMapping = await admin.firestore()
+        let walletMapping = await admin.firestore()
             .collection('custodial_wallets')
             .doc(userId)
             .get();
         
+        // If wallet doesn't exist, create it
         if (!walletMapping.exists) {
-            return res.status(404).json({ error: 'Wallet not found' });
+            console.log(`📱 Creating custodial wallet for ${userId}...`);
+            const createResult = await custodialWalletService.createWallet(userId, authenticatedUid);
+            if (!createResult.success) {
+                console.error(`❌ Failed to create wallet: ${createResult.message}`);
+                return res.status(400).json({ error: 'Could not create wallet: ' + createResult.message });
+            }
+            // Fetch the mapping again
+            walletMapping = await admin.firestore()
+                .collection('custodial_wallets')
+                .doc(userId)
+                .get();
         }
         
         const mappingData = walletMapping.data();
@@ -915,8 +1153,8 @@ app.post('/api/custodial/place-bet', async (req, res) => {
         // ✅ FIX: Use loadWalletSigner() which returns decrypted signer
         const signer = await custodialWalletService.loadWalletSigner(userId);
         
-        // PredictionMarketV2 contract
-        const contractAddress = '0x5330cDAdA8417865B379C5E2Bce14f4D840F593a';
+        // PredictionMarketV2 contract (V4 with initial liquidity + oracle evidence hash)
+        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
         const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
         
         // ✅ FIX: Add 'payable' keyword to ABI so BNB bets don't revert
@@ -987,8 +1225,8 @@ app.post('/api/custodial/place-batch-bets', async (req, res) => {
         // ✅ FIX: Use loadWalletSigner() which returns decrypted signer
         const signer = await custodialWalletService.loadWalletSigner(userId);
         
-        // PredictionMarketV2 contract
-        const contractAddress = '0x5330cDAdA8417865B379C5E2Bce14f4D840F593a';
+        // PredictionMarketV2 contract (V4 with initial liquidity + oracle evidence hash)
+        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
         const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
         
         // ✅ FIX: Correct ABI signature - parameter order is: marketIds, picks, amounts, currencies (not currencies, amounts!)
@@ -1536,18 +1774,55 @@ Create 3 interesting, verifiable prediction market questions. Focus on technolog
         const response = await callGoogleApi(payload);
         const data = JSON.parse(response.candidates[0].content.parts[0].text);
         
-        const collectionPath = `artifacts/${APP_ID}/public/data/standard_markets`;
-        
+        // Create all AI-generated markets as on-chain markets
         for (const market of data.markets) {
-            await db.collection(collectionPath).add({
-                ...market,
-                createdAt: new Date().toISOString(),
-                isResolved: false,
-                yesPool: 0,
-                noPool: 0,
-                totalVolume: 0
-            });
-            console.log(`ORACLE: Created market: ${market.title}`);
+            try {
+                // Create market on PredictionMarketV2 contract
+                const resolutionTimestamp = Math.floor(new Date(market.resolutionDate).getTime() / 1000);
+                const liquidityBNB = '0.01'; // Small liquidity for AI-generated markets
+                
+                const tx = await predictionMarketContract.createMarket(
+                    market.title,
+                    market.description,
+                    resolutionTimestamp,
+                    {
+                        value: ethers.utils.parseEther(liquidityBNB),
+                        gasLimit: 500000
+                    }
+                );
+                
+                const receipt = await tx.wait();
+                console.log(`ORACLE: Created on-chain market TX: ${receipt.transactionHash}`);
+                
+                // Parse MarketCreated event to get on-chain market ID
+                const marketCreatedEvent = receipt.events?.find(e => e.event === 'MarketCreated');
+                const onChainMarketId = marketCreatedEvent?.args?.marketId?.toNumber();
+                
+                if (onChainMarketId !== undefined) {
+                    // Link to Firestore with onChainMarketId
+                    const collectionPath = `artifacts/${APP_ID}/public/data/standard_markets`;
+                    const firestoreDoc = await db.collection(collectionPath).add({
+                        title: market.title,
+                        description: market.description,
+                        category: market.category,
+                        resolutionDate: market.resolutionDate,
+                        createdAt: new Date().toISOString(),
+                        createdBy: 'AI',
+                        isResolved: false,
+                        onChainMarketId: onChainMarketId,
+                        onChainTxHash: receipt.transactionHash,
+                        yesPool: 0,
+                        noPool: 0,
+                        totalVolume: 0
+                    });
+                    
+                    console.log(`ORACLE: Linked market to Firestore - ID: ${firestoreDoc.id}, On-chain ID: ${onChainMarketId}`);
+                } else {
+                    console.error('ORACLE: Failed to extract on-chain market ID from event');
+                }
+            } catch (error) {
+                console.error(`ORACLE: Error creating on-chain market "${market.title}":`, error.message);
+            }
         }
     } catch (error) {
         console.error("ORACLE: Error in createDailyMarkets:", error);
@@ -1601,14 +1876,95 @@ Generate 5 quick, fun YES/NO prediction questions about uncertain events in the 
         
         const collectionPath = `artifacts/${APP_ID}/public/data/quick_plays`;
         
+        // ⛓️ ON-CHAIN QUICK PLAY: Create markets on-chain for 100% on-chain functionality
+        const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
+        if (!DEPLOYER_PRIVATE_KEY) {
+            console.warn("ORACLE: DEPLOYER_PRIVATE_KEY not set - Quick Plays will be Firestore-only");
+        }
+        
         for (const item of data.questions) {
-            await db.collection(collectionPath).add({
+            let onChainMarketId = null;
+            let onChainTxHash = null;
+            
+            // Create on-chain market if deployer key available
+            if (DEPLOYER_PRIVATE_KEY) {
+                try {
+                    const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+                    const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
+                    
+                    const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
+                    const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+                    
+                    // Small initial liquidity for Quick Play (0.01 BNB + 6 PRED = ~$12)
+                    const liquidityBNB = 0.01;
+                    const liquidityBnbWei = ethers.utils.parseEther(liquidityBNB.toString());
+                    const halfLiquidityBnb = liquidityBnbWei.div(2);
+                    const predLiquidityAmount = ethers.utils.parseEther((liquidityBNB * 600).toString());
+                    const halfLiquidityPred = predLiquidityAmount.div(2);
+                    
+                    // Approve PRED token spending
+                    if (predLiquidityAmount.gt(0)) {
+                        const predTokenAbi = ['function approve(address spender, uint256 amount) external returns (bool)'];
+                        const predToken = new ethers.Contract(predTokenAddress, predTokenAbi, deployerWallet);
+                        const approveTx = await predToken.approve(contractAddress, predLiquidityAmount, { gasLimit: 100000 });
+                        await approveTx.wait();
+                        console.log(`✅ PRED approved for Quick Play: ${approveTx.hash}`);
+                    }
+                    
+                    const contractABI = [
+                        'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
+                        'event MarketCreated(uint256 indexed marketId, string title, address indexed creator, uint256 initialYesBnb, uint256 initialNoBnb, uint256 initialYesPred, uint256 initialNoPred)'
+                    ];
+                    const contract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
+                    
+                    const resolutionTime = Math.floor(new Date(item.expiresAt).getTime() / 1000);
+                    
+                    console.log(`🎮 Creating Quick Play on-chain: "${item.question}"`);
+                    const tx = await contract.createMarket(
+                        item.question,
+                        "Quick Play market - fast resolution",
+                        resolutionTime,
+                        halfLiquidityBnb,
+                        halfLiquidityBnb,
+                        halfLiquidityPred,
+                        halfLiquidityPred,
+                        { value: liquidityBnbWei, gasLimit: 500000 }
+                    );
+                    
+                    const receipt = await tx.wait();
+                    onChainTxHash = receipt.transactionHash;
+                    console.log(`⛓️ Quick Play created on-chain: ${onChainTxHash}`);
+                    
+                    // Extract market ID from event
+                    const event = receipt.events?.find(e => e.event === 'MarketCreated');
+                    if (event && event.args) {
+                        onChainMarketId = event.args.marketId.toNumber();
+                        console.log(`📊 Quick Play on-chain market ID: ${onChainMarketId}`);
+                    }
+                } catch (error) {
+                    console.error(`ORACLE: Error creating Quick Play on-chain:`, error.message);
+                }
+            }
+            
+            // Store in Firestore with onChainMarketId (if available)
+            const quickPlayData = {
                 question: item.question,
                 expiresAt: item.expiresAt,
                 createdAt: new Date().toISOString(),
                 isActive: true
-            });
-            console.log(`ORACLE: Created quick play: ${item.question}`);
+            };
+            
+            // Add on-chain fields if market was created
+            if (onChainMarketId !== null) {
+                quickPlayData.onChainMarketId = onChainMarketId;
+                quickPlayData.onChainTxHash = onChainTxHash;
+                quickPlayData.yesPool = 0; // User bets only, initial liquidity tracked separately on-chain
+                quickPlayData.noPool = 0;
+                quickPlayData.totalVolume = 0;
+            }
+            
+            await db.collection(collectionPath).add(quickPlayData);
+            console.log(`ORACLE: ✅ Quick Play created: ${item.question} ${onChainMarketId ? `(on-chain ID: ${onChainMarketId})` : '(Firestore only)'}`);
         }
     } catch (error) {
         console.error("ORACLE: Error in autoGenerateQuickPlays:", error);

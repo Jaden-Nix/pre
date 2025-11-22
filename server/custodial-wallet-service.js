@@ -93,6 +93,14 @@ export class CustodialWalletService {
 
             console.log(`✅ Custodial wallet created for user ${userId}: ${wallet.address}`);
 
+            // 🎁 WELCOME BONUS: Mint initial $PRED tokens to new wallet
+            try {
+                await this.mintWelcomeBonus(wallet.address);
+            } catch (bonusError) {
+                console.warn(`⚠️ Welcome bonus minting failed (non-critical):`, bonusError.message);
+                // Don't fail wallet creation if bonus minting fails
+            }
+
             return {
                 success: true,
                 address: wallet.address
@@ -103,6 +111,43 @@ export class CustodialWalletService {
                 success: false,
                 error: error.message
             };
+        }
+    }
+
+    async mintWelcomeBonus(walletAddress) {
+        const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
+        const PRED_TOKEN_ADDRESS = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+        const WELCOME_BONUS_AMOUNT = '100'; // 100 $PRED tokens for new users
+        
+        if (!DEPLOYER_PRIVATE_KEY) {
+            console.log('⚠️ DEPLOYER_PRIVATE_KEY not set, skipping welcome bonus');
+            return;
+        }
+        
+        try {
+            // Create deployer wallet signer
+            const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, this.provider);
+            
+            // PredToken contract ABI (just the mint function)
+            const predTokenAbi = [
+                'function mint(address to, uint256 amount) external'
+            ];
+            
+            const predToken = new ethers.Contract(PRED_TOKEN_ADDRESS, predTokenAbi, deployerWallet);
+            
+            // Mint welcome bonus (100 PRED = 100 * 10^18 wei)
+            const amountWei = ethers.utils.parseEther(WELCOME_BONUS_AMOUNT);
+            
+            console.log(`🎁 Minting ${WELCOME_BONUS_AMOUNT} $PRED welcome bonus to ${walletAddress}...`);
+            const tx = await predToken.mint(walletAddress, amountWei, { gasLimit: 200000 });
+            const receipt = await tx.wait();
+            
+            console.log(`✅ Welcome bonus minted: ${WELCOME_BONUS_AMOUNT} $PRED`);
+            console.log(`   Transaction: ${tx.hash}`);
+            console.log(`   Block: ${receipt.blockNumber}`);
+        } catch (error) {
+            console.error('❌ Welcome bonus minting failed:', error);
+            throw error;
         }
     }
 

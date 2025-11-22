@@ -2665,16 +2665,6 @@
                         </div>
                     </div>
 
-                    <!-- Assets content dynamically rendered by updateProfileUI() -->
-                    <!-- Removed duplicate static content to prevent showing two pages -->
-                    <div class="pt-2 pb-4">
-                        <button onclick="signOut()" class="btn w-full bg-gradient-to-r from-red-500/20 to-pink-500/20 border-2 border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 font-semibold transition-all duration-300 hover:scale-[1.02] active:scale-95">
-                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                            </svg>
-                            Sign Out
-                        </button>
-                    </div>
                 </div> 
 
                         <div id="networking-content" class="hidden space-y-4">
@@ -4043,6 +4033,10 @@
             }
         };
 
+        // --- EARLY FUNCTION STUBS (Prevent ReferenceErrors from inline onclick handlers) ---
+        window.showScreen = function(screenId) { console.log('Early stub: showScreen(' + screenId + ')'); };
+        window.filterMarkets = function() {};
+        
         // --- GLOBAL APP LOGIC ---
 
         // --- GLOBAL STATE & CONSTANTS ---
@@ -4318,9 +4312,9 @@
         // Sign Out Function
         async function signOut() {
             try {
-                const { getAuth, signOut: firebaseSignOut } = window.firebase.auth;
+                const { getAuth } = window.firebase.auth;
                 const currentAuth = getAuth();
-                await firebaseSignOut(currentAuth);
+                await window.firebase.auth.signOut(currentAuth);
                 
                 // Clear user data
                 currentUserId = null;
@@ -5471,20 +5465,20 @@
                 // Fetch real balances in parallel
                 const [bnb, pred] = await Promise.all([
                     getRealBNBBalance(),
-                    getRealCAKEBalance()
+                    getRealCAKEBalance()  // This fetches PRED tokens (CAKE_CONTRACT_ADDRESS is actually PRED contract)
                 ]);
                 
-                // Update userProfile
+                // Update userProfile with blockchain balances (source of truth)
                 userProfile.bnbBalance = bnb;
-                userProfile.cakeBalance = pred;
+                userProfile.predBalance = pred;  // ✅ FIXED: Update predBalance, not cakeBalance
                 
-                // Update Firestore (for caching purposes)
+                // Update Firestore (for caching purposes only)
                 if (currentUserId) {
                     try {
                         const { doc, updateDoc } = window.firebase.firestore;
                         await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId), {
                             bnbBalance: bnb,
-                            cakeBalance: pred,
+                            predBalance: pred,  // ✅ FIXED: Save as predBalance
                             lastBalanceUpdate: Date.now()
                         });
                     } catch (firestoreError) {
@@ -8423,39 +8417,22 @@
             if (contentEl) contentEl.classList.remove('hidden');
 
             // Load data for the selected tab
-        // ...
             if (tabName === 'active') renderActiveStakes();
             if (tabName === 'notifications') loadNotifications();
             else if (tabName === 'history') renderHistoryStakes();
             else if (tabName === 'assets') {
-                // Update balance displays when assets tab is shown
-                if (userProfile) {
-                    const faucetBalanceEl = document.getElementById('faucet-pred-balance');
-                    const mockBnbEl = document.getElementById('mock-bnb');
-                    const mockCakeEl = document.getElementById('mock-cake');
-                    const mockBalanceEl = document.getElementById('mock-busd');
-                    
-                    if (faucetBalanceEl) faucetBalanceEl.textContent = `${(userProfile.predBalance || 100).toFixed(2)} $PRED`;
-                    if (mockBalanceEl) mockBalanceEl.textContent = `$${(userProfile.predBalance || 100).toFixed(2)}`;
-                    if (mockBnbEl) mockBnbEl.textContent = (userProfile.bnbBalance || 0.2).toFixed(2);
-                    if (mockCakeEl) mockCakeEl.textContent = (userProfile.cakeBalance || 150).toFixed(0);
-                }
-                
-                // Fetch and update blockchain balances if wallet is connected
-                updateRealBalancesForAssetsTab();
-            }
-                else if (tabName === 'networking') {
-                    // Show the networking panel and load its default sub-tab
-                    if(networkingContent) networkingContent.classList.remove('hidden');
-                    handleNetworkingTab('followers'); // We will add this function next
-                }
-            else if (tabName === 'assets') { 
+                // Render assets content with real balances
                 renderAssetsContent(); 
-
+                
                 if(dom.logoutButtonContainer) {
                     dom.logoutButtonContainer.classList.remove('hidden');
-                    updateAuthButton(); // Update button text/style when showing
+                    updateAuthButton();
                 }
+            }
+            else if (tabName === 'networking') {
+                // Show the networking panel and load its default sub-tab
+                if(networkingContent) networkingContent.classList.remove('hidden');
+                handleNetworkingTab('followers');
             } 
         }
 
@@ -8465,31 +8442,21 @@
          */
         async function renderAssetsContent() {
             const assetsEl = document.getElementById('assets-content');
-            let bnbBalance = userProfile.bnbBalance || 0;
-            let cakeBalance = userProfile.cakeBalance || 0;
+            if (!assetsEl) return;
+            
+            let bnbBalance = 0;
+            let predBalance = userProfile.predBalance || 0;
 
-            // Fetch real balances from blockchain
+            // Fetch real BNB balance from blockchain for custodial wallet
             const walletAddress = userProfile.walletAddress || userWalletAddress;
             if (walletAddress) {
                 try {
                     console.log('🔄 Fetching real balances for assets screen...');
-                    
-                    // Fetch both BNB and CAKE balances in parallel
-                    const [realBnb, realCake] = await Promise.all([
-                        getRealBNBBalance(),
-                        getRealCAKEBalance()
-                    ]);
-                    
-                    bnbBalance = realBnb;
-                    cakeBalance = realCake;
-                    
-                    // Update user profile with real balances
-                    userProfile.bnbBalance = bnbBalance;
-                    userProfile.cakeBalance = cakeBalance;
-                    
-                    console.log('✅ Real balances loaded:', { bnbBalance, cakeBalance });
+                    bnbBalance = await getRealBNBBalance();
+                    console.log('✅ Real BNB balance loaded:', bnbBalance);
                 } catch (error) {
                     console.error('❌ Failed to fetch real balances:', error);
+                    bnbBalance = userProfile.bnbBalance || 0;
                 }
             }
 
@@ -8501,11 +8468,11 @@
             const walletStatus = hasWallet ? 
                 `<div class="mb-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
                     <p class="text-sm text-green-400">✓ ${isCustodial ? 'Custodial Wallet' : 'Connected'}: ${truncateAddress(displayAddress)}</p>
-                    <p class="text-xs text-gray-400 mt-1">${isCustodial ? '🔐 Secure custodial wallet • BSC Testnet' : 'BSC Testnet (ChainID: 97)'}</p>
+                    <p class="text-xs text-gray-400 mt-1">${isCustodial ? '🔐 Secure custodial wallet • Real on-chain balances • BSC Testnet' : 'BSC Testnet (ChainID: 97)'}</p>
                 </div>` : 
                 `<div class="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                     <p class="text-sm text-yellow-400">⚠ No wallet connected</p>
-                    <p class="text-xs text-gray-400 mt-1">Connect wallet to see real balances</p>
+                    <p class="text-xs text-gray-400 mt-1">Sign in to see your custodial wallet balances</p>
                 </div>`;
 
             assetsEl.innerHTML = `
@@ -8542,36 +8509,8 @@
                                 </div>
                             </div>
                             <div class="text-right">
-                                <p class="font-semibold theme-text-primary">${(userProfile.predBalance || 100).toFixed(2)} $PRED</p>
-                                <p class="text-xs theme-text-secondary">$${((userProfile.predBalance || 100) * getMockPrice('PRED')).toFixed(2)} USD</p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10 opacity-60">
-                            <div class="flex items-center">
-                                <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/825.png" class="w-10 h-10 rounded-full mr-3" alt="USDT">
-                                <div>
-                                    <p class="font-semibold theme-text-primary">USDT (Coming Soon)</p>
-                                    <p class="text-sm theme-text-secondary">Tether USD</p>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <p class="font-semibold theme-text-primary">-</p>
-                                <p class="text-xs theme-text-secondary">Multi-token support pending</p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
-                            <div class="flex items-center">
-                                <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/7186.png" class="w-10 h-10 rounded-full mr-3" alt="CAKE">
-                                <div>
-                                    <p class="font-semibold theme-text-primary">CAKE ${hasWallet ? '(Testnet)' : '(Mock)'}</p>
-                                    <p class="text-sm theme-text-secondary">PancakeSwap Token</p>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <p class="font-semibold theme-text-primary">${cakeBalance.toFixed(2)} CAKE</p>
-                                <p class="text-xs theme-text-secondary">$${(cakeBalance * getMockPrice('CAKE')).toFixed(2)} USD</p>
+                                <p class="font-semibold theme-text-primary">${predBalance.toFixed(2)} $PRED</p>
+                                <p class="text-xs theme-text-secondary">$${(predBalance * getMockPrice('PRED')).toFixed(2)} USD</p>
                             </div>
                         </div>
                     </div>
@@ -8645,16 +8584,6 @@
                     </div>
                 </div>
                 ` : ''}
-
-                <!-- Sign Out Button -->
-                <div class="pt-2 pb-4">
-                    <button onclick="signOut()" class="btn w-full bg-gradient-to-r from-red-500/20 to-pink-500/20 border-2 border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 font-semibold transition-all duration-300 hover:scale-[1.02] active:scale-95">
-                        <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                        </svg>
-                        Sign Out
-                    </button>
-                </div>
             `;
 
             // Re-populate all asset selectors in the app
@@ -9286,123 +9215,100 @@
                 const isOnChainMarket = currentMarket.onChainMarketId && !currentMarket.isMock;
                 
                 if (isOnChainMarket) {
-                    // ✅ ON-CHAIN BETTING PATH - DISABLED FOR DEMO
+                    // ✅ ON-CHAIN BETTING PATH - Uses PredictionMarketV2 contract
                     showLoadingOverlay(true, "Placing bet on-chain...");
                     
                     try {
-                        // Check wallet connection
-                        if (!ethersProvider || !userWalletAddress) {
-                            showToast("Please connect your wallet first", "error");
-                            showLoadingOverlay(false);
-                            return;
-                        }
-
-                        // Convert amount to BNB (assuming selectedAsset pricing)
-                        const bnbAmount = amount * getMockPrice(selectedAsset) / getMockPrice('BNB');
-                        
-                        // Validate BNB amount
-                        if (bnbAmount < 0.001) {
-                            showToast("Minimum bet: 0.001 BNB", "warning");
-                            showLoadingOverlay(false);
-                            return;
-                        }
-                        if (bnbAmount > 100) {
-                            showToast("Maximum bet: 100 BNB", "warning");
-                            showLoadingOverlay(false);
-                            return;
-                        }
-
                         // Convert pick to boolean (YES = true, NO = false)
                         const pickBool = (pick === 'YES' || pick === 'yes' || pick === true);
+                        
+                        // Determine currency and amount based on selected asset
+                        let betCurrency;
+                        let betAmount;
+                        
+                        if (selectedAsset === 'BNB') {
+                            betCurrency = 'BNB';
+                            betAmount = amount;
+                            
+                            // Validate BNB amount
+                            if (betAmount < 0.001) {
+                                showToast("Minimum bet: 0.001 BNB", "warning");
+                                showLoadingOverlay(false);
+                                return;
+                            }
+                            if (betAmount > 100) {
+                                showToast("Maximum bet: 100 BNB", "warning");
+                                showLoadingOverlay(false);
+                                return;
+                            }
+                        } else if (selectedAsset === 'PRED') {
+                            betCurrency = 'PRED';
+                            betAmount = amount;
+                            
+                            // Validate PRED amount
+                            if (betAmount < 1) {
+                                showToast("Minimum bet: 1 PRED", "warning");
+                                showLoadingOverlay(false);
+                                return;
+                            }
+                            if (betAmount > 100000) {
+                                showToast("Maximum bet: 100,000 PRED", "warning");
+                                showLoadingOverlay(false);
+                                return;
+                            }
+                        } else {
+                            showToast("Only BNB and PRED are supported for on-chain betting", "error");
+                            showLoadingOverlay(false);
+                            return;
+                        }
 
                         // Check if user has custodial wallet (smart account)
                         const isCustodialWallet = localStorage.getItem('isSmartWallet') === 'true';
                         
                         if (isCustodialWallet) {
-                            // GASLESS PATH - Use Biconomy via backend
-                            console.log('🎯 Using gasless transaction (Biconomy)...');
+                            // ✅ CUSTODIAL WALLET PATH - Use /api/custodial/place-bet endpoint
+                            console.log(`🎯 Placing ${betCurrency} bet on-chain via custodial wallet...`);
                             
-                            // Encode placeBet function call
-                            const contract = new ethers.Contract(
-                                PREDORA_CONTRACT_ADDRESS,
-                                PREDORA_CONTRACT_ABI,
-                                ethersProvider
-                            );
-                            
-                            const data = contract.interface.encodeFunctionData('placeBet', [
-                                currentMarket.onChainMarketId,
-                                pickBool
-                            ]);
-                            
-                            // Call backend Biconomy API
-                            const response = await fetch('/api/biconomy/execute-transaction', {
+                            // Call backend custodial bet API
+                            const response = await fetch('/api/custodial/place-bet', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     userId: currentUserId,
-                                    to: PREDORA_CONTRACT_ADDRESS,
-                                    data: data,
-                                    value: ethers.utils.parseEther(bnbAmount.toString())._hex  // ✅ Hex for cross-version compatibility
+                                    marketId: currentMarket.onChainMarketId,
+                                    pick: pickBool,
+                                    amount: betAmount,
+                                    currency: betCurrency
                                 })
                             });
                             
                             const result = await response.json();
                             
                             if (!result.success) {
-                                // Check if Biconomy unavailable - fall back to custodial wallet paying gas
-                                if (result.fallbackRequired || response.status === 503) {
-                                    console.warn('⚠️ Biconomy unavailable, using custodial wallet fallback (pays gas)');
-                                    showToast('Gasless unavailable. Your custodial wallet will pay gas fees.', 'warning');
-                                    
-                                    // FALLBACK: Use custodial wallet to pay gas
-                                    const fallbackResponse = await fetch('/api/custodial-wallet/execute-transaction', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({
-                                            userId: currentUserId,
-                                            to: PREDORA_CONTRACT_ADDRESS,
-                                            data: data,
-                                            value: ethers.utils.parseEther(bnbAmount.toString())._hex
-                                        })
-                                    });
-                                    
-                                    const fallbackResult = await fallbackResponse.json();
-                                    
-                                    if (!fallbackResult.success) {
-                                        throw new Error(fallbackResult.error || 'Transaction failed');
-                                    }
-                                    
-                                    console.log('✅ Bet placed via custodial wallet (gas paid):', fallbackResult.txHash);
-                                    showToast('Bet placed! Gas paid from your custodial wallet.', 'success');
-                                    
-                                    // Use fallback result for receipt data
-                                    var receipt = {
-                                        transactionHash: fallbackResult.txHash,
-                                        blockNumber: fallbackResult.blockNumber
-                                    };
-                                    
-                                } else {
-                                    throw new Error(result.error || 'Failed to execute gasless transaction');
-                                }
-                            } else {
-                                console.log('✅ Gasless bet placed:', result.txHash);
-                                console.log('⛽ Gas sponsored by Biconomy paymaster');
-                                
-                                showToast('Bet placed (gasless)! No fees paid.', 'success');
-                                
-                                // Use result from Biconomy for receipt data
-                                var receipt = {
-                                    transactionHash: result.txHash,
-                                    blockNumber: result.blockNumber
-                                };
-                                
-                                console.log('✅ Bet placed on-chain:', receipt);
-                                console.log('Transaction hash:', receipt.transactionHash);
+                                throw new Error(result.error || 'Failed to place bet');
                             }
+                            
+                            console.log(`✅ ${betCurrency} bet placed on-chain:`, result.txHash);
+                            console.log('⛽ Gas paid by custodial wallet');
+                            
+                            showToast(`Bet placed with ${betCurrency}!`, 'success');
+                            
+                            // Use result for receipt data
+                            var receipt = {
+                                transactionHash: result.txHash,
+                                blockNumber: result.blockNumber
+                            };
                             
                         } else {
                             // REGULAR PATH - User pays gas with external wallet
                             console.log('💰 Using regular transaction (user pays gas)...');
+                            
+                            // Check wallet connection for external wallet users
+                            if (!ethersProvider || !userWalletAddress) {
+                                showToast("Please connect your wallet first", "error");
+                                showLoadingOverlay(false);
+                                return;
+                            }
                             
                             // Get signer
                             const signer = ethersProvider.getSigner();
@@ -9414,14 +9320,20 @@
                                 signer
                             );
 
-                            // Call placeBet on contract
-                            console.log(`📝 Placing bet: ${bnbAmount} BNB on ${pickBool ? 'YES' : 'NO'} for market ${currentMarket.onChainMarketId}`);
+                            // Call placeBet on contract (only supports BNB for external wallets)
+                            if (betCurrency !== 'BNB') {
+                                showToast("External wallets can only bet with BNB. Please use a custodial wallet for PRED betting.", "warning");
+                                showLoadingOverlay(false);
+                                return;
+                            }
+                            
+                            console.log(`📝 Placing bet: ${betAmount} BNB on ${pickBool ? 'YES' : 'NO'} for market ${currentMarket.onChainMarketId}`);
                             
                             const tx = await contract.placeBet(
                                 currentMarket.onChainMarketId,
                                 pickBool,
                                 {
-                                    value: ethers.utils.parseEther(bnbAmount.toString()),
+                                    value: ethers.utils.parseEther(betAmount.toString()),
                                     gasLimit: 300000
                                 }
                             );
@@ -9445,8 +9357,8 @@
                             marketTitle: currentMarket.title,
                             userId: currentUserId,
                             pick: pick,
-                            amount: bnbAmount,
-                            asset: 'BNB',
+                            amount: betAmount,
+                            asset: betCurrency,
                             amountUsd: amountInUsd,
                             potentialReturn: 0, // Calculate from contract later
                             txHash: receipt.transactionHash,
@@ -10857,258 +10769,57 @@
             }
             // --- END NEW VALIDATION ---
 
-            // TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
-            // --- ON-CHAIN MARKET CREATION (if enabled) --- DISABLED FOR DEMO
-            let onChainMarketId = null;
-            let onChainTxHash = null;
-            
-            /*
-            if (createOnChain && ethersProvider && userWalletAddress) {
-                showLoadingOverlay(true, "Creating market on-chain...");
-                
-                try {
-                    // Convert resolution date to Unix timestamp
-                    const resolutionTimestamp = Math.floor(new Date(resolutionDate).getTime() / 1000);
-                    
-                    // Check if user has custodial wallet (smart account)
-                    const isCustodialWallet = localStorage.getItem('isSmartWallet') === 'true';
-                    
-                    if (isCustodialWallet) {
-                        // GASLESS PATH - Use Biconomy via backend
-                        console.log('🎯 Creating market with gasless transaction (Biconomy)...');
-                        
-                        // Create contract instance (read-only for encoding)
-                        const contract = new ethers.Contract(
-                            PREDORA_CONTRACT_ADDRESS,
-                            PREDORA_CONTRACT_ABI,
-                            ethersProvider
-                        );
-                        
-                        // Encode createMarket function call
-                        const data = contract.interface.encodeFunctionData('createMarket', [
-                            title,
-                            insight || "No description",
-                            resolutionTimestamp
-                        ]);
-                        
-                        // Call backend Biconomy API
-                        const response = await fetch('/api/biconomy/execute-transaction', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                userId: currentUserId,
-                                to: PREDORA_CONTRACT_ADDRESS,
-                                data: data,
-                                value: '0'
-                            })
-                        });
-                        
-                        const result = await response.json();
-                        
-                        if (!result.success) {
-                            // Check if Biconomy unavailable - fall back to custodial wallet paying gas
-                            if (result.fallbackRequired || response.status === 503) {
-                                console.warn('⚠️ Biconomy unavailable, using custodial wallet fallback (pays gas)');
-                                showToast('Gasless unavailable. Your custodial wallet will pay gas fees.', 'warning');
-                                
-                                // FALLBACK: Use custodial wallet to pay gas
-                                const fallbackResponse = await fetch('/api/custodial-wallet/execute-transaction', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        userId: currentUserId,
-                                        to: PREDORA_CONTRACT_ADDRESS,
-                                        data: data,
-                                        value: '0'
-                                    })
-                                });
-                                
-                                const fallbackResult = await fallbackResponse.json();
-                                
-                                if (!fallbackResult.success) {
-                                    throw new Error(fallbackResult.error || 'Transaction failed');
-                                }
-                                
-                                onChainTxHash = fallbackResult.txHash;
-                                
-                                console.log('✅ Market created via custodial wallet (gas paid):', fallbackResult.txHash);
-                                showToast('Market created! Gas paid from your custodial wallet.', 'success');
-                                
-                                // Temporary ID, will be updated from contract events
-                                onChainMarketId = Date.now();
-                            } else {
-                                throw new Error(result.error || 'Failed to execute gasless transaction');
-                            }
-                        } else {
-                            onChainTxHash = result.txHash;
-                            
-                            console.log('✅ Market created (gasless):', result.txHash);
-                            console.log('⛽ Gas sponsored by Biconomy paymaster');
-                            
-                            showToast('Market created! No gas fees paid.', 'success');
-                            
-                            // Note: We can't easily extract marketId from gasless transaction events
-                            // Store txHash and extract marketId from backend or contract later
-                            onChainMarketId = Date.now(); // Temporary ID, will be updated from contract
-                        }
-                        
-                    } else {
-                        // REGULAR PATH - User pays gas with external wallet
-                        console.log('💰 Creating market with regular transaction (user pays gas)...');
-                        
-                        // Get signer
-                        const signer = ethersProvider.getSigner();
-                        
-                        // Create contract instance
-                        const contract = new ethers.Contract(
-                            PREDORA_CONTRACT_ADDRESS,
-                            PREDORA_CONTRACT_ABI,
-                            signer
-                        );
-                        
-                        // Call createMarket on contract
-                        console.log(`📝 Creating market on-chain: "${title}"`);
-                        const tx = await contract.createMarket(
-                            title,
-                            insight || "No description",
-                            resolutionTimestamp
-                        );
-                        
-                        showToast('Transaction submitted! Waiting for confirmation...', 'info');
-                        
-                        // Wait for transaction to be mined
-                        const receipt = await tx.wait();
-                        onChainTxHash = receipt.transactionHash;
-                        
-                        console.log('✅ Market created on-chain:', receipt);
-                        
-                        // Extract marketId from event logs
-                        const event = receipt.logs
-                            .map(log => {
-                                try {
-                                    return contract.interface.parseLog(log);
-                                } catch (e) {
-                                    return null;
-                                }
-                            })
-                            .find(e => e && e.name === 'MarketCreated');
-                        
-                        if (event && event.args && event.args.marketId) {
-                            onChainMarketId = event.args.marketId.toNumber();
-                            console.log(`✅ On-chain market ID: ${onChainMarketId}`);
-                        }
-                        
-                        showToast(`Market created on-chain! ID: ${onChainMarketId}`, 'success');
-                    }
-                    
-                } catch (error) {
-                    console.error("❌ On-chain market creation failed:", error);
-                    showLoadingOverlay(false);
-                    
-                    let errorMsg = "On-chain creation failed: ";
-                    if (error.code === 'INSUFFICIENT_FUNDS') {
-                        errorMsg += "Insufficient BNB for gas";
-                    } else if (error.code === 'ACTION_REJECTED') {
-                        errorMsg += "Transaction rejected by user";
-                    } else {
-                        errorMsg += error.message || "Unknown error";
-                    }
-                    
-                    showToast(errorMsg, "error");
-                    return;
-                }
-            }
-            */
-            // --- END ON-CHAIN CREATION --- (commented out for demo)
-
-            showLoadingOverlay(true, "Saving market to Firestore...");
+            // === ON-CHAIN MARKET CREATION (ALL MARKETS) ===
+            showLoadingOverlay(true, "Creating market on-chain...");
 
             try {
-                // --- THIS IS THE CORRECT, SECURE TRANSACTION ---
-                await runTransaction(db, async (transaction) => {
-                    const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
-                    const publicProfileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', PUBLIC_LEADERBOARD_COLLECTION, currentUserId);
-                    const marketCollectionRef = collection(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION);
-
-                    // 1. TRANSACTION READ: Get user's profile to check balance
-                    const profileSnap = await transaction.get(profileRef);
-                    if (!profileSnap.exists()) {
-                        throw new Error("User profile not found.");
-                    }
-
-                    // 2. BALANCE CHECK:
-                    const currentAssetBalance = profileSnap.data()[balanceFieldToUpdate] || 0;
-                    if (liquidityAmount > currentAssetBalance) {
-                        throw new Error(`Insufficient ${liquidityAsset} balance. You need ${liquidityAmount}.`);
-                    }
-
-                    // 3. TRANSACTION WRITE 1: Create the new market
-                    const newMarketRef = doc(marketCollectionRef); // Create ref for the new doc
-                    const protocolApy = getProtocolApy(yieldProtocolFinal);
-
-                    const marketData = {
+                // Get Firebase ID token for authentication
+                const idToken = await auth.currentUser.getIdToken();
+                
+                // Convert liquidityAsset to BNB (only BNB supported for on-chain markets currently)
+                let liquidityBNB = liquidityAmount;
+                if (liquidityAsset !== 'BNB') {
+                    // Convert to BNB using mock price
+                    const bnbPrice = getMockPrice('BNB');
+                    const assetPrice = getMockPrice(liquidityAsset);
+                    liquidityBNB = (liquidityAmount * assetPrice) / bnbPrice;
+                }
+                
+                // Call backend to create on-chain market
+                const response = await fetch('/api/market/create-onchain', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${idToken}`
+                    },
+                    body: JSON.stringify({
                         title,
-                        insight,
+                        description: insight || "No description",
                         category: category,
+                        endDate: resolutionDate,
+                        liquidityBNB: liquidityBNB.toString(),
                         marketStructure: marketStructure,
-                        isFixedPot: isFixedPotFinal,
-                        stakingDeadline,
-                        resolutionDate,
-                        yieldProtocol: yieldProtocolFinal,
-                        totalStakeVolume: liquidityAmountInUsd,
-                        uniqueStakerCount: 1,
-                        refundVolumeGoal: 100,
-                        refundStakerGoal: 10,
-                        isResolved: false,
-                        winningOutcome: null,
-                        createdAt: serverTimestamp(),
-                        createdBy: currentUserId,
-                        createdByDisplayName: userProfile.displayName,
-                        totalPrincipalUsd: isFixedPotFinal ? liquidityAmountInUsd : 0,
-                        lastAccrualAt: serverTimestamp(),
-                        accruedYieldUsd: 0,
-                        protocolApy: protocolApy,
-                        disputes: [],
-                        resolutionSource: null,
-                        adminEvents: [],
-                        onChainMarketId: onChainMarketId, // Link to on-chain market ID
-                        onChainTxHash: onChainTxHash // Transaction hash for on-chain creation
-                    };
-
-                    // Add structure-specific fields
-                    if (marketStructure === 'binary') {
-                        marketData.yesPercent = yesPercent;
-                        marketData.noPercent = noPercent;
-                        // Use creator's liquidity - this determines odds stability
-                        marketData.yesPool = liquidityAmountInUsd * (yesPercent / 100);
-                        marketData.noPool = liquidityAmountInUsd * (noPercent / 100);
-                    } else {
-                        // Multi-option market - use creator's liquidity
-                        marketData.options = multiOptions.map(opt => ({
-                            ...opt,
-                            pool: liquidityAmountInUsd * (opt.odds / 100)
-                        }));
-                    }
-
-                    transaction.set(newMarketRef, marketData);
-
-                    // 4. TRANSACTION WRITE 2: Deduct liquidity AND award XP
-                    const xpToAward = getRandomXP(50);
-                    transaction.update(profileRef, {
-                        [balanceFieldToUpdate]: increment(-liquidityAmount),
-                        xp: increment(xpToAward)
-                    });
-
-                    // 5. TRANSACTION WRITE 3: Update public leaderboard
-                    transaction.update(publicProfileRef, { xp: increment(xpToAward) });
+                        initialOdds: marketStructure === 'binary' ? { yesPercent, noPercent } : null,
+                        options: marketStructure === 'multi-option' ? multiOptions : null
+                    })
                 });
-                // --- END OF TRANSACTION ---
 
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to create on-chain market');
+                }
+
+                console.log('✅ Market created on-chain!');
+                console.log(`   Firestore ID: ${result.marketId}`);
+                console.log(`   On-chain ID: ${result.onChainMarketId}`);
+                console.log(`   TX: ${result.txHash}`);
+                
                 showLoadingOverlay(false);
-                showToast("Market created successfully!", "success");
+                showToast(`Market created on-chain! TX: ${result.txHash.slice(0, 10)}...`, "success");
                 showScreen('home-screen');
 
-                // 6. Clear the form
+                // Clear the form
                 document.getElementById('market-title-input').value = '';
                 document.getElementById('market-insight-input').value = '';
                 dom.marketYesInput.value = '';
@@ -11118,7 +10829,7 @@
                 dom.marketLiquidityInput.value = '';
 
             } catch (error) {
-                console.error("Error creating market:", error);
+                console.error("❌ On-chain market creation failed:", error);
                 showLoadingOverlay(false);
                 showToast(`Market creation failed: ${error.message}`, "error");
             }
