@@ -7,9 +7,8 @@ const ALGORITHM = 'aes-256-gcm';
 export class CustodialWalletService {
     constructor(db) {
         this.db = db;
-        // TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
-        // this.provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-        this.provider = null; // Disabled for demo mode
+        // ✅ BLOCKCHAIN RE-ENABLED FOR BSC TESTNET
+        this.provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
     }
 
     encrypt(text) {
@@ -149,9 +148,8 @@ export class CustodialWalletService {
                 return walletInfo;
             }
 
-            // TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
-            // const balance = await this.provider.getBalance(walletInfo.address);
-            const balance = ethers.utils.parseEther('0'); // Mock balance for demo mode
+            // ✅ BLOCKCHAIN RE-ENABLED FOR BSC TESTNET
+            const balance = await this.provider.getBalance(walletInfo.address);
             
             return {
                 success: true,
