@@ -6059,7 +6059,7 @@
                 }
 
                 // ✅ CUSTODIAL WALLETS RE-ENABLED - Generate custodial wallet for user
-                const walletData = await generateBSCWallet(userId);
+                const walletData = await generateBSCWallet(userId, firebaseUser.uid);
                 userProfile.walletAddress = walletData.address;
                 userProfile.isCustodial = true;  // This is a server-managed custodial wallet
                 localStorage.setItem('userWalletAddress', walletData.address);
@@ -6118,11 +6118,11 @@
         }
 
         /**
-         * ✅ Generates a Custodial Wallet for Firebase users
+         * ✅ Generates a Custodial Wallet for Firebase users (SECURED)
          * This creates an encrypted wallet on the backend.
          * Private keys are NEVER exposed to the client - stored encrypted in Firebase.
          */
-        async function generateBSCWallet(userId, retryCount = 0) {
+        async function generateBSCWallet(userId, firebaseUid, retryCount = 0) {
             const MAX_RETRIES = 2;
             
             try {
@@ -6150,11 +6150,14 @@
                     console.log('No existing wallet found, creating new one...');
                 }
                 
-                // Call backend to create encrypted custodial wallet
+                // ✅ Call backend to create encrypted custodial wallet (with Firebase UID for mapping)
                 const response = await fetch('/api/custodial-wallet/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId })
+                    body: JSON.stringify({ 
+                        userId,
+                        firebaseUid  // ✅ SECURITY: Pass Firebase UID for wallet mapping
+                    })
                 });
 
                 if (!response.ok) {
@@ -6170,6 +6173,7 @@
                 
                 console.log('✅ Custodial Wallet created:', data.address);
                 console.log('   Private key encrypted and stored securely on backend');
+                console.log('   Wallet mapped to Firebase UID:', firebaseUid);
                 
                 return {
                     address: data.address,
@@ -6182,7 +6186,7 @@
                 if (retryCount < MAX_RETRIES && (error.message.includes('Failed to fetch') || error.message.includes('network'))) {
                     console.log(`Retrying wallet creation... (${retryCount + 1}/${MAX_RETRIES})`);
                     await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
-                    return generateBSCWallet(userId, retryCount + 1);
+                    return generateBSCWallet(userId, firebaseUid, retryCount + 1);
                 }
                 
                 throw error; // Let completeAuthentication handle the error

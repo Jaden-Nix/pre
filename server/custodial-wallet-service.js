@@ -51,7 +51,7 @@ export class CustodialWalletService {
         return decrypted;
     }
 
-    async createWallet(userId) {
+    async createWallet(userId, firebaseUid = null) {
         try {
             if (!this.db) {
                 throw new Error('Firebase not initialized');
@@ -71,6 +71,7 @@ export class CustodialWalletService {
 
             const walletData = {
                 userId,
+                firebaseUid,  // ✅ Store Firebase UID for ownership verification
                 address: wallet.address,
                 encryptedPrivateKey,
                 createdAt: new Date().toISOString(),
@@ -78,6 +79,17 @@ export class CustodialWalletService {
             };
 
             await this.db.collection('custodialWallets').doc(userId).set(walletData);
+
+            // ✅ SECURITY: Store authoritative UID→userId mapping
+            if (firebaseUid) {
+                await this.db.collection('walletMappings').doc(firebaseUid).set({
+                    firebaseUid,
+                    userId,
+                    walletAddress: wallet.address,
+                    createdAt: new Date().toISOString()
+                });
+                console.log(`✅ Wallet mapping created: ${firebaseUid} → ${userId}`);
+            }
 
             console.log(`✅ Custodial wallet created for user ${userId}: ${wallet.address}`);
 

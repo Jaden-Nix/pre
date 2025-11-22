@@ -420,7 +420,7 @@ app.post('/api/verify-otp', async (req, res) => {
 });
 
 app.post('/api/custodial-wallet/create', async (req, res) => {
-    const { userId } = req.body;
+    const { userId, firebaseUid } = req.body;
     
     if (!userId) {
         return res.status(400).json({ error: 'User ID is required' });
@@ -430,7 +430,8 @@ app.post('/api/custodial-wallet/create', async (req, res) => {
         return res.status(503).json({ error: 'Custodial wallet service unavailable' });
     }
     
-    const result = await custodialWalletService.createWallet(userId);
+    // ✅ Pass Firebase UID for mapping creation
+    const result = await custodialWalletService.createWallet(userId, firebaseUid);
     
     if (result.success) {
         res.status(200).json(result);
@@ -535,99 +536,112 @@ app.post('/api/custodial-wallet/balance', async (req, res) => {
     }
 });
 
-// ✅ Send BNB from custodial wallet (SECURED V2)
+// ✅ Send BNB from custodial wallet (SECURED V3 - Authoritative Mapping)
 app.post('/api/custodial-wallet/send-bnb', async (req, res) => {
     const { userId, to, amount, authToken } = req.body;
     
-    if (!userId || !to || !amount) {
-        return res.status(400).json({ error: 'User ID, recipient address, and amount are required' });
+    // ✅ Log all withdrawal attempts for audit
+    const attemptLog = {
+        requestedUserId: userId,
+        to,
+        amount,
+        timestamp: new Date().toISOString(),
+        success: false
+    };
+    
+    if (!to || !amount) {
+        return res.status(400).json({ error: 'Recipient address and amount are required' });
     }
     
     if (!authToken) {
         console.warn('🚨 Withdrawal attempt without auth token');
+        attemptLog.error = 'No auth token';
+        if (db) await db.collection('custodialWithdrawals').add(attemptLog);
         return res.status(401).json({ error: 'Authentication required' });
     }
     
-    if (!custodialWalletService) {
-        return res.status(503).json({ error: 'Custodial wallet service unavailable' });
-    }
-    
-    if (!db) {
-        return res.status(503).json({ error: 'Database unavailable' });
+    if (!custodialWalletService || !db) {
+        return res.status(503).json({ error: 'Service unavailable' });
     }
     
     try {
         // ✅ SECURITY: Verify Firebase auth token
         const decodedToken = await admin.auth().verifyIdToken(authToken);
         const authenticatedUid = decodedToken.uid;
+        attemptLog.firebaseUid = authenticatedUid;
         
-        // ✅ SECURITY: Look up wallet by userId and verify it belongs to authenticated user
-        const walletDoc = await db.collection('custodialWallets').doc(userId).get();
+        console.log(`🔐 Withdrawal request from UID: ${authenticatedUid}`);
         
-        if (!walletDoc.exists) {
-            console.warn(`🚨 Wallet not found for userId: ${userId}`);
-            return res.status(404).json({ error: 'Wallet not found' });
+        // ✅ SECURITY: Look up authoritative wallet mapping by Firebase UID
+        const mappingDoc = await db.collection('walletMappings').doc(authenticatedUid).get();
+        
+        if (!mappingDoc.exists) {
+            console.warn(`🚨 No wallet mapping found for UID: ${authenticatedUid}`);
+            attemptLog.error = 'No wallet mapping';
+            await db.collection('custodialWithdrawals').add(attemptLog);
+            return res.status(404).json({ error: 'Wallet not found. Please contact support.' });
         }
         
-        const walletData = walletDoc.data();
+        const mapping = mappingDoc.data();
+        const authorizedUserId = mapping.userId;
         
-        // ✅ SECURITY: Verify wallet ownership using Firebase UID
-        // Check if wallet was created with this UID (new wallets) OR userId matches (legacy wallets)
-        const isOwner = walletData.firebaseUid === authenticatedUid || 
-                       userId === ('user_' + authenticatedUid.substring(0, 12));
-        
-        if (!isOwner) {
-            console.warn(`🚨 Authorization failed: ${authenticatedUid} attempted to withdraw from ${userId}'s wallet`);
+        // ✅ SECURITY: Verify requested userId matches the mapping
+        if (userId && userId !== authorizedUserId) {
+            console.warn(`🚨 Authorization failed: UID ${authenticatedUid} tried to access ${userId} but owns ${authorizedUserId}`);
+            attemptLog.error = 'Unauthorized wallet access';
+            attemptLog.authorizedUserId = authorizedUserId;
+            await db.collection('custodialWithdrawals').add(attemptLog);
             return res.status(403).json({ error: 'Unauthorized: Cannot access another user\'s wallet' });
         }
         
+        // ✅ Use the authoritative userId from the mapping
+        const walletUserId = authorizedUserId;
+        attemptLog.authorizedUserId = walletUserId;
+        
         // ✅ Validate recipient address and amount
         if (!ethers.utils.isAddress(to)) {
+            attemptLog.error = 'Invalid recipient address';
+            await db.collection('custodialWithdrawals').add(attemptLog);
             return res.status(400).json({ error: 'Invalid recipient address' });
         }
         
         if (parseFloat(amount) <= 0) {
+            attemptLog.error = 'Invalid amount';
+            await db.collection('custodialWithdrawals').add(attemptLog);
             return res.status(400).json({ error: 'Amount must be positive' });
         }
         
-        // ✅ Execute withdrawal
-        console.log(`💸 Authorized withdrawal: ${amount} BNB from ${userId} to ${to} (authenticated as ${authenticatedUid})`);
-        const result = await custodialWalletService.sendTransaction(userId, to, amount);
+        // ✅ Execute withdrawal using authoritative userId
+        console.log(`💸 Authorized withdrawal: ${amount} BNB from ${walletUserId} to ${to}`);
+        const result = await custodialWalletService.sendTransaction(walletUserId, to, amount);
         
         if (result.success) {
-            // ✅ Log withdrawal for audit trail
-            await db.collection('custodialWithdrawals').add({
-                userId,
-                firebaseUid: authenticatedUid,
-                to,
-                amount,
-                txHash: result.txHash,
-                timestamp: new Date().toISOString()
-            });
+            // ✅ Log successful withdrawal
+            attemptLog.success = true;
+            attemptLog.txHash = result.txHash;
+            attemptLog.blockNumber = result.blockNumber;
+            await db.collection('custodialWithdrawals').add(attemptLog);
             
             res.status(200).json(result);
         } else {
-            // ✅ Log failed withdrawal attempts
-            await db.collection('custodialWithdrawals').add({
-                userId,
-                firebaseUid: authenticatedUid,
-                to,
-                amount,
-                error: result.error,
-                failed: true,
-                timestamp: new Date().toISOString()
-            });
+            // ✅ Log failed transaction
+            attemptLog.error = result.error;
+            await db.collection('custodialWithdrawals').add(attemptLog);
             
             res.status(400).json(result);
         }
     } catch (error) {
-        // ✅ Log all auth failures for monitoring
+        // ✅ Log all failures
         if (error.code === 'auth/argument-error' || error.code === 'auth/id-token-expired') {
-            console.warn(`🚨 Invalid auth token for withdrawal attempt: ${userId}`);
+            console.warn(`🚨 Invalid auth token for withdrawal attempt`);
+            attemptLog.error = 'Invalid or expired auth token';
+            if (db) await db.collection('custodialWithdrawals').add(attemptLog);
             return res.status(401).json({ error: 'Invalid or expired authentication token' });
         }
         
         console.error('Error sending BNB:', error);
+        attemptLog.error = error.message;
+        if (db) await db.collection('custodialWithdrawals').add(attemptLog);
         res.status(500).json({ error: error.message });
     }
 });
