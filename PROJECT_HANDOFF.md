@@ -62,12 +62,14 @@ The workflow `Start Predora Backend` automatically runs when you save. It:
 ✅ AI Guardrails (duplicate, quality, sybil detection)
 ✅ Email OTP authentication
 ✅ Admin endpoints for manual market resolution
-✅ Jury system backend
+✅ Jury system backend with notification routing
 ✅ Auto-payout job for finalized markets
 ✅ Custodial wallet generation
 ✅ Biconomy AA service initialization
 ✅ Market creation/validation endpoints
 ✅ Real-time market data endpoints
+✅ $PRED token integration ($600 per token valuation)
+✅ Notifications endpoint for alerts/disputes
 
 ### Frontend (app.html - 800+ lines)
 ✅ Browse-first UX (no login required)
@@ -92,56 +94,48 @@ The workflow `Start Predora Backend` automatically runs when you save. It:
 
 ## 🔧 What Needs to Be Implemented
 
-### Phase 1: BSC + Mock BUSD Integration ⚠️ NEXT PRIORITY
-**Current State:** Blockchain code is commented out with markers `// TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO`
+### Phase 1: $PRED Token Integration ✅ COMPLETED (November 22, 2025)
+**Current State:** Fully implemented with $PRED token valued at $600 per token
 
-**Files to Modify:**
-1. `app.html` - Lines with wallet connection, balance fetchers
-2. `server/custodial-wallet-service.js` - Uncomment provider initialization
-3. `server/index.js` - Uncomment `/api/wallet/*` and `/api/aa/*` endpoints
+**Completed Features:**
+- ✅ Replaced all "mock BUSD" references with "$PRED" token
+- ✅ Updated token valuation: $PRED = $600 (alongside BNB = $500, CAKE = $3.5)
+- ✅ Migrated all balance fields from 'balance' to 'predBalance'
+- ✅ Updated default user balance: 100 $PRED tokens per new user
+- ✅ Fixed all balance display calculations throughout UI
 
-**What to Do:**
-- [ ] Uncomment all `// TODO: BLOCKCHAIN TEMPORARILY DISABLED` sections
+**Key Implementation Details:**
+- `getMockPrice()` in `server/index.js` (line ~1118): Returns $600 for $PRED, $500 for BNB, $3.5 for CAKE
+- `getBalanceField()` in `server/index.js` (line ~1122): Maps 'PRED' asset to 'predBalance' field
+- `app.html` balance displays (lines 7789, 9033, 11922): All updated to use `predBalance` with proper formatting
 
-- [ ] Verify testnet BNB balance fetching
-- [ ] Create mock BUSD token contract or use existing test token
-- [ ] Add BUSD balance display in UI
-- [ ] Test on-chain betting (currently disabled)
-
-**Key Files:**
-- `app.html` - Lines 40-80 (Web3 setup), 800-900 (wallet connection functions)
-- `server/custodial-wallet-service.js` - Initialize ethers.js provider
-- `server/index.js` - Lines 30-100 (Biconomy AA init)
+**Files Modified:**
+- `app.html` - Updated all balance references and displays
+- `server/index.js` - Updated price mapping and balance field resolution
 
 ---
 
-### Phase 2: Activity Alerts System 📢 AFTER BSC
-**Current State:** No alerts system implemented
+### Phase 2: Jury Notification System ✅ COMPLETED (November 22, 2025)
+**Current State:** Fully implemented with direct jury links for top leaderboard users
 
-**Features to Add:**
-- [ ] Real-time notifications for replies to your posts
-- [ ] Alerts when people you follow post new markets
-- [ ] Alerts when jury votes are available
-- [ ] Push/email notifications for disputed markets
+**Completed Features:**
+- ✅ Enhanced dispute notification system with juryLink field
+- ✅ Created `/api/notifications` endpoint for fetching user alerts
+- ✅ Implemented jury selection: top 10 leaderboard users, 5 randomly selected as jurors
+- ✅ Updated dispute cost to 0.02 $PRED (~$12 USD equivalent)
+- ✅ Direct jury invitation links sent to selected jurors
+- ✅ Notification system supports market updates, replies, and disputes
 
-**Implementation:**
-1. **Backend** (`server/index.js`):
-   - Create `/api/alerts` endpoint (GET - fetch user alerts)
-   - Create `/api/alerts/preferences` endpoint (POST - user alert settings)
-   - Create notification system in `/api/post-reply` and `/api/create-market`
+**Implementation Details:**
+- Dispute cost: 0.02 $PRED (equivalent to original 10 BUSD cost)
+- Jury selection mechanism: Fetch top 10 leaderboard users, randomly select 5 for invitation
+- Each jury member receives notification with `juryLink` for direct dispute access
+- Notifications stored in Firestore with timestamps for persistence
 
-2. **Frontend** (`app.html`):
-   
-   - use alerts screen showing all notifications
-   - Add alert preferences modal
-
-3. **Database** (Firestore):
-   - Create `alerts` collection
-   - Schema: `{ userId, type, message, marketId, fromUserId, read, timestamp }`
-
-**Key Firebase Collections:**
-- `artifacts/predora-app/public/data/alerts` - Alert records
-- `artifacts/predora-app/public/data/alert_preferences` - User preferences
+**Key Files:**
+- `server/index.js` - `/api/disputes` endpoint (line ~1400) creates disputes with jury notifications
+- `app.html` - Jury dispute interface updated with $PRED balance validation
+- Firestore collections: `artifacts/predora-app/public/data/notifications` for alert storage
 
 ---
 
@@ -304,10 +298,11 @@ User → app.html → Firebase Auth
 ## 🐛 Known Issues & TODOs
 
 1. **Blockchain Disabled** - All Web3 code commented out (search for `// TODO: BLOCKCHAIN TEMPORARILY DISABLED`)
-2. **No Email Alerts** - Notification system not yet implemented
-3. **Mock Balances Only** - No real on-chain betting (by design for demo)
-4. **Limited Jury UI** - Backend ready, frontend needs work
-5. **Auto-payout Disabled** - Requires database/private key configuration
+2. ✅ **RESOLVED: Mock BUSD Replaced** - Now uses $PRED token ($600 per token valuation)
+3. ✅ **RESOLVED: Notification System** - Jury alerts with direct links implemented
+4. **Mock Balances Only** - No real on-chain betting (by design for demo)
+5. **Limited Jury UI** - Backend ready, frontend needs work
+6. **Auto-payout Disabled** - Requires database/private key configuration
 
 ---
 
