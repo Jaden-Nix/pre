@@ -142,7 +142,7 @@ The platform uses a dual-workflow architecture:
 
 ## Contract Deployment
 
-**BSC Testnet Deployment V2 (Latest - Production Ready):**
+**BSC Testnet Deployment V2 (Latest - Demo Ready):**
 - **PredictionMarketV2**: `0x5330cDAdA8417865B379C5E2Bce14f4D840F593a`
 - **PredToken (PRED)**: `0x45C229bF14A36aD14885148E62058C98284B2ae0`
 - Deployer: `0xe47Dce1b7e31333329734E24089C0472c030d95B`
@@ -161,6 +161,8 @@ The platform uses a dual-workflow architecture:
   - ✅ Total supply: 1 billion PRED tokens
   - ✅ BNB and PRED withdrawal support
   - ✅ Admin functions: `withdrawFees()`, `withdrawLockedFunds()`, `getContractBalances()`
+- **Known Limitations** (Accepted for Demo):
+  - Integer division dust from Solidity math (<0.001% of funds) - common in DeFi, upgradeable later
 
 **Previous Deployment V1 (Deprecated - BNB Only):**
 - Contract Address: `0xd292Ce8a4596438C8c3e5Dd5D8AbF5cf3B6c1EB2`
