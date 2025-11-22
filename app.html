@@ -8629,6 +8629,37 @@
                         💡 <strong>Note:</strong> Balances are fetched directly from BSC Testnet blockchain
                     </p>
                 </div>
+
+                <!-- $PRED Token Faucet -->
+                <div class="ui-panel p-4 space-y-4">
+                    <h3 class="text-lg font-semibold gradient-text">🪙 $PRED Token Faucet</h3>
+                    <p class="text-sm text-gray-400">Claim free $PRED tokens for testing. One claim every 24 hours.</p>
+                    
+                    <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                        <span class="text-sm text-gray-400">Your $PRED Balance:</span>
+                        <span class="text-sm font-semibold text-green-400">${(userProfile.predBalance || 100).toFixed(2)} $PRED</span>
+                    </div>
+                    
+                    <button id="claim-pred-btn" onclick="claimPredTokens()" class="btn bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 w-full">
+                        💰 Claim 50 $PRED
+                    </button>
+                    
+                    <div id="faucet-cooldown-msg" class="hidden p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                        <p class="text-xs text-yellow-400 text-center"></p>
+                    </div>
+                    
+                    <p class="text-xs text-center text-gray-500">$PRED tokens are used for betting on markets. Value: $600/token</p>
+                </div>
+
+                <!-- Sign Out Button -->
+                <div class="pt-2 pb-4">
+                    <button onclick="signOut()" class="btn w-full bg-gradient-to-r from-red-500/20 to-pink-500/20 border-2 border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 font-semibold transition-all duration-300 hover:scale-[1.02] active:scale-95">
+                        <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                        Sign Out
+                    </button>
+                </div>
             `;
 
             // Re-populate all asset selectors in the app
