@@ -6814,6 +6814,7 @@
                     walletAddress: "0x" + [...Array(40)].map(() => Math.floor(Math.random() * 16).toString(16)).join(''), 
                     xp: 0,
                     balance: 0, 
+                    predBalance: 100,
                     bnbBalance: 0,
                     cakeBalance: 0,
                     createdAt: new Date().toISOString(),
@@ -7785,7 +7786,7 @@
                 }
                 
                 dom.profileXpBadge.innerText = `${profile.xp.toLocaleString()} XP`;
-                dom.mockBalance.innerText = `$${profile.balance.toFixed(2)}`;
+                dom.mockBalance.innerText = `$${(profile.predBalance || 100).toFixed(2)}`;
                 // Fetch actual rank from leaderboard
                 fetchUserRank(currentUserId).then(rank => {
                     dom.profileRankBadge.innerText = `Rank: #${rank || 'N/A'}`;
@@ -9030,7 +9031,7 @@
 
                     // Update UI elements
                     if (dom.mockBalance) {
-                        dom.mockBalance.innerText = `$${userProfile.balance.toFixed(2)}`;
+                        dom.mockBalance.innerText = `$${(userProfile.predBalance || 100).toFixed(2)}`;
                     }
                     if (dom.profileXpBadge) {
                         dom.profileXpBadge.innerText = `${userProfile.xp.toLocaleString()} XP`;
@@ -11833,7 +11834,7 @@ ${historyText}`;
             }
 
             const { doc, getDoc, updateDoc, arrayUnion, increment, runTransaction } = window.firebase.firestore;
-            const DISPUTE_COST = 10; // 10 BUSD
+            const DISPUTE_COST = 0.02; // 0.02 $PRED (valued at $600 each = $12 USD)
 
             try {
                 showLoadingOverlay(true, "Processing dispute...");
@@ -11847,11 +11848,11 @@ ${historyText}`;
                         throw new Error("User profile not found");
                     }
 
-                    const userBalance = profileSnap.data().balance || 0;
+                    const userBalance = profileSnap.data().predBalance || 100;
 
                     // Validation: Check if user has enough balance
                     if (userBalance < DISPUTE_COST) {
-                        throw new Error(`Insufficient balance. You need ${DISPUTE_COST} BUSD but only have ${userBalance.toFixed(2)} BUSD.`);
+                        throw new Error(`Insufficient balance. You need ${DISPUTE_COST} $PRED but only have ${userBalance.toFixed(2)} $PRED.`);
                     }
 
                     // Get market document
@@ -11875,9 +11876,9 @@ ${historyText}`;
                         throw new Error("You have already disputed this market");
                     }
 
-                    // Deduct 10 BUSD from user balance
+                    // Deduct PRED from user balance
                     transaction.update(profileRef, {
-                        balance: increment(-DISPUTE_COST)
+                        predBalance: increment(-DISPUTE_COST)
                     });
 
                     // Add dispute to market and set status to disputed
@@ -11918,8 +11919,8 @@ ${historyText}`;
 
                 // Refresh user balance (catch errors to prevent logout)
                 try {
-                    userProfile.balance = (userProfile.balance || 0) - DISPUTE_COST;
-                    if (dom.mockBalance) dom.mockBalance.innerText = `$${userProfile.balance.toFixed(2)}`;
+                    userProfile.predBalance = (userProfile.predBalance || 100) - DISPUTE_COST;
+                    if (dom.mockBalance) dom.mockBalance.innerText = `$${(userProfile.predBalance || 100).toFixed(2)}`;
                 } catch (balanceError) {
                     console.error("Balance update failed:", balanceError);
                 }
