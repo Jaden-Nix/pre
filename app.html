@@ -4393,9 +4393,8 @@
         // Sign Out Function
         async function signOut() {
             try {
-                const { getAuth, signOut: firebaseSignOut } = window.firebase.auth;
-                const currentAuth = getAuth();
-                await firebaseSignOut(currentAuth);
+                const auth = window.firebase.auth();
+                await auth.signOut();
                 
                 // Clear user data
                 currentUserId = null;
@@ -8650,6 +8649,38 @@
                     
                     <p class="text-xs text-center text-gray-500">$PRED tokens are used for betting on markets. Value: $600/token</p>
                 </div>
+
+                ${isCustodial ? `
+                <!-- Custodial Wallet Withdrawals -->
+                <div class="ui-panel p-4 space-y-4">
+                    <h3 class="text-lg font-semibold gradient-text">💸 Withdraw Funds</h3>
+                    <p class="text-sm text-gray-400">Send BNB or $PRED from your custodial wallet to any address.</p>
+                    
+                    <!-- Withdraw BNB -->
+                    <div class="space-y-3 pt-2">
+                        <h4 class="text-sm font-semibold text-sky-300">Withdraw BNB</h4>
+                        <input type="text" id="withdraw-bnb-address" placeholder="Recipient Address (0x...)" 
+                            class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        <input type="number" id="withdraw-bnb-amount" placeholder="Amount (BNB)" step="0.001" min="0.001"
+                            class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        <button onclick="withdrawBNB()" class="btn bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 w-full">
+                            💰 Withdraw BNB
+                        </button>
+                    </div>
+
+                    <!-- Withdraw PRED -->
+                    <div class="space-y-3 pt-4 border-t border-white/10">
+                        <h4 class="text-sm font-semibold text-purple-300">Withdraw $PRED</h4>
+                        <input type="text" id="withdraw-pred-address" placeholder="Recipient Address (0x...)" 
+                            class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <input type="number" id="withdraw-pred-amount" placeholder="Amount ($PRED)" step="1" min="1"
+                            class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <button onclick="withdrawPRED()" class="btn bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 w-full">
+                            🪙 Withdraw $PRED
+                        </button>
+                    </div>
+                </div>
+                ` : ''}
 
                 <!-- Sign Out Button -->
                 <div class="pt-2 pb-4">
