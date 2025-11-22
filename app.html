@@ -9497,8 +9497,8 @@
         }
 
         /**
-         * Submits all items in the pledge pool using the AMM Transaction Model.
-         * [CORRECTED for "Reads Before Writes" Error]
+         * Submits all items in the pledge pool using batch on-chain betting or Firestore.
+         * ⛓️ HYBRID MODE: On-chain if markets have onChainMarketId, otherwise Firestore
          */
         window.stakeAllPledges = async () => {
             // 🔒 GUEST MODE PROTECTION
@@ -9508,8 +9508,8 @@
                 return;
             }
             
-            // 1. Get all Firebase functions
-            const { doc, updateDoc, increment, collection, runTransaction, serverTimestamp, getDoc } = window.firebase.firestore;
+            // 1. Get all Firebase functions (including setDoc for on-chain storage)
+            const { doc, updateDoc, increment, collection, runTransaction, serverTimestamp, getDoc, setDoc } = window.firebase.firestore;
 
             if (pledgePoolItems.length === 0) return;
 
@@ -9539,47 +9539,152 @@
             else if (selectedAsset === "BNB") { balanceFieldToUpdate = "bnbBalance"; }
             else if (selectedAsset === "CAKE") { balanceFieldToUpdate = "cakeBalance"; }
 
-            // 4. Mock "on-chain" delay
-            showLoadingOverlay(true, "Confirming on-chain...");
-            await new Promise(res => setTimeout(res, 3000));
+            // 🔗 4. CHECK IF PLEDGES SHOULD GO ON-CHAIN
+            // Fetch market data to check for onChainMarketId
+            const marketDataPromises = pledgesToProcess.map(item => 
+                getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', QUICK_PLAY_MARKETS_COLLECTION, item.id))
+            );
+            const marketDocs = await Promise.all(marketDataPromises);
+            
+            // Separate on-chain vs Firestore pledges
+            const onChainPledges = [];
+            const firestorePledges = [];
+            let onChainTotalAmount = 0;
+            let firestoreTotalAmount = 0;
+            
+            pledgesToProcess.forEach((pledge, index) => {
+                const marketData = marketDocs[index].exists() ? marketDocs[index].data() : null;
+                if (marketData && marketData.onChainMarketId && !marketData.isMock) {
+                    onChainPledges.push({ ...pledge, onChainMarketId: marketData.onChainMarketId });
+                    onChainTotalAmount += pledge.amount;
+                } else {
+                    firestorePledges.push(pledge);
+                    firestoreTotalAmount += pledge.amount;
+                }
+            });
+
+            // ⛓️ 5. BATCH ON-CHAIN BETTING (if wallet connected and has on-chain pledges)
+            if (onChainPledges.length > 0 && window.ethereum && connectedAddress) {
+                try {
+                    showLoadingOverlay(true, "⛓️ Sending batch transaction...");
+                    
+                    // Convert pledges to contract parameters
+                    const marketIds = onChainPledges.map(p => p.onChainMarketId);
+                    const picks = onChainPledges.map(p => p.pick === 'YES');
+                    const amounts = onChainPledges.map(p => {
+                        // Convert asset amount to BNB (on-chain only accepts BNB)
+                        const bnbAmount = p.amount * getMockPrice(selectedAsset) / getMockPrice('BNB');
+                        return ethers.utils.parseEther(bnbAmount.toFixed(18));
+                    });
+                    
+                    // Calculate total BNB needed from wallet
+                    const totalBNB = amounts.reduce((sum, amt) => sum.add(amt), ethers.BigNumber.from(0));
+                    
+                    // Call smart contract batch betting function
+                    const contract = getContractInstance();
+                    const tx = await contract.placeBatchBets(marketIds, picks, amounts, { value: totalBNB });
+                    
+                    showToast('⏳ Waiting for confirmation...', 'info');
+                    await tx.wait(1);
+                    
+                    showToast(`✅ ${onChainPledges.length} bets confirmed on-chain!`, 'success');
+                    
+                    // Store in Firestore for UI tracking (NOT deducting balance - already paid with wallet BNB)
+                    for (const pledge of onChainPledges) {
+                        const pledgeRef = doc(collection(db, 'artifacts', APP_ID, 'public', 'data', PLEDGES_COLLECTION));
+                        await setDoc(pledgeRef, {
+                            marketId: pledge.id,
+                            onChainMarketId: pledge.onChainMarketId,
+                            marketTitle: pledge.title,
+                            userId: currentUserId,
+                            pick: pledge.pick,
+                            amount: pledge.amount,
+                            asset: 'BNB', // On-chain always uses BNB
+                            txHash: tx.hash,
+                            isOnChain: true,
+                            isResolved: false,
+                            createdAt: new Date().toISOString(),
+                            isQuickPlay: true
+                        });
+                    }
+                    
+                    // Update user XP for on-chain bets
+                    const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
+                    const totalXp = onChainPledges.length * getRandomXP(10);
+                    await updateDoc(profileRef, {
+                        xp: increment(totalXp)
+                    });
+                    
+                    // Clear on-chain pledges from pool ONLY after successful transaction
+                    pledgePoolItems = pledgePoolItems.filter(item => 
+                        !onChainPledges.find(p => p.id === item.id)
+                    );
+                    localStorage.setItem('pledgePool', JSON.stringify(pledgePoolItems));
+                    renderPledgePool();
+                    
+                } catch (error) {
+                    console.error('Batch on-chain betting failed:', error);
+                    showToast('❌ Transaction failed: ' + error.message, 'error');
+                    showLoadingOverlay(false);
+                    return;
+                }
+            } else if (onChainPledges.length > 0 && !connectedAddress) {
+                // User has on-chain pledges but no wallet connected
+                showToast('⚠️ Please connect MetaMask wallet to bet on on-chain markets', 'warning');
+                showLoadingOverlay(false);
+                return;
+            }
+
+            // 💾 6. FIRESTORE BETTING (for markets without onChainMarketId)
+            if (firestorePledges.length === 0) {
+                showLoadingOverlay(false);
+                // All pledges were on-chain, we're done
+                if (pledgePoolItems.length === 0) {
+                    showScreen('profile-screen');
+                }
+                return;
+            }
+            
+            showLoadingOverlay(true, "Confirming Firestore bets...");
+            await new Promise(res => setTimeout(res, 1000));
 
             try {
-                // 5. --- RUNS THE ATOMIC TRANSACTION ---
+                // 7. --- RUNS THE ATOMIC FIRESTORE TRANSACTION (ONLY for Firestore pledges) ---
                 await runTransaction(db, async (transaction) => {
 
                     // --- PART 1: ALL READS FIRST ---
 
-                    // 6. Get profile refs
+                    // 8. Get profile refs
                     const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
                     const publicProfileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', PUBLIC_LEADERBOARD_COLLECTION, currentUserId);
                     const pledgeCollection = collection(db, 'artifacts', APP_ID, 'public', 'data', PLEDGES_COLLECTION);
 
-                    // 7. TRANSACTION READ 1: Get the user's profile
+                    // 9. TRANSACTION READ 1: Get the user's profile
                     const profileSnap = await transaction.get(profileRef);
                     if (!profileSnap.exists()) { throw new Error("User profile not found."); }
 
-                    // 8. TRANSACTION READ 2: Get all market data
-                    const marketRefs = pledgesToProcess.map(item => 
+                    // 10. TRANSACTION READ 2: Get all market data for Firestore pledges ONLY
+                    const marketRefs = firestorePledges.map(item => 
                         doc(db, 'artifacts', APP_ID, 'public', 'data', QUICK_PLAY_MARKETS_COLLECTION, item.id)
                     );
                     const marketSnaps = await Promise.all(marketRefs.map(ref => transaction.get(ref)));
 
                     // --- ALL READS ARE NOW COMPLETE ---
 
-                    // 9. Balance Check (using the data we just read)
+                    // 11. Balance Check - ONLY for Firestore pledges (on-chain already paid)
                     const userBalances = profileSnap.data();
                     const currentAssetBalance = userBalances[balanceFieldToUpdate] || 0;
-                    if (totalStakeAmount > currentAssetBalance) {
-                        throw new Error(`Insufficient ${selectedAsset} balance. You need ${totalStakeAmount.toFixed(4)}.`);
+                    if (firestoreTotalAmount > currentAssetBalance) {
+                        throw new Error(`Insufficient ${selectedAsset} balance. You need ${firestoreTotalAmount.toFixed(4)}.`);
                     }
 
                     // --- PART 2: ALL WRITES SECOND ---
 
                     let totalXp = 0;
 
-                    // 10. TRANSACTION LOOP: Process each pledge (WRITE ONLY)
-                    for (let i = 0; i < pledgesToProcess.length; i++) {
-                        const item = pledgesToProcess[i];
+                    // 12. TRANSACTION LOOP: Process each Firestore pledge ONLY (WRITE ONLY)
+                    for (let i = 0; i < firestorePledges.length; i++) {
+                        const item = firestorePledges[i];
                         const marketSnap = marketSnaps[i]; // Get the market data we fetched earlier
 
                         const amountInUsdPerPledge = item.amount * getMockPrice(selectedAsset);
@@ -9674,7 +9779,7 @@
                     // 14. TRANSACTION WRITE 3: Update profile (one time at the end)
                     transaction.update(profileRef, { 
                         xp: increment(totalXp),
-                        [balanceFieldToUpdate]: increment(-totalStakeAmount)
+                        [balanceFieldToUpdate]: increment(-firestoreTotalAmount)
                     });
 
                     // 15. TRANSACTION WRITE 4: Update leaderboard
@@ -9684,16 +9789,20 @@
                 });
                 // --- END OF TRANSACTION ---
 
-                // 16. Clear the processed items from the local pool
+                // 16. Clear the Firestore-processed items from the local pool
                 pledgePoolItems = pledgePoolItems.filter(item => 
-                    !pledgesToProcess.find(p => p.id === item.id)
+                    !firestorePledges.find(p => p.id === item.id)
                 );
                 localStorage.setItem('pledgePool', JSON.stringify(pledgePoolItems));
 
                 renderPledgePool(); // Re-render the (now empty) pool
                 showLoadingOverlay(false);
-                showToast(`${pledgesToProcess.length} Pledges Confirmed on BNB Testnet!`, "success");
-                showScreen('profile-screen'); 
+                showToast(`${firestorePledges.length} Firestore pledges confirmed!`, "success");
+                
+                // If all pledges are done, go to profile
+                if (pledgePoolItems.length === 0) {
+                    showScreen('profile-screen');
+                } 
 
             } catch (error) {
                 console.error("Pledge staking failed:", error);
