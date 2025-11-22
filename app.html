@@ -2615,7 +2615,7 @@
                         <div class="grid grid-cols-3 gap-3">
                             <div class="text-center p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-xl border border-purple-500/20">
                                 <span class="text-xs text-gray-400 block mb-1">$PRED</span>
-                                <p id="mock-busd" class="text-xl font-bold text-purple-400">$100</p>
+                                <p id="mock-balance" class="text-xl font-bold text-purple-400">$100</p>
                             </div>
                             <div class="text-center p-4 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-xl border border-yellow-500/20">
                                 <span class="text-xs text-gray-400 block mb-1">BNB</span>
@@ -5426,7 +5426,7 @@
         async function refreshAllBalances() {
             console.log('ℹ️ Balances come from Firestore (updated in real-time)');
             // Just update UI if needed (balances already in userProfile from Firestore)
-            if (userProfile && dom.mockBalance) {
+            if (userProfile) {
                 updateProfileUI(userProfile);
                 console.log('✅ UI refreshed with current balances');
             }
@@ -5899,7 +5899,7 @@
                     }
                     
                     // Update main balance display
-                    const mockBalanceEl = document.getElementById('mock-busd');
+                    const mockBalanceEl = document.getElementById('mock-balance');
                     if (mockBalanceEl) {
                         mockBalanceEl.textContent = `$${data.newBalance.toFixed(2)}`;
                     }
@@ -7804,6 +7804,10 @@
                     if (!leaderboardUnsubscribe) renderLeaderboard();
                     break;
                 case 'profile-screen':
+                    // Update profile UI with latest data when screen is shown
+                    if (userProfile) {
+                        updateProfileUI(userProfile);
+                    }
                     handleProfileTab(document.querySelector('.profile-tab.active')?.id.split('-')[1] || 'active');
                     // Load active stakes to populate staking summary
                     if (!activeStakesUnsubscribe) renderActiveStakes();
@@ -8217,7 +8221,12 @@
                 }
                 
                 dom.profileXpBadge.innerText = `${profile.xp.toLocaleString()} XP`;
-                dom.mockBalance.innerText = `$${(profile.predBalance || 100).toFixed(2)}`;
+                
+                // Query balance elements directly instead of using cached DOM references
+                const mockBalanceEl = document.getElementById('mock-balance');
+                if (mockBalanceEl) {
+                    mockBalanceEl.innerText = `$${(profile.predBalance || 100).toFixed(2)}`;
+                }
                 
                 // Update faucet balance display
                 const faucetBalanceEl = document.getElementById('faucet-pred-balance');
@@ -8335,7 +8344,7 @@
                     const faucetBalanceEl = document.getElementById('faucet-pred-balance');
                     const mockBnbEl = document.getElementById('mock-bnb');
                     const mockCakeEl = document.getElementById('mock-cake');
-                    const mockBalanceEl = document.getElementById('mock-busd');
+                    const mockBalanceEl = document.getElementById('mock-balance');
                     
                     if (faucetBalanceEl) faucetBalanceEl.textContent = `${(userProfile.predBalance || 100).toFixed(2)} $PRED`;
                     if (mockBalanceEl) mockBalanceEl.textContent = `$${(userProfile.predBalance || 100).toFixed(2)}`;
@@ -9511,8 +9520,9 @@
                     userProfile.xp += xpToAward;
 
                     // Update UI elements
-                    if (dom.mockBalance) {
-                        dom.mockBalance.innerText = `$${(userProfile.predBalance || 100).toFixed(2)}`;
+                    const mockBalanceEl = document.getElementById('mock-balance');
+                    if (mockBalanceEl) {
+                        mockBalanceEl.innerText = `$${(userProfile.predBalance || 100).toFixed(2)}`;
                     }
                     if (dom.profileXpBadge) {
                         dom.profileXpBadge.innerText = `${userProfile.xp.toLocaleString()} XP`;
@@ -12525,7 +12535,8 @@ ${historyText}`;
                 // Refresh user balance (catch errors to prevent logout)
                 try {
                     userProfile.predBalance = (userProfile.predBalance || 100) - DISPUTE_COST;
-                    if (dom.mockBalance) dom.mockBalance.innerText = `$${(userProfile.predBalance || 100).toFixed(2)}`;
+                    const mockBalanceEl = document.getElementById('mock-balance');
+                    if (mockBalanceEl) mockBalanceEl.innerText = `$${(userProfile.predBalance || 100).toFixed(2)}`;
                 } catch (balanceError) {
                     console.error("Balance update failed:", balanceError);
                 }
