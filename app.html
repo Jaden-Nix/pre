@@ -13521,34 +13521,40 @@ ${historyText}`;
                 console.log('👂 Attaching onSnapshot listener...');
                 socialFeedUnsubscribe = onSnapshot(q, async (snapshot) => {
                     console.log('📬 Social feed snapshot received:', snapshot.docs.length, 'posts');
-                let posts = [];
-                snapshot.forEach(doc => {
-                    posts.push({
-                        ...doc.data(),
-                        postId: doc.id
-                    });
-                });
+                    
+                    try {
+                        let posts = [];
+                        snapshot.forEach(doc => {
+                            posts.push({
+                                ...doc.data(),
+                                postId: doc.id
+                            });
+                        });
+                        console.log('✅ Posts extracted from snapshot:', posts.length);
 
-                // Filter based on current filter
-                if (currentFeedFilter === 'following') {
-                    const userDoc = await getDoc(firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId));
-                    const following = userDoc.data()?.following || [];
-                    posts = posts.filter(post => following.includes(post.userId));
-                } else if (currentFeedFilter === 'trending') {
-                    posts.sort((a, b) => {
-                        const aScore = (a.reactions?.length || 0) + (a.commentCount || 0);
-                        const bScore = (b.reactions?.length || 0) + (b.commentCount || 0);
-                        return bScore - aScore;
-                    });
-                }
+                        // Filter based on current filter
+                        if (currentFeedFilter === 'following') {
+                            const userDoc = await getDoc(firestoreDoc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId));
+                            const following = userDoc.data()?.following || [];
+                            posts = posts.filter(post => following.includes(post.userId));
+                        } else if (currentFeedFilter === 'trending') {
+                            posts.sort((a, b) => {
+                                const aScore = (a.reactions?.length || 0) + (a.commentCount || 0);
+                                const bScore = (b.reactions?.length || 0) + (b.commentCount || 0);
+                                return bScore - aScore;
+                            });
+                        }
 
-                if (posts.length === 0) {
-                    container.innerHTML = '<p class="text-gray-400 text-center py-8">No posts yet. Be the first to share!</p>';
-                    return;
-                }
+                        if (posts.length === 0) {
+                            console.log('⚠️ No posts after filtering');
+                            container.innerHTML = '<p class="text-gray-400 text-center py-8">No posts yet. Be the first to share!</p>';
+                            return;
+                        }
 
-                // Fetch leaderboard data once for all posts
-                const leaderboardData = await getLeaderboardData();
+                        console.log('📊 Fetching leaderboard data...');
+                        // Fetch leaderboard data once for all posts
+                        const leaderboardData = await getLeaderboardData();
+                        console.log('✅ Leaderboard data fetched');
 
                 // Batch fetch pledge data for whale/skin checks (performance optimization)
                 const { collection: col2, query: q2, where: w2, getDocs: getDocs2 } = window.firebase.firestore;
@@ -13766,7 +13772,13 @@ ${historyText}`;
                         </div>
                     `;
                 }
-                container.innerHTML = html;
+                        console.log('🎨 Rendering', posts.length, 'posts to container...');
+                        container.innerHTML = html;
+                        console.log('✅ Social feed rendered successfully!');
+                    } catch (renderError) {
+                        console.error('❌ Error rendering social feed:', renderError);
+                        container.innerHTML = '<p class="text-red-400 text-center py-8">Error rendering posts: ' + renderError.message + '</p>';
+                    }
                 }, (error) => {
                     console.error('❌ Firestore onSnapshot error:', error);
                     container.innerHTML = '<p class="text-red-400 text-center py-8">Error loading posts. Please try again.</p>';
