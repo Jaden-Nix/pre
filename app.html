@@ -1373,12 +1373,22 @@
     <!-- Mobile Header (visible on mobile only) -->
     <header id="mobile-header" class="sticky top-0 z-50 md:hidden backdrop-blur-xl bg-gradient-to-r from-[#0D1117]/95 to-[#161B22]/95 dark:from-[#0D1117]/95 dark:to-[#161B22]/95 light:from-white/98 light:to-gray-50/98 border-b border-[#30363D]/30 dark:border-[#30363D]/30 light:border-gray-200/50 shadow-lg shadow-black/5">
         <div class="max-w-7xl mx-auto px-6 py-4">
-            <div class="flex items-center justify-center relative">
+            <div class="flex items-center justify-between relative">
                 <!-- Centered Logo with Glow Effect -->
                 <h1 id="mobile-app-title" class="text-2xl font-black gradient-text tracking-tight cursor-pointer transition-transform duration-200 active:scale-95 relative">
                     Predora
                     <div class="absolute -inset-2 bg-gradient-to-r from-sky-400/20 to-indigo-400/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10"></div>
                 </h1>
+                
+                <!-- Mobile Sign In Button (shown when logged out) -->
+                <button id="mobile-nav-signin-button" onclick="showScreen('login-screen')" class="hidden px-4 py-2 bg-gradient-to-r from-sky-500 to-cyan-500 rounded-full text-white font-semibold text-sm shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-sky-500/50 active:scale-95">
+                    Sign In
+                </button>
+                
+                <!-- Mobile Profile Button (shown when logged in) -->
+                <button id="mobile-nav-profile-button" onclick="showScreen('profile-screen')" class="hidden w-10 h-10 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-indigo-500/50 active:scale-95">
+                    P
+                </button>
             </div>
         </div>
     </header>
@@ -4409,8 +4419,13 @@
 
         // Update Nav Bar based on auth state
         function updateNavBar(isLoggedIn) {
+            // Desktop nav elements
             const navUserSection = document.getElementById('nav-user-section');
             const navSignInButton = document.getElementById('nav-signin-button');
+            
+            // Mobile header elements
+            const mobileNavSignInButton = document.getElementById('mobile-nav-signin-button');
+            const mobileNavProfileButton = document.getElementById('mobile-nav-profile-button');
             
             // Bottom nav buttons (mobile only)
             const bottomNavProfile = document.getElementById('bottom-nav-profile-button');
@@ -4422,6 +4437,10 @@
                 if (navUserSection) navUserSection.classList.remove('hidden');
                 if (navSignInButton) navSignInButton.classList.add('hidden');
                 
+                // Mobile header: Show profile, hide sign in
+                if (mobileNavProfileButton) mobileNavProfileButton.classList.remove('hidden');
+                if (mobileNavSignInButton) mobileNavSignInButton.classList.add('hidden');
+                
                 // Show all bottom nav buttons
                 if (bottomNavProfile) bottomNavProfile.classList.remove('hidden');
                 if (bottomNavSocial) bottomNavSocial.classList.remove('hidden');
@@ -4430,6 +4449,10 @@
                 // Guest mode: Show sign in, hide user section
                 if (navUserSection) navUserSection.classList.add('hidden');
                 if (navSignInButton) navSignInButton.classList.remove('hidden');
+                
+                // Mobile header: Show sign in, hide profile
+                if (mobileNavProfileButton) mobileNavProfileButton.classList.add('hidden');
+                if (mobileNavSignInButton) mobileNavSignInButton.classList.remove('hidden');
                 
                 // Hide profile/create buttons for guests, but SHOW social (browse-only)
                 if (bottomNavProfile) bottomNavProfile.classList.add('hidden');
