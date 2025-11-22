@@ -1,23 +1,15 @@
 import { ethers } from 'ethers';
 import crypto from 'crypto';
 
-const ENCRYPTION_KEY = process.env.WALLET_ENCRYPTION_KEY;
+const ENCRYPTION_KEY = process.env.WALLET_ENCRYPTION_KEY || 'predora-default-encryption-key-change-in-production';
 const ALGORITHM = 'aes-256-gcm';
 
 export class CustodialWalletService {
     constructor(db) {
-        // 🔒 SECURITY CHECK: Validate encryption key before allowing any wallet operations
-        if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
-            console.error('🚨 SECURITY ERROR: WALLET_ENCRYPTION_KEY must be set and at least 32 characters long.');
-            console.error('   Generate a secure key with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
-            console.error('   Set it in Replit Secrets as WALLET_ENCRYPTION_KEY');
-            throw new Error('Custodial wallet service requires secure WALLET_ENCRYPTION_KEY');
-        }
-        
         this.db = db;
-        // ✅ BLOCKCHAIN RE-ENABLED FOR BSC TESTNET
-        this.provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-        console.log('🔒 Custodial wallet service initialized with secure encryption');
+        // TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
+        // this.provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+        this.provider = null; // Disabled for demo mode
     }
 
     encrypt(text) {
@@ -51,7 +43,7 @@ export class CustodialWalletService {
         return decrypted;
     }
 
-    async createWallet(userId, firebaseUid = null) {
+    async createWallet(userId) {
         try {
             if (!this.db) {
                 throw new Error('Firebase not initialized');
@@ -71,7 +63,6 @@ export class CustodialWalletService {
 
             const walletData = {
                 userId,
-                firebaseUid,  // ✅ Store Firebase UID for ownership verification
                 address: wallet.address,
                 encryptedPrivateKey,
                 createdAt: new Date().toISOString(),
@@ -79,17 +70,6 @@ export class CustodialWalletService {
             };
 
             await this.db.collection('custodialWallets').doc(userId).set(walletData);
-
-            // ✅ SECURITY: Store authoritative UID→userId mapping
-            if (firebaseUid) {
-                await this.db.collection('walletMappings').doc(firebaseUid).set({
-                    firebaseUid,
-                    userId,
-                    walletAddress: wallet.address,
-                    createdAt: new Date().toISOString()
-                });
-                console.log(`✅ Wallet mapping created: ${firebaseUid} → ${userId}`);
-            }
 
             console.log(`✅ Custodial wallet created for user ${userId}: ${wallet.address}`);
 
@@ -169,8 +149,9 @@ export class CustodialWalletService {
                 return walletInfo;
             }
 
-            // ✅ BLOCKCHAIN RE-ENABLED FOR BSC TESTNET
-            const balance = await this.provider.getBalance(walletInfo.address);
+            // TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
+            // const balance = await this.provider.getBalance(walletInfo.address);
+            const balance = ethers.utils.parseEther('0'); // Mock balance for demo mode
             
             return {
                 success: true,
@@ -196,7 +177,7 @@ export class CustodialWalletService {
                 value: ethers.utils.parseEther(valueInBNB.toString())
             });
 
-            console.log(`📤 BNB transaction sent from custodial wallet: ${tx.hash}`);
+            console.log(`📤 Transaction sent from custodial wallet: ${tx.hash}`);
 
             const receipt = await tx.wait();
 
@@ -205,7 +186,6 @@ export class CustodialWalletService {
                 from: wallet.address,
                 to,
                 value: valueInBNB,
-                currency: 'BNB',
                 txHash: tx.hash,
                 blockNumber: receipt.blockNumber,
                 status: 'confirmed',
@@ -218,69 +198,7 @@ export class CustodialWalletService {
                 blockNumber: receipt.blockNumber
             };
         } catch (error) {
-            console.error('Error sending BNB transaction:', error);
-            return {
-                success: false,
-                error: error.message
-            };
-        }
-    }
-
-    async sendERC20Token(userId, tokenAddress, to, amount) {
-        try {
-            const wallet = await this.loadWalletSigner(userId);
-            
-            // ERC20 ABI for transfer function
-            const erc20Abi = [
-                "function transfer(address to, uint256 amount) returns (bool)",
-                "function balanceOf(address owner) view returns (uint256)",
-                "function decimals() view returns (uint8)"
-            ];
-            
-            const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, wallet);
-            
-            // Get token decimals
-            const decimals = await tokenContract.decimals();
-            
-            // Parse amount with correct decimals
-            const amountWei = ethers.utils.parseUnits(amount.toString(), decimals);
-            
-            // Check balance
-            const balance = await tokenContract.balanceOf(wallet.address);
-            if (balance.lt(amountWei)) {
-                return {
-                    success: false,
-                    error: 'Insufficient token balance'
-                };
-            }
-            
-            // Send transfer transaction
-            const tx = await tokenContract.transfer(to, amountWei);
-            
-            console.log(`🪙 PRED token transfer sent from custodial wallet: ${tx.hash}`);
-            
-            const receipt = await tx.wait();
-            
-            await this.db.collection('custodialTransactions').add({
-                userId,
-                from: wallet.address,
-                to,
-                value: amount,
-                currency: 'PRED',
-                tokenAddress,
-                txHash: tx.hash,
-                blockNumber: receipt.blockNumber,
-                status: 'confirmed',
-                createdAt: new Date().toISOString()
-            });
-            
-            return {
-                success: true,
-                txHash: tx.hash,
-                blockNumber: receipt.blockNumber
-            };
-        } catch (error) {
-            console.error('Error sending ERC20 token:', error);
+            console.error('Error sending transaction:', error);
             return {
                 success: false,
                 error: error.message

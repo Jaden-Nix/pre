@@ -1,4 +1,4 @@
-modules = ["web", "nodejs-20", "python-3.11"]
+modules = ["web", "nodejs-20"]
 
 [[ports]]
 localPort = 3001
@@ -7,10 +7,6 @@ externalPort = 3001
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 33655
-externalPort = 8081
 
 [[ports]]
 localPort = 34167
@@ -37,12 +33,12 @@ localPort = 41045
 externalPort = 3000
 
 [[ports]]
-localPort = 42969
-externalPort = 3003
+localPort = 42087
+externalPort = 8081
 
 [[ports]]
-localPort = 44565
-externalPort = 8099
+localPort = 42969
+externalPort = 3003
 
 [[ports]]
 localPort = 46419
@@ -91,11 +87,5 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
-
-[userenv]
-
-[userenv.shared]
-WALLET_ENCRYPTION_KEY = "068094a65aa531e97d8c284f8e45eb7f62368c06574bbbdb72850d02732930e7"
-GOOGLE_APPLICATION_CREDENTIALS = '{  "type": "service_account",  "project_id": "predora-app",  "private_key_id": "f5581ba5defd9444ec86c1f4517a916d8f1f9f0e",  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEuwIBADANBgkqhkiG9w0BAQEFAASCBKUwggShAgEAAoIBAQDEm7oS3AFKjmX1\noSROqiGGlqZ2Ph4KqWTb5Kij3o0ijlqcd3RFyW0Pv+Gy0yT/bH0OWWDhE6W2i2+A\n/saZ2lu24K6arpXrAgxT/9cWL5B06IPAcG2p9WFE4dNnaOFqt2GoRVWYm9cofxAn\nsmIewjUMOmSgb4ZppJKnqLrVfmwGzaFN1l68R66L+DpHY8ioXM7a/W++Wbf8a+IS\nXAKgWru78PwanqNacYSXWoT5J5FzYcAzn5DtbfHLH+qnQAK+e6wPRq52aoR4lqwE\nRgCUI8dR/G2XQez2R/vsUt0yKr6cA3G55StYxZdCm/IuzqJWwxOpDG9ieZF5MGlq\n1/1uKUk9AgMBAAECggEAD1d/i50zVJgMCMDMTn8kIpZ64tsyCO7y+d278x2Yscud\n8nu3zQJMyl/UwtmLF4tlrsr2rlmUIsx6pPw8jyDk6z5ZIaTh+fas85kRNZ/8i8Lh\nFREw3YRSVMeycW1TuboZmsHeTgxLG9PedNqMoY3SCeQ8mfBZ8sBu2TpnaeV1lIow\nJUyRqQLVXcxQJklQGthpgJC0DKcwD4mPbEQjKo/ei24Bpll+TW/kQNaApSK5HlZL\nZhMh8/3fPi9pm+OY7y6MbN12CcIN/myG2o/SM6DqLcXwekGx+YXV1ZwCEWCOkCT9\nasCdS/pijxo2vI+k6zFJXRf11vu9+blZX7hUOrDIQQKBgQDwaK+lF5xZsfWWLyEB\npXtv61qo/WjqRduauiECFK5ohykL8ZvCbCBNdO49EXo6gzjDCFs6VZAy21K1dHyI\nMhcnSH/qhD49isyanG/mRJYCeviGyACLG+ViGqDpBTDvE4/N4JM/Tn28P9ZzWETZ\nL5YZzrsojRb7f68EAndxY1sPFQKBgQDRW9rJyHyOybUNfQF7NupdL2Z5mG5qQqWO\nPIUeC5I9Nyf/KPQ6lue1C6iTz+F87fymcuyiU2UK7EPBzEh+UFkf/Nhw40A2fFSR\nAC5eN8Ukt8XQ+WVps4yVCpHVEemx3PkeTifFKjvqJ3nQmFineMLS41ykskPNRCBt\ndrVy9jsbiQKBgDDqrCqkdjzN+BGZ/1ZNbKNmOSk/ftSEaF3AV60Ltj0wm0qB29ag\nl6YLD9q/LqavQqJ0ldN1y4R9mgOv8xLnVky49MYsKFnvXxhqkl5BQGC60szh7zJe\n97qRfoJLexx6V31ln7B28SCXwLPxlvi2NQ2FQhHLO4zq+xqOwe0BcWrNAoGBAJrU\n59XbY+Ll4fR7wqCxWFpaN9stlFsZtv6eW4SA4kJLjFT0oMrD19DZMm8+inCuQO+I\nhuD19ABEA0hMIEDqgz9Y62lxZ4fkI1apX6FmdXJWRwHpr8qgcxO2oWuGt+JGniZ/\nfoIeXfkqALj4MniIouz8IQPcorAn9iN+a2r+F3ChAn8p6BspkuI3pPDSsVDsf/Mw\njwhSHMFOtgLYI2OC+BMRLjqr3xrxIJxt8ytLFt7gs3UQA6nnNw+CCdzTTKc0hPq4\nIGqgXqyubrWtnp73wzt0grmdiyaql9J8+AANrYZ5qoc+SJcrI56f+3gFWxgjB58A\n6oA77f/VYxOrTKml0q0w\n-----END PRIVATE KEY-----\n",  "client_email": "firebase-adminsdk-fbsvc@predora-app.iam.gserviceaccount.com",  "client_id": "111391283818452895486",  "auth_uri": "https://accounts.google.com/o/oauth2/auth",  "token_uri": "https://oauth2.googleapis.com/token",  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40predora-app.iam.gserviceaccount.com",  "universe_domain": "googleapis.com"}'
 
 
