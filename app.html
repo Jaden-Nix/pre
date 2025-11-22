@@ -2419,7 +2419,7 @@
                     <div class="space-y-2">
                         <label for="pledge-all-asset" class="text-sm font-medium text-gray-300">Asset to use:</label>
                         <select id="pledge-all-asset" class="ui-select">
-                            <option value="BUSD">BUSD</option>
+                            <option value="PRED">$PRED</option>
                             <option value="BNB">BNB</option>
                             <option value="CAKE">CAKE</option>
                         </select>
@@ -2429,9 +2429,9 @@
                         <label class="text-sm font-medium text-gray-300">Quick Set (Optional)</label>
                         <p class="text-xs text-gray-400">Set all pledge amounts at once.</p>
                         <div class="flex justify-start space-x-2">
-                            <button onclick="setPledgeAll(1, 'BUSD')" class="btn-quick-tap">$1</button>
-                            <button onclick="setPledgeAll(5, 'BUSD')" class="btn-quick-tap">$5</button>
-                            <button onclick="setPledgeAll(10, 'BUSD')" class="btn-quick-tap">$10</button>
+                            <button onclick="setPledgeAll(1, 'PRED')" class="btn-quick-tap">$1</button>
+                            <button onclick="setPledgeAll(5, 'PRED')" class="btn-quick-tap">$5</button>
+                            <button onclick="setPledgeAll(10, 'PRED')" class="btn-quick-tap">$10</button>
                         </div>
                     </div>
 
@@ -2539,7 +2539,7 @@
                                     <p id="total-principal" class="text-xl lg:text-2xl font-semibold text-gray-400">Loading...</p>
                                 </div>
                                 <div>
-                                    <span class="text-xs text-gray-400">Mock BUSD</span>
+                                    <span class="text-xs text-gray-400">$PRED Balance</span>
                                     <p id="mock-balance" class="text-xl lg:text-2xl font-semibold text-green-400">$100.00</p>
                                 </div>
                             </div>
@@ -2643,10 +2643,10 @@
                     
                     <!-- Mock Balances -->
                     <div class="ui-panel p-4 space-y-3">
-                        <h3 class="text-base font-semibold text-sky-300">Mock Demo Balances</h3>
+                        <h3 class="text-base font-semibold text-sky-300">Platform Balances</h3>
                         <div class="grid grid-cols-3 gap-3">
                             <div class="text-center p-3 bg-white/5 rounded-lg">
-                                <span class="text-xs text-gray-400">BUSD</span>
+                                <span class="text-xs text-gray-400">$PRED</span>
                                 <p id="mock-busd" class="text-lg font-semibold text-green-400">$100</p>
                             </div>
                             <div class="text-center p-3 bg-white/5 rounded-lg">
@@ -2658,7 +2658,7 @@
                                 <p id="mock-cake" class="text-lg font-semibold text-purple-400">150</p>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-400">These are demo balances for testing the app</p>
+                        <p class="text-xs text-gray-400">$PRED is a platform token valued at $600 each</p>
                     </div>
                 </div> 
 
@@ -3719,7 +3719,7 @@
                     If you believe the AI is wrong, you can open a Jury dispute.
                 </p>
                 <button onclick="handleDispute()" class="btn btn-secondary w-full mt-3" style="border-color: #EF4444; color: #F87171;">
-                    DISPUTE (Cost: 10 BUSD)
+                    DISPUTE (Cost: 0.02 $PRED)
                 </button>
             </div>
 
@@ -7948,17 +7948,17 @@
                             </div>
                         </div>
 
-                        <div class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10 opacity-60">
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
                             <div class="flex items-center">
-                                <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/4687.png" class="w-10 h-10 rounded-full mr-3" alt="BUSD">
+                                <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/4687.png" class="w-10 h-10 rounded-full mr-3" alt="PRED">
                                 <div>
-                                    <p class="font-semibold theme-text-primary">BUSD (Coming Soon)</p>
-                                    <p class="text-sm theme-text-secondary">Binance-Peg BUSD</p>
+                                    <p class="font-semibold theme-text-primary">$PRED (Platform Token)</p>
+                                    <p class="text-sm theme-text-secondary">Predora Token</p>
                                 </div>
                             </div>
                             <div class="text-right">
-                                <p class="font-semibold theme-text-primary">-</p>
-                                <p class="text-xs theme-text-secondary">Multi-token support pending</p>
+                                <p class="font-semibold theme-text-primary">${(userProfile.predBalance || 100).toFixed(2)} $PRED</p>
+                                <p class="text-xs theme-text-secondary">$${((userProfile.predBalance || 100) * getMockPrice('PRED')).toFixed(2)} USD</p>
                             </div>
                         </div>
 
@@ -8565,13 +8565,13 @@
          * Populates ALL <select> dropdowns with the user's current asset balances.
          */
         function populateAssetSelector() {
-            const busdBal = userProfile.balance || 0;
+            const predBal = userProfile.predBalance || 100;
             const bnbBal = userProfile.bnbBalance || 0;
             const cakeBal = userProfile.cakeBalance || 0;
 
             // Create the HTML for the options once
             const optionsHtml = `
-                <option value="BUSD">BUSD (Balance: ${busdBal.toFixed(2)})</option>
+                <option value="PRED">$PRED (Balance: ${predBal.toFixed(2)})</option>
                 <option value="BNB">BNB (Balance: ${bnbBal.toFixed(4)})</option>
                 <option value="CAKE">CAKE (Balance: ${cakeBal.toFixed(2)})</option>
             `;
@@ -9332,8 +9332,8 @@
                 return;
             }
 
-            let totalString = (asset === 'BUSD') 
-                ? `$${totalAmount.toFixed(2)} BUSD` 
+            let totalString = (asset === 'PRED') 
+                ? `$${totalAmount.toFixed(2)} $PRED` 
                 : `${totalAmount.toFixed(4)} ${asset}`;
 
             dom.pledgeTotalSummary.innerText = `Total: ${totalString} (${numPledges} pledge${numPledges > 1 ? 's' : ''})`;
@@ -9372,7 +9372,7 @@
 
             // 3. Get the correct balance field name
             let balanceFieldToUpdate = "";
-            if (selectedAsset === "BUSD") { balanceFieldToUpdate = "balance"; }
+            if (selectedAsset === "PRED") { balanceFieldToUpdate = "predBalance"; }
             else if (selectedAsset === "BNB") { balanceFieldToUpdate = "bnbBalance"; }
             else if (selectedAsset === "CAKE") { balanceFieldToUpdate = "cakeBalance"; }
 
@@ -11779,7 +11779,8 @@ ${historyText}`;
         function getMockPrice(asset) {
             if (asset === 'BNB') return 500;
             if (asset === 'CAKE') return 3.5;
-            return 1; // BUSD default
+            if (asset === 'PRED') return 600;
+            return 1; // Default
         }
 
         /**
@@ -11788,7 +11789,8 @@ ${historyText}`;
         function getBalanceField(asset) {
             if (asset === 'BNB') return 'bnbBalance';
             if (asset === 'CAKE') return 'cakeBalance';
-            return 'balance'; // BUSD default
+            if (asset === 'PRED') return 'predBalance';
+            return 'balance'; // Default
         }
         /**
          * Closes the mock wallet modal.

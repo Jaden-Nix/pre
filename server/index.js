@@ -1116,8 +1116,12 @@ app.post('/api/run-jobs', async (req, res) => {
 });
 
 // --- HELPER FUNCTIONS ---
-function getMockPrice(asset) { return asset === 'BNB' ? 500 : asset === 'CAKE' ? 3.5 : 1; }
-function getBalanceField(asset) { return asset === 'BNB' ? 'bnbBalance' : asset === 'CAKE' ? 'cakeBalance' : 'balance'; }
+function getMockPrice(asset) { 
+    return asset === 'BNB' ? 500 : asset === 'CAKE' ? 3.5 : asset === 'PRED' ? 600 : 1; 
+}
+function getBalanceField(asset) { 
+    return asset === 'BNB' ? 'bnbBalance' : asset === 'CAKE' ? 'cakeBalance' : asset === 'PRED' ? 'predBalance' : 'balance'; 
+}
 
 // --- JURY SYSTEM ENDPOINTS ---
 
@@ -1199,13 +1203,16 @@ app.post('/api/dispute-market', async (req, res) => {
             
             await db.collection(`artifacts/${APP_ID}/public/data/jury_codes`).doc(code).set(codeData);
             
+            const juryLink = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/app.html?jury=${code}`;
+            
             const notificationData = {
                 userId: doc.id,
                 type: 'jury_invite',
                 marketId: marketId,
                 marketTitle: marketTitle,
                 juryCode: code,
-                message: `You've been selected as a juror for: "${marketTitle}"`,
+                juryLink: juryLink,
+                message: `You've been selected as a juror for: "${marketTitle}". Click the link to vote: ${juryLink}`,
                 createdAt: new Date().toISOString(),
                 read: false,
                 expiresAt: expiryTime.toISOString()
@@ -1331,6 +1338,92 @@ app.post('/api/use-jury-code', async (req, res) => {
         
     } catch (error) {
         console.error('Error marking code as used:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/notifications', async (req, res) => {
+    const { authToken } = req.query;
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    try {
+        let userId;
+        if (authToken) {
+            try {
+                const decodedToken = await admin.auth().verifyIdToken(authToken);
+                userId = decodedToken.uid;
+            } catch (authError) {
+                return res.status(401).json({ error: 'Invalid or expired auth token' });
+            }
+        } else {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+        
+        const notificationsRef = db.collection(`artifacts/${APP_ID}/public/data/notifications`);
+        const snapshot = await notificationsRef
+            .where('userId', '==', userId)
+            .orderBy('createdAt', 'desc')
+            .limit(50)
+            .get();
+        
+        const notifications = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            notifications.push({
+                id: doc.id,
+                ...data
+            });
+        });
+        
+        res.status(200).json({ notifications });
+        
+    } catch (error) {
+        console.error('Error fetching notifications:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/notifications/mark-read', async (req, res) => {
+    const { authToken, notificationId } = req.body;
+    
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    try {
+        let userId;
+        if (authToken) {
+            try {
+                const decodedToken = await admin.auth().verifyIdToken(authToken);
+                userId = decodedToken.uid;
+            } catch (authError) {
+                return res.status(401).json({ error: 'Invalid or expired auth token' });
+            }
+        } else {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+        
+        const notificationRef = db.collection(`artifacts/${APP_ID}/public/data/notifications`).doc(notificationId);
+        const notificationSnap = await notificationRef.get();
+        
+        if (!notificationSnap.exists) {
+            return res.status(404).json({ error: 'Notification not found' });
+        }
+        
+        const notificationData = notificationSnap.data();
+        if (notificationData.userId !== userId) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+        
+        await notificationRef.update({ read: true });
+        
+        res.status(200).json({ success: true });
+        
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
         res.status(500).json({ error: error.message });
     }
 });
