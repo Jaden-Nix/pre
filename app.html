@@ -6681,10 +6681,13 @@
                     showToast("Account created! Check your email for verification code 📧", "success");
                 } else {
                     // EXISTING USER: Skip OTP, proceed directly
-                    showLoadingOverlay(true, 'Welcome back...');
-                    // Firebase Auth state listener will handle the rest of setup
+                    showLoadingOverlay(true, 'Setting up your account...');
                     showToast("✅ Welcome back!", "success");
-                    showLoadingOverlay(false);
+                    // Firebase Auth state listener (onAuthStateChanged) will handle the rest:
+                    // - Hide loading overlay
+                    // - Navigate to home screen
+                    // - Setup user profile
+                    // Note: Don't hide loading overlay here - let onAuthStateChanged do it
                 }
 
             } catch (error) {
