@@ -7403,11 +7403,8 @@
                     // Update the UI (so they see their name)
                     updateProfileUI(userProfile); 
 
-                    // Hide  "Logging in..." spinner
-                    showLoadingOverlay(false); 
-
-                    // Show the avatar picker
-                    showAvatarModal();
+                    // Don't hide loading overlay or show avatar modal here
+                    // Let completeAuthentication() handle navigation to onboarding screen
 
                 } else {
                     // --- 2. EXISTING USER PATH ---
