@@ -6055,22 +6055,12 @@
                     localStorage.setItem('userEmail', firebaseUser.email);
                 }
 
-                // TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
-                // Generate Smart Contract Wallet (Account Abstraction) for this user - DISABLED
-                /*
+                // ✅ CUSTODIAL WALLETS RE-ENABLED - Generate custodial wallet for user
                 const walletData = await generateBSCWallet(userId);
                 userProfile.walletAddress = walletData.address;
-                userProfile.isSmartWallet = true;  // This wallet uses AA, backend signs transactions
+                userProfile.isCustodial = true;  // This is a server-managed custodial wallet
                 localStorage.setItem('userWalletAddress', walletData.address);
-                localStorage.setItem('isSmartWallet', 'true');
-                */
-                
-                // DEMO MODE: Generate mock wallet address (for display purposes only, not functional)
-                const mockWalletAddress = '0x' + userId.substring(5).padEnd(40, '0').substring(0, 40);
-                userProfile.walletAddress = mockWalletAddress;
-                userProfile.isSmartWallet = false;  // Not using blockchain
-                localStorage.setItem('userWalletAddress', mockWalletAddress);
-                localStorage.setItem('isSmartWallet', 'false');
+                localStorage.setItem('isCustodial', 'true');
 
                 showLoadingOverlay(true, `Setting up your account...`);
 
@@ -6124,13 +6114,11 @@
             }
         }
 
-        // TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
         /**
-         * Generates a Custodial Wallet with Account Abstraction for Firebase users - DISABLED FOR DEMO
-         * This creates an encrypted wallet on the backend with gasless transactions.
+         * ✅ Generates a Custodial Wallet for Firebase users
+         * This creates an encrypted wallet on the backend.
          * Private keys are NEVER exposed to the client - stored encrypted in Firebase.
          */
-        /*
         async function generateBSCWallet(userId, retryCount = 0) {
             const MAX_RETRIES = 2;
             
@@ -6139,14 +6127,18 @@
                 
                 // First, try to fetch existing wallet
                 try {
-                    const fetchResponse = await fetch(`/api/custodial-wallet/get?userId=${userId}`);
+                    const fetchResponse = await fetch(`/api/custodial-wallet/info`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId })
+                    });
+                    
                     if (fetchResponse.ok) {
                         const existingWallet = await fetchResponse.json();
                         if (existingWallet && existingWallet.address) {
                             console.log('✅ Retrieved existing custodial wallet:', existingWallet.address);
                             return {
                                 address: existingWallet.address,
-                                isSmartWallet: true,
                                 custodial: true
                             };
                         }
@@ -6175,11 +6167,9 @@
                 
                 console.log('✅ Custodial Wallet created:', data.address);
                 console.log('   Private key encrypted and stored securely on backend');
-                console.log('   Account Abstraction enabled for gasless transactions');
                 
                 return {
                     address: data.address,
-                    isSmartWallet: true,
                     custodial: true
                 };
             } catch (error) {
@@ -6194,19 +6184,6 @@
                 
                 throw error; // Let completeAuthentication handle the error
             }
-        }
-        */
-        
-        // Stub function for demo mode
-        async function generateBSCWallet(userId, retryCount = 0) {
-            console.log('ℹ️ Wallet generation disabled for hackathon demo');
-            // Return mock wallet address (not functional, just for display)
-            const mockWalletAddress = '0x' + userId.substring(5).padEnd(40, '0').substring(0, 40);
-            return {
-                address: mockWalletAddress,
-                isSmartWallet: false,
-                custodial: false
-            };
         }
 
         /**
