@@ -7650,7 +7650,10 @@
 
                 dom.topNav.classList.toggle('hidden', shouldHideNavs);
                 dom.bottomNav.classList.toggle('hidden', shouldHideNavs);
-                dom.mobileHeader.classList.toggle('hidden', shouldHideNavs);  // ✅ Also hide mobile header on auth screens
+                
+                // ✅ Mobile header (with Sign In button) shows ONLY on home-screen
+                const shouldShowMobileHeader = (screenId === 'home-screen');
+                dom.mobileHeader.classList.toggle('hidden', !shouldShowMobileHeader);
             }
 
 
