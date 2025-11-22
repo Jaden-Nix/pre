@@ -1470,7 +1470,7 @@
 
     <div class="min-h-screen relative">
 
-            <main class="max-w-md md:max-w-xl lg:max-w-7xl mx-auto relative p-4" style="overflow: visible !important; min-height: 100vh !important;">
+            <main class="max-w-md md:max-w-xl lg:max-w-7xl mx-auto relative p-4">
 
             <div id="login-screen" class="screen space-y-12 max-w-md mx-auto lg:max-w-2xl py-12 px-4 animate-fade-in">
                 <!-- Background Decorative Elements -->
@@ -2787,8 +2787,8 @@
             </div>
 
             <!-- Social Feed Screen -->
-            <div id="social-feed-screen" class="screen screen-inactive" style="min-height: 100vh !important; height: 100vh !important; background: red !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important; overflow-y: scroll !important;">
-                <div class="max-w-md mx-auto space-y-6 px-4 pb-24 pt-6" style="position: relative; z-index: 10; overflow: visible !important; min-height: 100vh !important;">
+            <div id="social-feed-screen" class="screen screen-inactive">
+                <div class="max-w-md mx-auto space-y-6 px-4 pb-24 pt-20">
                     <!-- Floating Action Button for Create Post -->
                     <button onclick="openCreatePost()" id="social-fab" class="social-fab hidden" title="Create Post">
                         <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -7842,21 +7842,6 @@
                     if (typeof loadSocialFeed === 'function') {
                         loadSocialFeed();
                     }
-                    
-                    // NUCLEAR TEST #2: Add visible element directly to social screen
-                    setTimeout(() => {
-                        const socialScreen = document.getElementById('social-feed-screen');
-                        console.log('🟡 Yellow box test - socialScreen found:', !!socialScreen);
-                        if (socialScreen) {
-                            console.log('🟡 Yellow box - socialScreen computed style:', window.getComputedStyle(socialScreen).display);
-                            console.log('🟡 Yellow box - socialScreen height:', socialScreen.offsetHeight);
-                            const testDiv = document.createElement('div');
-                            testDiv.style.cssText = 'background: yellow; color: black; padding: 40px; font-size: 30px; font-weight: bold; text-align: center; border: 10px solid red; margin: 20px; position: relative; z-index: 99999;';
-                            testDiv.textContent = '⚠️ INSIDE SOCIAL SCREEN - Can you see this yellow box?';
-                            socialScreen.insertBefore(testDiv, socialScreen.firstChild);
-                            console.log('🟡 Yellow box added to DOM. Box height:', testDiv.offsetHeight);
-                        }
-                    }, 100);
                     break;
                 case 'profile-screen':
                     // Update profile UI with latest data when screen is shown
@@ -13798,17 +13783,8 @@ ${historyText}`;
                     `;
                 }
                         console.log('🎨 Rendering', posts.length, 'posts to container...');
-                        // DEBUG: Add a highly visible test element first
-                        container.innerHTML = '<div style="background: red; color: white; padding: 50px; font-size: 24px; text-align: center; margin: 20px;">TEST: If you see this, the screen IS rendering!</div>' + html;
+                        container.innerHTML = html;
                         console.log('✅ Social feed rendered successfully!');
-                        
-                        // NUCLEAR TEST: Add element directly to body to bypass all CSS
-                        const bodyTest = document.createElement('div');
-                        bodyTest.id = 'nuclear-test';
-                        bodyTest.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: lime; color: black; padding: 20px; font-size: 20px; font-weight: bold; text-align: center; z-index: 99999;';
-                        bodyTest.textContent = '🟢 NUCLEAR TEST: Can you see this green bar at the top?';
-                        document.body.appendChild(bodyTest);
-                        setTimeout(() => bodyTest.remove(), 5000); // Remove after 5 seconds
                         
                         // Debug: Check if screen is visible
                         const screen = document.getElementById('social-feed-screen');
