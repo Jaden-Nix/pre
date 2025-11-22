@@ -2638,6 +2638,22 @@
                                 </a>
                             </div>
                             <p class="text-xs text-center text-gray-500">Need BNB? Click the faucet button to get free testnet tokens!</p>
+                            
+                            <!-- Send BNB Section -->
+                            <div class="mt-4 space-y-3">
+                                <h4 class="text-sm font-semibold text-sky-300">💸 Send BNB</h4>
+                                <p class="text-xs text-gray-400">Send BNB to any address on BSC Testnet</p>
+                                <input type="text" id="withdraw-address" placeholder="Recipient Address (0x...)" 
+                                    class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                                <input type="number" id="withdraw-amount" placeholder="Amount (BNB)" step="0.001" min="0.001"
+                                    class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                                <button onclick="sendBNB()" class="btn bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 w-full">
+                                    <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                    </svg>
+                                    Send BNB
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -4320,6 +4336,81 @@
 
         // === WEB3 SERVICE LAYER ===
         
+        /**
+         * Sends BNB from connected wallet to any address
+         */
+        async function sendBNB() {
+            try {
+                // 1. Check if wallet is connected
+                if (!window.ethereum || !signer) {
+                    showToast('⚠️ Please connect your MetaMask wallet first', 'warning');
+                    return;
+                }
+
+                // 2. Get input values
+                const recipientAddress = document.getElementById('withdraw-address').value.trim();
+                const amount = document.getElementById('withdraw-amount').value.trim();
+
+                // 3. Validate recipient address
+                if (!recipientAddress || !ethers.utils.isAddress(recipientAddress)) {
+                    showToast('❌ Invalid recipient address', 'error');
+                    return;
+                }
+
+                // 4. Validate amount
+                if (!amount || parseFloat(amount) <= 0) {
+                    showToast('❌ Please enter a valid amount', 'error');
+                    return;
+                }
+
+                // 5. Check user balance
+                const balance = await signer.getBalance();
+                const amountWei = ethers.utils.parseEther(amount);
+                
+                if (balance.lt(amountWei)) {
+                    showToast('❌ Insufficient BNB balance', 'error');
+                    return;
+                }
+
+                showLoadingOverlay(true, '💸 Sending BNB...');
+
+                // 6. Send transaction
+                const tx = await signer.sendTransaction({
+                    to: recipientAddress,
+                    value: amountWei
+                });
+
+                showToast('⏳ Transaction submitted! Waiting for confirmation...', 'info');
+
+                // 7. Wait for confirmation
+                const receipt = await tx.wait(1);
+
+                showLoadingOverlay(false);
+                showToast(`✅ Sent ${amount} BNB to ${recipientAddress.substring(0, 6)}...${recipientAddress.substring(38)}`, 'success');
+
+                // 8. Clear inputs
+                document.getElementById('withdraw-address').value = '';
+                document.getElementById('withdraw-amount').value = '';
+
+                // 9. Update balance display
+                await updateRealBNBBalance();
+
+                console.log('✅ BNB sent successfully:', receipt.transactionHash);
+                
+            } catch (error) {
+                console.error('❌ Send BNB failed:', error);
+                showLoadingOverlay(false);
+                
+                if (error.code === 4001) {
+                    showToast('❌ Transaction rejected by user', 'error');
+                } else if (error.code === 'INSUFFICIENT_FUNDS') {
+                    showToast('❌ Insufficient funds for transaction + gas', 'error');
+                } else {
+                    showToast('❌ Transaction failed: ' + (error.message || 'Unknown error'), 'error');
+                }
+            }
+        }
+
         /**
          * LEGACY: Connects to user's Web3 wallet
          * DEPRECATED: Use connectWeb3Wallet() from multi-wallet modal instead
