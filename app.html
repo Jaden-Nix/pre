@@ -4393,17 +4393,25 @@
         // Sign Out Function
         async function signOut() {
             try {
-                const { signOut: firebaseSignOut } = window.firebase.auth;
-                await firebaseSignOut(auth);
+                const { getAuth, signOut: firebaseSignOut } = window.firebase.auth;
+                const currentAuth = getAuth();
+                await firebaseSignOut(currentAuth);
                 
                 // Clear user data
                 currentUserId = null;
                 userProfile = {};
                 
-                // Clear localStorage
+                // Clear localStorage (both new and legacy keys)
+                localStorage.removeItem('demoUserId');
+                localStorage.removeItem('authMethod');
+                localStorage.removeItem('firebaseUid');
+                localStorage.removeItem('userEmail');
+                localStorage.removeItem('userWalletAddress');
+                localStorage.removeItem('isCustodial');
+                localStorage.removeItem('pledgePool');
+                // Legacy keys from older versions
                 localStorage.removeItem('currentUserId');
                 localStorage.removeItem('userProfile');
-                localStorage.removeItem('pledgePool');
                 
                 // Reset UI
                 const navUserSection = document.getElementById('nav-user-section');
@@ -4411,6 +4419,12 @@
                 
                 if (navUserSection) navUserSection.classList.add('hidden');
                 if (navSignInButton) navSignInButton.classList.remove('hidden');
+                
+                // Enable guest mode
+                isGuestMode = true;
+                
+                // Update navigation for guest mode
+                updateNavBar(false);
                 
                 // Show login screen
                 showScreen('login-screen');
@@ -5311,10 +5325,41 @@
         }
         */
         
-        // Stub function - returns Firestore balance only
+        /**
+         * Gets real BNB balance from wallet (works with custodial wallets)
+         */
         async function getRealBNBBalance() {
-            console.log('ℹ️ Blockchain disabled - using Firestore balance only');
-            return userProfile.bnbBalance || 0;
+            // Use custodial wallet address if available, fallback to connected wallet
+            const walletAddress = userProfile.walletAddress || userWalletAddress;
+            
+            if (!walletAddress) {
+                console.log('⚠️ No wallet address available for balance check');
+                return 0;
+            }
+            
+            // Initialize provider if not already done
+            if (!bscProvider) {
+                initializeBSCProvider();
+            }
+            
+            // Use BSC provider or ethersProvider (whichever is available)
+            const provider = bscProvider || ethersProvider;
+            
+            if (!provider) {
+                console.error('❌ No blockchain provider available');
+                return 0;
+            }
+            
+            try {
+                console.log(`🔍 Fetching real BNB balance for ${walletAddress}...`);
+                const balance = await provider.getBalance(walletAddress);
+                const formatted = parseFloat(ethers.utils.formatEther(balance));
+                console.log(`✅ Real BNB balance: ${formatted} tBNB`);
+                return formatted;
+            } catch (error) {
+                console.error('❌ Failed to get BNB balance:', error);
+                return 0;
+            }
         }
 
         // TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
@@ -5369,10 +5414,53 @@
         }
         */
         
-        // Stub function - returns Firestore balance only
+        /**
+         * Gets real $PRED token balance from BSC Testnet
+         */
         async function getRealCAKEBalance() {
-            console.log('ℹ️ Blockchain disabled - using Firestore balance only');
-            return userProfile.cakeBalance || 0;
+            // Use custodial wallet address if available, fallback to connected wallet
+            const walletAddress = userProfile.walletAddress || userWalletAddress;
+            
+            if (!walletAddress) {
+                console.log('⚠️ No wallet address available for PRED balance check');
+                return 0;
+            }
+            
+            // Initialize provider if not already done
+            if (!bscProvider) {
+                initializeBSCProvider();
+            }
+            
+            // Use BSC provider or ethersProvider (whichever is available)
+            const provider = bscProvider || ethersProvider;
+            
+            if (!provider) {
+                console.error('❌ No blockchain provider available');
+                return 0;
+            }
+            
+            try {
+                console.log(`🔍 Fetching real $PRED balance for ${walletAddress}...`);
+                
+                // $PRED Token ABI (only need balanceOf function)
+                const predABI = [
+                    "function balanceOf(address) view returns (uint256)"
+                ];
+                
+                const predContract = new ethers.Contract(
+                    CAKE_CONTRACT_ADDRESS,
+                    predABI,
+                    provider
+                );
+                
+                const balance = await predContract.balanceOf(walletAddress);
+                const formatted = parseFloat(ethers.utils.formatUnits(balance, 18));
+                console.log(`✅ Real $PRED balance: ${formatted} PRED`);
+                return formatted;
+            } catch (error) {
+                console.error('❌ Failed to get $PRED balance:', error);
+                return 0;
+            }
         }
 
         // TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
@@ -5420,13 +5508,52 @@
                 // Update UI if profile screen is visible
         */
         
-        // Stub function - Firestore is source of truth now
+        /**
+         * Refreshes all token balances from blockchain
+         */
         async function refreshAllBalances() {
-            console.log('ℹ️ Balances come from Firestore (updated in real-time)');
-            // Just update UI if needed (balances already in userProfile from Firestore)
-            if (userProfile && dom.mockBalance) {
-                updateProfileUI(userProfile);
-                console.log('✅ UI refreshed with current balances');
+            const walletAddress = userProfile.walletAddress || userWalletAddress;
+            
+            if (!walletAddress) {
+                console.log('⚠️ No wallet address, skipping balance refresh');
+                return;
+            }
+            
+            console.log('🔄 Refreshing all balances from blockchain...');
+            
+            try {
+                // Fetch real balances in parallel
+                const [bnb, pred] = await Promise.all([
+                    getRealBNBBalance(),
+                    getRealCAKEBalance()
+                ]);
+                
+                // Update userProfile
+                userProfile.bnbBalance = bnb;
+                userProfile.cakeBalance = pred;
+                
+                // Update Firestore (for caching purposes)
+                if (currentUserId) {
+                    try {
+                        const { doc, updateDoc } = window.firebase.firestore;
+                        await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId), {
+                            bnbBalance: bnb,
+                            cakeBalance: pred,
+                            lastBalanceUpdate: Date.now()
+                        });
+                    } catch (firestoreError) {
+                        console.warn('Could not update Firestore with balances:', firestoreError);
+                    }
+                }
+                
+                // Update UI if visible
+                if (userProfile && dom.mockBalance) {
+                    updateProfileUI(userProfile);
+                }
+                
+                console.log('✅ Balances refreshed from blockchain');
+            } catch (error) {
+                console.error('❌ Failed to refresh balances:', error);
             }
         }
 
@@ -6263,16 +6390,10 @@
                     showScreen('home-screen');
                 }
 
-                // TODO: BLOCKCHAIN TEMPORARILY DISABLED FOR HACKATHON DEMO
-                // Fetch real balances from blockchain after wallet is set up - DISABLED
-                /*
+                // ✅ Fetch real balances from blockchain after wallet is set up
                 refreshAllBalances().catch(err => {
                     console.warn('Background balance refresh failed:', err);
                 });
-                */
-                
-                // DEMO MODE: Balances come from Firestore only (no blockchain calls)
-                console.log('ℹ️ Using Firestore-only balances (blockchain disabled for demo)');
 
                 showLoadingOverlay(false);
 

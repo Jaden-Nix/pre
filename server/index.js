@@ -478,7 +478,8 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
     }
     
     try {
-        const profileRef = db.collection(`artifacts/${APP_ID}/public/data/user_profiles`).doc(userId);
+        // ✅ FIX: Use correct collection name 'profile' not 'user_profiles'
+        const profileRef = db.collection(`artifacts/${APP_ID}/public/data/profile`).doc(userId);
         const profileDoc = await profileRef.get();
         
         if (!profileDoc.exists) {
