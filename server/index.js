@@ -23,7 +23,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const CRON_SECRET = process.env.CRON_SECRET;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
-const APP_ID = 'predora-app';
+const APP_ID = process.env.APP_ID || 'predora-hackathon';
 
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 let openai = null;
