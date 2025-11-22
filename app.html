@@ -7842,6 +7842,17 @@
                     if (typeof loadSocialFeed === 'function') {
                         loadSocialFeed();
                     }
+                    
+                    // NUCLEAR TEST #2: Add visible element directly to social screen
+                    setTimeout(() => {
+                        const socialScreen = document.getElementById('social-feed-screen');
+                        if (socialScreen) {
+                            const testDiv = document.createElement('div');
+                            testDiv.style.cssText = 'background: yellow; color: black; padding: 40px; font-size: 30px; font-weight: bold; text-align: center; border: 10px solid red; margin: 20px; position: relative; z-index: 99999;';
+                            testDiv.textContent = '⚠️ INSIDE SOCIAL SCREEN - Can you see this yellow box?';
+                            socialScreen.insertBefore(testDiv, socialScreen.firstChild);
+                        }
+                    }, 100);
                     break;
                 case 'profile-screen':
                     // Update profile UI with latest data when screen is shown
