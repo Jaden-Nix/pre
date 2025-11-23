@@ -7056,14 +7056,14 @@
                 const userId = 'wallet_' + walletAddress.substring(2, 14).toLowerCase();
                 currentUserId = userId;
                 userProfile.walletAddress = walletAddress;
-                userProfile.isSmartWallet = false;  // User controls their own private keys
+                userProfile.isCustodial = false;  // User controls their own private keys
                 
                 // Store provider type for persistence
                 localStorage.setItem('demoUserId', userId);
                 localStorage.setItem('authMethod', 'web3');
                 localStorage.setItem('userWalletAddress', walletAddress);
                 localStorage.setItem('walletProvider', provider); // Store which provider was used
-                localStorage.setItem('isSmartWallet', 'false');
+                localStorage.setItem('isCustodial', 'false');
                 localStorage.setItem('firebaseUid', result.user.uid);
 
                 // Set up ethers provider and signer from the selected provider
@@ -8312,7 +8312,7 @@
                 }
                 
                 // Show custodial wallet badge if applicable
-                if (custodialBadge && profile.walletAddress && profile.isSmartWallet) {
+                if (custodialBadge && profile.walletAddress && profile.isCustodial) {
                     custodialBadge.classList.remove('hidden');
                 } else if (custodialBadge) {
                     custodialBadge.classList.add('hidden');
@@ -8500,7 +8500,7 @@
             // Check for both Web3 wallet and custodial wallet
             const hasWallet = userWalletAddress || userProfile.walletAddress;
             const displayAddress = userWalletAddress || userProfile.walletAddress;
-            const isCustodial = userProfile.isSmartWallet && !userWalletAddress;
+            const isCustodial = userProfile.isCustodial && !userWalletAddress;
             
             const walletStatus = hasWallet ? 
                 `<div class="mb-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
@@ -9300,7 +9300,7 @@
                         }
 
                         // Check if user has custodial wallet (smart account)
-                        const isCustodialWallet = localStorage.getItem('isSmartWallet') === 'true';
+                        const isCustodialWallet = localStorage.getItem('isCustodial') === 'true';
                         
                         if (isCustodialWallet) {
                             // ✅ CUSTODIAL WALLET PATH - Use /api/custodial/place-bet endpoint
