@@ -5595,14 +5595,14 @@
                 userProfile.predBalance = pred;
                 userProfile.walletAddress = walletAddress;
                 
-                // Update Firestore with both balances (backend will also sync after bets)
+                // Update Firestore with balances only (NOT wallet address - backend controls that)
                 if (currentUserId) {
                     try {
                         const { doc, updateDoc } = window.firebase.firestore;
                         await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId), {
                             bnbBalance: bnb,
                             predBalance: pred,
-                            walletAddress: walletAddress,
+                            // DO NOT update walletAddress here - it's managed by backend after bets
                             lastBalanceUpdate: Date.now()
                         });
                     } catch (firestoreError) {
