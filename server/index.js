@@ -1265,12 +1265,12 @@ app.post('/api/wallet/reset', async (req, res) => {
             
             // Update user profile with new wallet address
             try {
-                const userProfilePath = `artifacts/predora-hackathon/public/data/users/${userId}`;
+                const userProfilePath = `artifacts/predora-hackathon/public/data/profile/${userId}`;
                 await db.doc(userProfilePath).update({
                     walletAddress: walletResult.address,
                     lastBalanceUpdate: Date.now()
                 });
-                console.log(`✅ User profile updated with new wallet address`);
+                console.log(`✅ User profile updated with new wallet address: ${walletResult.address}`);
             } catch (profileError) {
                 console.warn(`⚠️  Could not update user profile: ${profileError.message}`);
                 // Continue anyway - the wallet is created even if profile update fails
