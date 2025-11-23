@@ -910,12 +910,38 @@ app.post('/api/market/create-onchain', async (req, res) => {
         // Award XP for creating market with liquidity
         await addXpToUser(userId, XP_VALUES.CREATE_MARKET, `Created market: ${title}`);
         
+        // Deduct liquidity from user's balance in Firestore
+        // Since deployer wallet paid for the transaction, we deduct the equivalent USD value from user's mock balance
+        try {
+            const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
+            const balanceDeduction = liquidityBNB * 600; // Mock BNB price at $600
+            
+            await userRef.update({
+                predBalance: admin.firestore.FieldValue.increment(-balanceDeduction),
+                lastBalanceUpdate: Date.now(),
+                totalLiquidityProvided: admin.firestore.FieldValue.increment(liquidityBNB),
+                liquidityHistoryMarkets: admin.firestore.FieldValue.arrayUnion({
+                    marketId: marketId,
+                    liquidityBnb: liquidityBNB,
+                    liquidityUsd: balanceDeduction,
+                    timestamp: Date.now(),
+                    title: title
+                })
+            });
+            
+            console.log(`💰 Deducted ${balanceDeduction} USD (${liquidityBNB} BNB equivalent) from user ${userId} balance for market creation`);
+        } catch (deductError) {
+            console.warn(`⚠️ Failed to deduct liquidity from user balance: ${deductError.message}`);
+            // Don't fail the request - market was already created successfully
+        }
+        
         res.status(200).json({
             success: true,
             marketId: marketId,
             onChainMarketId: onChainMarketId,
             txHash: tx.hash,
-            blockNumber: receipt.blockNumber
+            blockNumber: receipt.blockNumber,
+            liquidityDeducted: liquidityBNB
         });
     } catch (error) {
         console.error('❌ Error creating on-chain market:', error);
