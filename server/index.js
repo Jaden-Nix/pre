@@ -574,11 +574,26 @@ app.post('/api/market/create-onchain', async (req, res) => {
         // Approve PRED token spending if we're adding PRED liquidity
         const predTokenAddress = '0x3C828678De4F4184952D66f2d0260B5db2e0f522';
         if (predLiquidityAmount.gt(0)) {
-            const predTokenAbi = ['function approve(address spender, uint256 amount) external returns (bool)'];
+            const predTokenAbi = [
+                'function approve(address spender, uint256 amount) external returns (bool)',
+                'function allowance(address owner, address spender) view returns (uint256)'
+            ];
             const predToken = new ethers.Contract(predTokenAddress, predTokenAbi, deployerWallet);
-            const approveTx = await predToken.approve(contractAddress, predLiquidityAmount, { gasLimit: 100000 });
-            await approveTx.wait();
-            console.log(`✅ PRED approved for market creation: ${approveTx.hash}`);
+            
+            // Check current allowance
+            const currentAllowance = await predToken.allowance(deployerWallet.address, contractAddress);
+            console.log(`🔍 Current PRED allowance: ${ethers.utils.formatEther(currentAllowance)} PRED`);
+            
+            // If allowance is insufficient, approve max uint256 (unlimited, industry standard)
+            if (currentAllowance.lt(predLiquidityAmount)) {
+                const MAX_UINT256 = ethers.constants.MaxUint256;
+                console.log(`⚠️  Insufficient allowance. Approving unlimited PRED...`);
+                const approveTx = await predToken.approve(contractAddress, MAX_UINT256, { gasLimit: 100000 });
+                await approveTx.wait();
+                console.log(`✅ PRED unlimited approval granted: ${approveTx.hash}`);
+            } else {
+                console.log(`✅ Sufficient PRED allowance already exists`);
+            }
         }
         
         // Create market on-chain with dual currency initial liquidity
