@@ -5667,15 +5667,16 @@
                 const remaining = payoutTime - Date.now();
                 
                 if (remaining <= 0) {
+                    // Payout completed - refresh balance to show winnings
+                    console.log('💰 Payout completed! Refreshing balance to show winnings...');
                     clearInterval(interval);
                     document.getElementById('payout-countdown')?.classList.add('hidden');
                     document.getElementById('payout-completed')?.classList.remove('hidden');
                     
-                    // Refresh balances (payout happened)
                     if (typeof refreshAllBalances === 'function') {
                         refreshAllBalances();
                     }
-                    showToast('Payouts distributed!', 'success');
+                    showToast('Payouts distributed! Check your balance.', 'success');
                     return;
                 }
                 
