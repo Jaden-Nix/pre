@@ -2026,16 +2026,17 @@
                     <div class="px-4 pb-4 pt-2 space-y-4 bg-black/10">
                         <!-- Initial Liquidity -->
                         <div class="space-y-2">
-                            <label class="text-xs font-medium theme-text-secondary">Initial Liquidity (Min: $1,000)</label>
+                            <label class="text-xs font-medium theme-text-secondary">Initial Liquidity (Need $1,000 USD worth)</label>
                             <div id="traditional-liquidity-info" class="text-xs theme-text-secondary mb-2">
-                                ⚠️ Traditional markets need liquidity to seed the pool
+                                ⚠️ Traditional markets need liquidity to seed the pool<br>
+                                💡 Example: 2 PRED ($1,200) or 0.02 BNB (~$1,200 at market price)
                             </div>
                             <div id="fixed-pot-liquidity-info" class="hidden text-xs theme-text-secondary mb-2">
                                 ✓ Fixed Pot uses DeFi yield vaults
                             </div>
                             <div class="grid grid-cols-3 gap-2">
                                 <div class="col-span-2">
-                                    <input type="number" id="market-liquidity-input" class="ui-input text-sm" placeholder="Min: 1000" min="1000">
+                                    <input type="number" id="market-liquidity-input" class="ui-input text-sm" placeholder="Enter amount (check USD equivalent below)" min="0" step="0.1">
                                 </div>
                                 <div class="col-span-1">
                                     <select id="market-liquidity-asset" class="ui-select text-sm">
