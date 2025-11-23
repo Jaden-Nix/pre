@@ -101,6 +101,14 @@ export class CustodialWalletService {
                 // Don't fail wallet creation if bonus minting fails
             }
 
+            // ⛽ FUND WITH BNB: Send BNB for gas fees
+            try {
+                await this.fundWalletWithBnb(wallet.address);
+            } catch (fundError) {
+                console.warn(`⚠️ BNB funding failed (non-critical):`, fundError.message);
+                // Don't fail wallet creation if BNB funding fails
+            }
+
             return {
                 success: true,
                 address: wallet.address
@@ -115,18 +123,18 @@ export class CustodialWalletService {
     }
 
     async mintWelcomeBonus(walletAddress) {
-        const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
+        const DEPLOY_PRIVATE_KEY = process.env.DEPLOY_PRIVATE_KEY;
         const PRED_TOKEN_ADDRESS = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
         const WELCOME_BONUS_AMOUNT = '100'; // 100 $PRED tokens for new users
         
-        if (!DEPLOYER_PRIVATE_KEY) {
-            console.log('⚠️ DEPLOYER_PRIVATE_KEY not set, skipping welcome bonus');
+        if (!DEPLOY_PRIVATE_KEY) {
+            console.log('⚠️ DEPLOY_PRIVATE_KEY not set, skipping welcome bonus');
             return;
         }
         
         try {
             // Create deployer wallet signer
-            const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, this.provider);
+            const deployerWallet = new ethers.Wallet(DEPLOY_PRIVATE_KEY, this.provider);
             
             // PredToken contract ABI (just the mint function)
             const predTokenAbi = [
@@ -147,6 +155,37 @@ export class CustodialWalletService {
             console.log(`   Block: ${receipt.blockNumber}`);
         } catch (error) {
             console.error('❌ Welcome bonus minting failed:', error);
+            throw error;
+        }
+    }
+
+    async fundWalletWithBnb(walletAddress) {
+        const DEPLOY_PRIVATE_KEY = process.env.DEPLOY_PRIVATE_KEY;
+        const BNB_FUNDING_AMOUNT = '0.01'; // 0.01 BNB (~$3) for gas
+        
+        if (!DEPLOY_PRIVATE_KEY) {
+            console.log('⚠️ DEPLOY_PRIVATE_KEY not set, skipping BNB funding');
+            return;
+        }
+        
+        try {
+            // Create deployer wallet signer
+            const deployerWallet = new ethers.Wallet(DEPLOY_PRIVATE_KEY, this.provider);
+            
+            console.log(`⛽ Funding ${walletAddress} with ${BNB_FUNDING_AMOUNT} BNB for gas...`);
+            
+            const tx = await deployerWallet.sendTransaction({
+                to: walletAddress,
+                value: ethers.utils.parseEther(BNB_FUNDING_AMOUNT)
+            });
+            
+            const receipt = await tx.wait();
+            
+            console.log(`✅ BNB funding complete: ${BNB_FUNDING_AMOUNT} BNB sent to ${walletAddress}`);
+            console.log(`   Transaction: ${tx.hash}`);
+            console.log(`   Block: ${receipt.blockNumber}`);
+        } catch (error) {
+            console.error('❌ BNB funding failed:', error);
             throw error;
         }
     }
