@@ -554,7 +554,7 @@ app.post('/api/market/create-onchain', async (req, res) => {
         const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
         
         // Initialize contract with updated ABI including initial liquidity support
-        const contractAddress = '0xda27eAd38F3D4A656Cc64C2D70b6166A7061AD48';
+        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB'; // Updated to correct V2 address from v2-deployment.json
         const contractABI = [
             'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
             'event MarketCreated(uint256 indexed marketId, string title, address indexed creator, uint256 initialYesBnb, uint256 initialNoBnb, uint256 initialYesPred, uint256 initialNoPred)'
