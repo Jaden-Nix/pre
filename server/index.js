@@ -1226,7 +1226,7 @@ app.post('/api/custodial-wallet/balance', async (req, res) => {
     }
 });
 
-// 🔧 RESET: Delete old wallet and force recreation
+// 🔧 RESET: Delete old wallet and create a new one
 app.post('/api/wallet/reset', async (req, res) => {
     const { userId, idToken } = req.body;
     
@@ -1235,14 +1235,14 @@ app.post('/api/wallet/reset', async (req, res) => {
     }
     
     try {
-        // Verify auth token - if this succeeds, user is authenticated
+        // Verify auth token
         const decodedToken = await admin.auth().verifyIdToken(idToken);
         
         if (!decodedToken || !decodedToken.uid) {
             return res.status(403).json({ error: 'Invalid token' });
         }
         
-        console.log(`🔐 Wallet reset authorized for userId: ${userId} (Firebase UID: ${decodedToken.uid})`);
+        console.log(`🔐 Wallet reset authorized for userId: ${userId}`);
         
         if (!db) {
             return res.status(503).json({ error: 'Database unavailable' });
@@ -1252,10 +1252,28 @@ app.post('/api/wallet/reset', async (req, res) => {
         await db.collection('custodialWallets').doc(userId).delete();
         console.log(`🔧 Deleted old wallet for userId: ${userId}`);
         
-        res.status(200).json({ 
-            success: true,
-            message: 'Old wallet deleted. A new one will be created on next login.' 
-        });
+        // Create a NEW wallet immediately
+        if (!custodialWalletService) {
+            return res.status(503).json({ error: 'Custodial wallet service unavailable' });
+        }
+        
+        console.log(`🔧 Creating new custodial wallet for userId: ${userId}...`);
+        const walletResult = await custodialWalletService.createWallet(userId, decodedToken.uid);
+        
+        if (walletResult.success) {
+            console.log(`✅ New wallet created: ${walletResult.address}`);
+            res.status(200).json({ 
+                success: true,
+                message: 'Old wallet deleted and new wallet created!',
+                newWalletAddress: walletResult.address
+            });
+        } else {
+            console.log(`⚠️  New wallet creation failed, will be created on next login`);
+            res.status(200).json({ 
+                success: true,
+                message: 'Old wallet deleted. A new one will be created on next login.' 
+            });
+        }
     } catch (error) {
         console.error('Wallet reset failed:', error);
         res.status(500).json({ error: error.message });
