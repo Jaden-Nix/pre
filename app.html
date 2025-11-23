@@ -7580,6 +7580,27 @@
                     console.log("Demo profile loaded from Firebase.");
                     userProfile = { ...defaultProfile, ...docSnap.data() }; 
 
+                    // ✅ Sync custodial wallet address to ensure correct wallet is displayed
+                    try {
+                        const firebaseUser = auth.currentUser;
+                        if (firebaseUser) {
+                            const idToken = await firebaseUser.getIdToken();
+                            const syncResponse = await fetch('/api/profile/sync-wallet-address', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId: currentUserId, idToken })
+                            });
+                            
+                            const syncData = await syncResponse.json();
+                            if (syncData.success) {
+                                console.log('✅ Wallet address synced to Firebase:', syncData.walletAddress);
+                                userProfile.walletAddress = syncData.walletAddress;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ Could not sync wallet address:', e);
+                    }
+
                     // Ensure public profile exists
                     const publicProfileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', PUBLIC_LEADERBOARD_COLLECTION, currentUserId);
                     const publicSnap = await getDoc(publicProfileRef);
