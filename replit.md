@@ -18,6 +18,12 @@ Predora is an AI-native prediction market platform built on BNB Chain, featuring
 ### UI/UX
 The frontend is a single-page application (`app.html`) built with Vanilla JavaScript and Tailwind CSS. It features a TikTok-style swipe interface for "Quick Play" markets, a responsive mobile-first design, dark/light theme toggling, real-time market visualization with Chart.js, and jury voting interfaces. The platform offers a browse-first UX, allowing guests to view markets and the social feed without logging in.
 
+**AMM Visualization (Nov 23, 2025):** Added comprehensive AMM transparency features to make the automated market maker mechanics visible to users. Binary markets now display:
+- Real-time price impact preview showing how bet amounts affect odds before confirmation
+- Current pool liquidity ($X YES pool, $Y NO pool) on market cards
+- Visual indicators displaying odds changes from initial values (arrows showing shifts)
+- AMM calculation panel (lines 2354-2437) using constant product formula (x * y = k) matching the Firestore backend implementation (lines 10075-10102)
+
 ### Technical Implementation
 Predora employs a hybrid architecture where markets can be either fully on-chain or Firestore-based.
 - **Frontend**: Vanilla JavaScript (`app.html`) integrating Firebase Client SDK, Ethers.js, and Chart.js.
