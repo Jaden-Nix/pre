@@ -96,3 +96,8 @@ waitForPort = 5000
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[userenv]
+
+[userenv.shared]
+WALLET_ENCRYPTION_KEY = "868506266234407c9a57c098da8d5308a142402b173463d14b447b34e7a8f889"
+
