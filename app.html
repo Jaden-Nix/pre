@@ -6703,60 +6703,62 @@
          * ✅ Reset Custodial Wallet - Delete old wallet and create new one
          */
         async function resetCustodialWallet() {
-            console.log('Step 1: Function called, checking auth...');
-            console.log('currentAuth:', typeof currentAuth, 'currentUserId:', currentUserId);
-            
-            if (!currentAuth || !currentAuth.currentUser || !currentUserId) {
-                console.log('Step 1 FAILED: Not logged in');
-                showToast('Please log in first', 'error');
-                return;
-            }
-            
-            console.log('Step 2: Auth OK, showing confirmation...');
-            if (!confirm('Are you sure you want to reset your wallet? This will delete the old wallet and create a new one.')) {
-                console.log('User cancelled confirmation');
-                return;
-            }
-            
-            console.log('Step 3: User confirmed, updating button...');
-            const resetBtn = document.getElementById('reset-wallet-btn');
-            if (resetBtn) {
-                resetBtn.disabled = true;
-                resetBtn.textContent = '🔄 Resetting...';
-            }
-            
             try {
-                console.log('Step 4: Getting ID token...');
-                const idToken = await currentAuth.currentUser.getIdToken();
-                console.log('Step 5: Calling /api/wallet/reset...');
+                console.log('Step 1: Getting auth instance...');
+                const { getAuth } = window.firebase.auth;
+                const auth = getAuth();
+                const user = auth.currentUser;
                 
+                console.log('Step 2: Checking user...');
+                if (!user || !currentUserId) {
+                    console.log('Not logged in');
+                    showToast('Please log in first', 'error');
+                    return;
+                }
+                
+                console.log('Step 3: Showing confirmation...');
+                if (!confirm('Are you sure you want to reset your wallet? This will delete the old wallet and create a new one.')) {
+                    return;
+                }
+                
+                console.log('Step 4: Updating button UI...');
+                const resetBtn = document.getElementById('reset-wallet-btn');
+                if (resetBtn) {
+                    resetBtn.disabled = true;
+                    resetBtn.textContent = '🔄 Resetting...';
+                }
+                
+                console.log('Step 5: Getting ID token...');
+                const idToken = await user.getIdToken();
+                
+                console.log('Step 6: Calling /api/wallet/reset...');
                 const response = await fetch('/api/wallet/reset', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId: currentUserId, idToken })
                 });
                 
-                console.log('Step 6: Got response status:', response.status);
+                console.log('Step 7: Got response, parsing...');
                 const data = await response.json();
-                console.log('Step 7: Response data:', data);
+                console.log('Step 8: Response:', data);
                 
                 if (data.success) {
-                    console.log('Step 8: Success! Clearing cache and reloading...');
-                    showToast('✅ Wallet reset successfully!', 'success');
+                    console.log('SUCCESS! Resetting...');
+                    showToast('✅ Wallet reset successfully! Reloading...', 'success');
                     localStorage.removeItem('custodialWalletAddress');
                     localStorage.removeItem('cachedWalletAddress');
                     setTimeout(() => location.reload(), 1000);
                 } else {
-                    console.log('Step 8 FAILED: API error:', data.error);
-                    showToast(`Failed to reset wallet: ${data.error}`, 'error');
+                    showToast(`Failed: ${data.error}`, 'error');
                     if (resetBtn) {
                         resetBtn.disabled = false;
                         resetBtn.textContent = '🔧 Reset Wallet Now';
                     }
                 }
             } catch (error) {
-                console.error('EXCEPTION in resetCustodialWallet:', error, error.stack);
-                showToast('Error: ' + (error?.message || 'Unknown error'), 'error');
+                console.error('Error:', error);
+                showToast('Error: ' + error.message, 'error');
+                const resetBtn = document.getElementById('reset-wallet-btn');
                 if (resetBtn) {
                     resetBtn.disabled = false;
                     resetBtn.textContent = '🔧 Reset Wallet Now';
