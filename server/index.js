@@ -812,15 +812,44 @@ app.post('/api/market/create-onchain', async (req, res) => {
         const profileSnap = await profileRef.get();
         if (!profileSnap.exists) {
             console.log(`⚠️  Profile not found for ${userId}, creating from request data...`);
-            // Create profile using walletAddress from request
-            if (walletAddress) {
+            
+            // Try to get wallet address from request, then from custodial wallet service
+            let walletAddressToUse = walletAddress;
+            let userIdForWallet = userId;
+            
+            if (!walletAddressToUse) {
+                try {
+                    // First, check if there's a walletMapping for this Firebase UID
+                    console.log(`🔍 Checking walletMappings for Firebase UID: ${userId}...`);
+                    const walletMappingDoc = await firestore.collection('walletMappings').doc(userId).get();
+                    if (walletMappingDoc.exists) {
+                        userIdForWallet = walletMappingDoc.data().userId;
+                        console.log(`✅ Found wallet mapping: ${userId} → ${userIdForWallet}`);
+                    }
+                    
+                    // Now fetch the custodial wallet using the mapped userId
+                    console.log(`🔍 Fetching custodial wallet for user ${userIdForWallet}...`);
+                    const custodialWalletDoc = await firestore.collection('custodialWallets').doc(userIdForWallet).get();
+                    if (custodialWalletDoc.exists) {
+                        walletAddressToUse = custodialWalletDoc.data().address;
+                        console.log(`✅ Found custodial wallet: ${walletAddressToUse}`);
+                    } else {
+                        console.warn(`⚠️  No custodial wallet found for ${userIdForWallet}`);
+                    }
+                } catch (custodialErr) {
+                    console.warn(`⚠️  Failed to fetch custodial wallet: ${custodialErr.message}`);
+                }
+            }
+            
+            // Create profile if we have a wallet address
+            if (walletAddressToUse) {
                 try {
                     const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-                    const bnbBalance = await provider.getBalance(walletAddress);
-                    const predBalance = await predContract.balanceOf(walletAddress);
+                    const bnbBalance = await provider.getBalance(walletAddressToUse);
+                    const predBalance = await predContract.balanceOf(walletAddressToUse);
                     await profileRef.set({
                         userId: userId,
-                        walletAddress: walletAddress,
+                        walletAddress: walletAddressToUse,
                         bnbBalance: parseFloat(ethers.utils.formatEther(bnbBalance)),
                         predBalance: parseFloat(ethers.utils.formatEther(predBalance)),
                         lastBalanceUpdate: Date.now(),
@@ -832,12 +861,12 @@ app.post('/api/market/create-onchain', async (req, res) => {
                         streak: 0,
                         createdAt: new Date().toISOString()
                     });
-                    console.log(`✅ Profile created for ${userId} with wallet ${walletAddress}`);
+                    console.log(`✅ Profile created for ${userId} with wallet ${walletAddressToUse}`);
                 } catch (syncErr) {
                     console.warn(`⚠️  Failed to create profile: ${syncErr.message}`);
                 }
             } else {
-                console.warn(`⚠️  No wallet address provided to create profile`);
+                console.warn(`⚠️  No wallet address found to create profile - market creation will fail in transaction`);
             }
         }
         
