@@ -278,7 +278,10 @@ export function CreateMarket() {
               <input
                 type="text"
                 value={manualTitle}
-                onChange={(e) => setManualTitle(e.target.value)}
+                onChange={(e) => {
+                  setManualTitle(e.target.value);
+                  if (manualValidationError) setManualValidationError(null);
+                }}
                 placeholder="e.g., Will Bitcoin reach $100K in 2025?"
                 className="w-full p-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-sky-500"
               />
@@ -289,7 +292,10 @@ export function CreateMarket() {
               <label className="text-sm text-gray-400 block mb-2">Description</label>
               <textarea
                 value={manualDescription}
-                onChange={(e) => setManualDescription(e.target.value)}
+                onChange={(e) => {
+                  setManualDescription(e.target.value);
+                  if (manualValidationError) setManualValidationError(null);
+                }}
                 placeholder="Provide more details about the market..."
                 rows={3}
                 className="w-full p-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-sky-500 resize-none"
@@ -302,7 +308,10 @@ export function CreateMarket() {
               <input
                 type="datetime-local"
                 value={manualResolutionDate}
-                onChange={(e) => setManualResolutionDate(e.target.value)}
+                onChange={(e) => {
+                  setManualResolutionDate(e.target.value);
+                  if (manualValidationError) setManualValidationError(null);
+                }}
                 className="w-full p-3 bg-black/30 border border-white/10 rounded-xl text-white focus:outline-none focus:border-sky-500"
               />
             </div>
@@ -348,7 +357,10 @@ export function CreateMarket() {
                 <input
                   type="number"
                   value={manualLiquidityYes}
-                  onChange={(e) => setManualLiquidityYes(e.target.value)}
+                  onChange={(e) => {
+                    setManualLiquidityYes(e.target.value);
+                    if (manualValidationError) setManualValidationError(null);
+                  }}
                   placeholder="Amount"
                   step="0.001"
                   min="0"
@@ -360,7 +372,10 @@ export function CreateMarket() {
                 <input
                   type="number"
                   value={manualLiquidityNo}
-                  onChange={(e) => setManualLiquidityNo(e.target.value)}
+                  onChange={(e) => {
+                    setManualLiquidityNo(e.target.value);
+                    if (manualValidationError) setManualValidationError(null);
+                  }}
                   placeholder="Amount"
                   step="0.001"
                   min="0"
