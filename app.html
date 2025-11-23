@@ -9484,9 +9484,17 @@
                     })
                 });
                 
+                console.log(`📊 Bet API Response Status: ${betResponse.status}`);
                 const betResult = await betResponse.json();
-                if (!betResult.success) {
+                console.log(`📊 Bet API Response:`, betResult);
+                
+                if (!betResult.success && betResult.error) {
+                    console.error(`❌ Bet failed: ${betResult.error}`);
                     throw new Error(betResult.error || 'Failed to place bet on-chain');
+                }
+                if (!betResult.txHash) {
+                    console.error(`❌ No transaction hash returned:`, betResult);
+                    throw new Error('Failed to place bet on-chain');
                 }
                 
                 console.log(`✅ Real on-chain bet placed! TX: ${betResult.txHash}`);
