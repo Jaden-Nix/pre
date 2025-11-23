@@ -706,6 +706,29 @@ app.post('/api/market/create-onchain', async (req, res) => {
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
         const deployerWallet = new ethers.Wallet(DEPLOY_PRIVATE_KEY, provider);
         
+        // Check deployer wallet balance BEFORE attempting transaction
+        const deployerBalance = await provider.getBalance(deployerWallet.address);
+        const liquidityBnbWei = ethers.utils.parseEther(liquidityBNB.toString());
+        const estimatedGasCost = ethers.utils.parseEther('0.01'); // Rough estimate for gas
+        const requiredFunds = liquidityBnbWei.add(estimatedGasCost);
+        
+        console.log(`💰 Deployer wallet balance: ${ethers.utils.formatEther(deployerBalance)} BNB`);
+        console.log(`💰 Required for transaction: ${ethers.utils.formatEther(requiredFunds)} BNB (${liquidityBNB} liquidity + gas)`);
+        
+        if (deployerBalance.lt(requiredFunds)) {
+            const shortfall = requiredFunds.sub(deployerBalance);
+            const shortfallBnb = ethers.utils.formatEther(shortfall);
+            console.error(`❌ Deployer wallet insufficient funds. Need ${shortfallBnb} BNB more`);
+            return res.status(402).json({ 
+                error: 'Insufficient funds for market creation',
+                message: `Deployer wallet needs ${shortfallBnb} BNB more to create this market. Current balance: ${ethers.utils.formatEther(deployerBalance)} BNB. Required: ${ethers.utils.formatEther(requiredFunds)} BNB.`,
+                deployerAddress: deployerWallet.address,
+                currentBalance: ethers.utils.formatEther(deployerBalance),
+                requiredFunds: ethers.utils.formatEther(requiredFunds),
+                shortfall: shortfallBnb
+            });
+        }
+        
         // Initialize contract with updated ABI including initial liquidity support
         const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB'; // Updated to correct V2 address from v2-deployment.json
         const contractABI = [
@@ -716,7 +739,6 @@ app.post('/api/market/create-onchain', async (req, res) => {
         
         // Calculate initial liquidity split (50/50 YES/NO for balanced market)
         // Dual currency support: BNB + PRED initial liquidity
-        const liquidityBnbWei = ethers.utils.parseEther(liquidityBNB.toString());
         const halfLiquidityBnb = liquidityBnbWei.div(2);
         
         // Temporarily DISABLED PRED liquidity to test BNB-only market creation
