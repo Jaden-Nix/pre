@@ -8950,6 +8950,11 @@
             dom.detailInsight.innerText = marketData.insight;
             dom.detailYesPercent.innerText = `${marketData.yesPercent}%`;
             dom.detailNoPercent.innerText = `${marketData.noPercent}%`;
+            
+            // Update real AMM odds if market is on-chain
+            if (marketData.onChainMarketId) {
+                updateAMModds(marketData.onChainMarketId);
+            }
 
             // Reset AI panel
             dom.aiExplainPanel.classList.add('hidden'); 
@@ -9214,6 +9219,62 @@
                 element.innerText = `$${mockYield.toFixed(2)}`;
             }, 2000);
         }
+
+        /**
+         * Fetches and displays real AMM odds for a market
+         */
+        window.updateAMModds = async (marketId) => {
+            if (!marketId) return;
+            
+            try {
+                // Get market state from backend
+                const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+                const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
+                
+                // Simple ABI to read market pools
+                const abi = [
+                    'function markets(uint256 marketId) public view returns (tuple(string title, string description, uint256 resolutionTime, bool resolved, bool yesPayout, uint256 totalYesBets, uint256 totalNoBets, uint256 yesPoolBnb, uint256 noPoolBnb, uint256 yesPoolPred, uint256 noPoolPred, uint256 createdAt) memory)',
+                ];
+                
+                const contract = new ethers.Contract(contractAddress, abi, provider);
+                const market = await contract.markets(marketId);
+                
+                // Calculate odds from BNB pools (or PRED if preferred)
+                const yesPoolBnb = parseFloat(ethers.utils.formatEther(market.yesPoolBnb));
+                const noPoolBnb = parseFloat(ethers.utils.formatEther(market.noPoolBnb));
+                
+                const totalPool = yesPoolBnb + noPoolBnb;
+                if (totalPool === 0) {
+                    console.warn('Market pools are empty');
+                    return;
+                }
+                
+                const yesOdds = (yesPoolBnb / totalPool) * 100;
+                const noOdds = (noPoolBnb / totalPool) * 100;
+                
+                console.log(`📊 Real AMM Odds: YES ${yesOdds.toFixed(1)}% | NO ${noOdds.toFixed(1)}%`);
+                console.log(`   YES Pool: ${yesPoolBnb} BNB, NO Pool: ${noPoolBnb} BNB`);
+                
+                // Update DOM with real odds
+                if (dom.detailYesPercent) {
+                    dom.detailYesPercent.innerText = `${yesOdds.toFixed(1)}%`;
+                    dom.detailYesPercent.style.animation = 'pulse 0.5s';
+                }
+                if (dom.detailNoPercent) {
+                    dom.detailNoPercent.innerText = `${noOdds.toFixed(1)}%`;
+                    dom.detailNoPercent.style.animation = 'pulse 0.5s';
+                }
+                
+                // Store for future use
+                if (currentMarket) {
+                    currentMarket.yesPercent = yesOdds;
+                    currentMarket.noPercent = noOdds;
+                }
+                
+            } catch (error) {
+                console.warn('Error updating AMM odds:', error);
+            }
+        };
 
         /**
          * Updates potential return in real-time based on AMM calculation
