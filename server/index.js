@@ -723,22 +723,7 @@ app.post('/api/market/create-onchain', async (req, res) => {
             });
         }
         
-        // Get user's PRED balance from Firestore
-        const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
-        const userDoc = await userRef.get();
-        if (!userDoc.exists) {
-            return res.status(404).json({ error: 'User profile not found' });
-        }
-        
-        const userPredBalance = userDoc.data().predBalance || 0;
-        if (userPredBalance < liquidityAmount) {
-            return res.status(400).json({ 
-                error: 'Insufficient PRED balance',
-                message: `You have ${userPredBalance} PRED but need ${liquidityAmount} PRED`,
-                userBalance: userPredBalance,
-                required: liquidityAmount
-            });
-        }
+        // We'll check user balance in the transaction below
         
         // Convert PRED amount to wei
         const liquidityPredWei = ethers.utils.parseEther(liquidityAmount.toString());
@@ -825,7 +810,18 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 .doc(userId);
             
             const profileSnap = await transaction.get(profileRef);
-            const displayName = profileSnap.exists ? (profileSnap.data().displayName || 'Anonymous') : 'Anonymous';
+            if (!profileSnap.exists) {
+                throw new Error('User profile not found in Firestore');
+            }
+            
+            const profileData = profileSnap.data();
+            const displayName = profileData.displayName || 'Anonymous';
+            const userPredBalance = profileData.predBalance || 0;
+            
+            // Check if user has enough PRED
+            if (userPredBalance < liquidityAmount) {
+                throw new Error(`Insufficient PRED balance: have ${userPredBalance}, need ${liquidityAmount}`);
+            }
             
             const marketRef = firestore
                 .collection('artifacts')
@@ -895,23 +891,16 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 marketData.noPool = halfLiquidityUsd;
             }
             
+            // Create market record
             transaction.set(marketRef, marketData);
-            return marketRef.id;
-        });
-        
-        console.log(`✅ Firestore market created: ${marketId}`);
-        
-        // Award XP
-        await addXpToUser(userId, XP_VALUES.CREATE_MARKET, `Created market: ${title}`);
-        
-        // Deduct PRED from user's balance
-        try {
-            await userRef.update({
+            
+            // Deduct PRED from user's balance - do it atomically in the transaction
+            transaction.update(profileRef, {
                 predBalance: admin.firestore.FieldValue.increment(-liquidityAmount),
                 lastBalanceUpdate: Date.now(),
                 totalLiquidityProvided: admin.firestore.FieldValue.increment(liquidityAmount),
                 liquidityHistoryMarkets: admin.firestore.FieldValue.arrayUnion({
-                    marketId: marketId,
+                    marketId: marketRef.id,
                     liquidityPred: liquidityAmount,
                     liquidityUsd: liquidityAmount,
                     timestamp: Date.now(),
@@ -919,10 +908,14 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 })
             });
             
-            console.log(`💰 Deducted ${liquidityAmount} PRED from user ${userId}`);
-        } catch (deductError) {
-            console.warn(`⚠️ Failed to deduct PRED: ${deductError.message}`);
-        }
+            return marketRef.id;
+        });
+        
+        console.log(`✅ Firestore market created: ${marketId}`);
+        console.log(`💰 Deducted ${liquidityAmount} PRED from user ${userId} balance in transaction`);
+        
+        // Award XP
+        await addXpToUser(userId, XP_VALUES.CREATE_MARKET, `Created market: ${title}`);
         
         res.status(200).json({
             success: true,
