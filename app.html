@@ -4155,6 +4155,7 @@
         let currentQuickPlayIndex = 0;
         let isAnimating = false;
         let yieldInterval;
+        let balancePollingInterval = null;
         let allStandardMarkets = [];
         let currentCategoryFilter = 'All';
         let marketChart = null; 
@@ -4312,6 +4313,9 @@
         // Sign Out Function
         async function signOut() {
             try {
+                // Stop balance polling when user logs out
+                stopBalancePolling();
+                
                 const { getAuth } = window.firebase.auth;
                 const currentAuth = getAuth();
                 await window.firebase.auth.signOut(currentAuth);
@@ -8348,7 +8352,41 @@
 
                 // Update logout/login button text and style
                 updateAuthButton();
+                
+                // Start real-time balance polling
+                startBalancePolling();
             }
+
+        /**
+         * Starts real-time balance polling - refreshes balance every 5 seconds
+         */
+        function startBalancePolling() {
+            if (balancePollingInterval) {
+                clearInterval(balancePollingInterval);
+            }
+            
+            if (!currentUserId) return;
+            
+            console.log('🔄 Starting balance polling...');
+            balancePollingInterval = setInterval(async () => {
+                try {
+                    await refreshAllBalances();
+                } catch (error) {
+                    console.error('Error during balance polling:', error);
+                }
+            }, 5000); // Refresh every 5 seconds
+        }
+        
+        /**
+         * Stops real-time balance polling
+         */
+        function stopBalancePolling() {
+            if (balancePollingInterval) {
+                clearInterval(balancePollingInterval);
+                balancePollingInterval = null;
+                console.log('⏸️ Balance polling stopped');
+            }
+        }
 
         /**
          * Updates the auth button text and style based on login state
