@@ -12406,8 +12406,8 @@ ${historyText}`;
 
                 // Refresh user balance (catch errors to prevent logout)
                 try {
-                    userProfile.predBalance = (userProfile.predBalance || 100) - DISPUTE_COST;
-                    if (dom.mockBalance) dom.mockBalance.innerText = `$${(userProfile.predBalance || 100).toFixed(2)}`;
+                    userProfile.predBalance = (userProfile.predBalance || 0) - DISPUTE_COST;
+                    if (dom.mockBalance) dom.mockBalance.innerText = `$${(userProfile.predBalance || 0).toFixed(2)}`;
                 } catch (balanceError) {
                     console.error("Balance update failed:", balanceError);
                 }
