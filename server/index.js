@@ -25,7 +25,7 @@ const CRON_SECRET = process.env.CRON_SECRET;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
 const APP_ID = process.env.APP_ID || 'predora-hackathon';
-const USER_PROFILE_COLLECTION = 'user-profiles';
+const USER_PROFILE_COLLECTION = 'profile';
 
 // --- XP System Constants ---
 const XP_VALUES = {
