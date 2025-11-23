@@ -9308,26 +9308,44 @@
          * Updates potential return in real-time based on AMM calculation
          */
         window.updateAMMPayout = async (pick = null) => {
-            const stakeInput = document.getElementById('stake-amount-input');
-            const stakeAssetSelect = document.getElementById('stake-asset-select');
-            const calcStakeEl = document.getElementById('calc-stake');
-            
-            if (!stakeInput || !stakeAssetSelect) return;
-            
-            const amount = parseFloat(stakeInput.value) || 0;
-            const asset = stakeAssetSelect.value;
-            
-            // Update pick selection if provided
-            if (pick) {
-                currentPickSelection = pick;
-            }
-            
-            if (amount <= 0 || !currentMarket || !currentMarket.onChainMarketId) {
-                if (calcStakeEl) calcStakeEl.innerText = '$0.00';
-                return;
-            }
-            
             try {
+                const stakeInput = document.getElementById('stake-amount-input');
+                const stakeAssetSelect = document.getElementById('stake-asset-select');
+                const calcStakeEl = document.getElementById('calc-stake');
+                
+                if (!stakeInput || !stakeAssetSelect || !calcStakeEl) {
+                    return;
+                }
+                
+                const amount = parseFloat(stakeInput.value) || 0;
+                const asset = stakeAssetSelect.value;
+                
+                // Update pick selection if provided
+                if (pick) {
+                    currentPickSelection = pick;
+                }
+                
+                // If no amount entered, show $0
+                if (amount <= 0) {
+                    calcStakeEl.innerText = '$0.00';
+                    return;
+                }
+                
+                // If no market selected, show $0
+                if (!currentMarket) {
+                    calcStakeEl.innerText = '$0.00';
+                    return;
+                }
+                
+                // For markets without on-chain ID, use simple estimation
+                if (!currentMarket.onChainMarketId) {
+                    const basePrice = getMockPrice(asset);
+                    const estimatedPayout = amount * 1.5 * basePrice; // 1.5x payout estimate
+                    calcStakeEl.innerText = `$${estimatedPayout.toFixed(2)}`;
+                    console.log(`📊 Estimated payout (Firestore market): ${estimatedPayout.toFixed(2)} USD (${amount} ${asset})`);
+                    return;
+                }
+                
                 // Determine the pick to use (YES = true, NO = false)
                 const pickBool = (currentPickSelection === 'YES' || currentPickSelection === 'yes' || currentPickSelection === true);
                 
@@ -9339,29 +9357,56 @@
                         marketId: currentMarket.onChainMarketId,
                         amount: amount,
                         currency: asset,
-                        pick: pickBool  // Use actual pick selection
+                        pick: pickBool
                     })
                 });
                 
+                // Even if response not ok, try to parse it for fallback data
                 if (!response.ok) {
-                    console.warn('AMM calculation failed:', response.status);
+                    console.warn('⚠️ AMM calculation returned status:', response.status);
+                    // Use fallback estimation
+                    const basePrice = getMockPrice(asset);
+                    const estimatedPayout = amount * 1.5 * basePrice;
+                    calcStakeEl.innerText = `$${estimatedPayout.toFixed(2)}`;
                     return;
                 }
                 
                 const result = await response.json();
                 
-                if (result.success) {
-                    const potentialReturnUsd = result.payoutAmount * getMockPrice(asset);
+                if (result && result.success && result.payoutAmount) {
+                    const basePrice = getMockPrice(asset);
+                    const potentialReturnUsd = result.payoutAmount * basePrice;
                     
-                    // Update UI with real AMM payout
-                    if (calcStakeEl) {
-                        calcStakeEl.innerText = `$${potentialReturnUsd.toFixed(2)}`;
-                    }
+                    // Update UI with AMM payout
+                    calcStakeEl.innerText = `$${potentialReturnUsd.toFixed(2)}`;
                     
-                    console.log(`📊 AMM Payout for ${currentPickSelection}: ${result.payoutAmount} ${asset} ($${potentialReturnUsd.toFixed(2)}) - ${result.roi.toFixed(2)}% ROI`);
+                    const roi = result.roi || ((result.payoutAmount - amount) / amount * 100);
+                    console.log(`📊 AMM Payout for ${currentPickSelection}: ${result.payoutAmount} ${asset} ($${potentialReturnUsd.toFixed(2)}) - ROI: ${roi.toFixed(2)}%`);
+                } else {
+                    // No valid response, use estimation
+                    const basePrice = getMockPrice(asset);
+                    const estimatedPayout = amount * 1.5 * basePrice;
+                    calcStakeEl.innerText = `$${estimatedPayout.toFixed(2)}`;
+                    console.warn('⚠️ Invalid API response, using estimated payout');
                 }
             } catch (error) {
-                console.warn('Error calculating AMM payout:', error);
+                console.error('❌ Error calculating AMM payout:', error);
+                // Always show something even on error - fallback to estimation
+                try {
+                    const stakeInput = document.getElementById('stake-amount-input');
+                    const stakeAssetSelect = document.getElementById('stake-asset-select');
+                    const calcStakeEl = document.getElementById('calc-stake');
+                    if (stakeInput && stakeAssetSelect && calcStakeEl) {
+                        const amount = parseFloat(stakeInput.value) || 0;
+                        if (amount > 0) {
+                            const basePrice = getMockPrice(stakeAssetSelect.value);
+                            const estimatedPayout = amount * 1.5 * basePrice;
+                            calcStakeEl.innerText = `$${estimatedPayout.toFixed(2)}`;
+                        }
+                    }
+                } catch (e) {
+                    // Silent fail - element may not exist
+                }
             }
         };
 
