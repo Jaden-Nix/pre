@@ -1320,6 +1320,21 @@ app.post('/api/custodial/place-bet', async (req, res) => {
             });
         }
         
+        // ✅ REJECT MOCK MARKETS - They don't exist on-chain!
+        if (typeof marketId === 'string' && marketId.startsWith('mock-')) {
+            return res.status(400).json({ 
+                error: 'Cannot place on-chain bets on mock markets. This market is for demo purposes only.' 
+            });
+        }
+        
+        // ✅ VALIDATE MARKET ID is numeric
+        const numericMarketId = parseInt(marketId, 10);
+        if (isNaN(numericMarketId)) {
+            return res.status(400).json({ 
+                error: `Invalid market ID: ${marketId}. Market ID must be numeric.` 
+            });
+        }
+        
         if (!custodialWalletService) {
             return res.status(503).json({ error: 'Custodial wallet service unavailable' });
         }
@@ -1349,7 +1364,7 @@ app.post('/api/custodial/place-bet', async (req, res) => {
         if (currency === 'BNB') {
             // Place BNB bet (Currency.BNB = 0)
             const value = ethers.utils.parseEther(amount.toString());
-            tx = await contract.placeBet(marketId, pick, 0, value, { value, gasLimit: 300000 });
+            tx = await contract.placeBet(numericMarketId, pick, 0, value, { value, gasLimit: 300000 });
             console.log(`📤 BNB bet placed: ${tx.hash}`);
         } else if (currency === 'PRED') {
             // Place PRED bet (Currency.PRED = 1)
@@ -1364,7 +1379,7 @@ app.post('/api/custodial/place-bet', async (req, res) => {
             console.log(`✅ PRED approved: ${approveTx.hash}`);
             
             // Then place bet
-            tx = await contract.placeBet(marketId, pick, 1, predAmount, { gasLimit: 300000 });
+            tx = await contract.placeBet(numericMarketId, pick, 1, predAmount, { gasLimit: 300000 });
             console.log(`📤 PRED bet placed: ${tx.hash}`);
         } else {
             return res.status(400).json({ error: 'Invalid currency. Use BNB or PRED' });
