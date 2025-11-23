@@ -4402,6 +4402,9 @@
                 // Stop balance polling when user logs out
                 stopBalancePolling();
                 
+                // Clean up all Firestore listeners
+                cleanupAllListenersOnLogout();
+                
                 const { getAuth } = window.firebase.auth;
                 const currentAuth = getAuth();
                 await window.firebase.auth.signOut(currentAuth);
@@ -7388,7 +7391,7 @@
             localStorage.removeItem('demoUserId');
             localStorage.removeItem('demoDisplayName');
             localStorage.removeItem('pledgePool');
-            cleanupFirestoreListeners();
+            cleanupAllListenersOnLogout();
             
             // Clean up contract event listeners
             contractEventListeners.forEach(listener => {
@@ -8200,10 +8203,29 @@
 
         /**
          * Cleans up all active Firestore listeners. Crucial for when a user logs out
-         * or switches demo accounts.
+         * or switches demo accounts. KEEPS standard markets listener alive for real-time updates.
          */
         function cleanupFirestoreListeners() {
             console.log("Cleaning up old listeners...");
+            if (userProfileUnsubscribe) { userProfileUnsubscribe(); userProfileUnsubscribe = null; }
+            // DO NOT clean up standardMarketsUnsubscribe - keep it alive for real-time market updates
+            if (quickPlayUnsubscribe) { quickPlayUnsubscribe(); quickPlayUnsubscribe = null; }
+            if (activeStakesUnsubscribe) { activeStakesUnsubscribe(); activeStakesUnsubscribe = null; }
+            if (historyStakesUnsubscribe) { historyStakesUnsubscribe(); historyStakesUnsubscribe = null; }
+            if (leaderboardUnsubscribe) { leaderboardUnsubscribe(); leaderboardUnsubscribe = null; }
+            if (tickerUnsubscribe) { tickerUnsubscribe(); tickerUnsubscribe = null; }
+            if (detailMarketUnsubscribe) { detailMarketUnsubscribe(); detailMarketUnsubscribe = null; }
+
+            // Clear local data
+            userHistoryData = [];
+            pledgePoolItems = [];
+        }
+
+        /**
+         * Full cleanup when logging out (removes ALL listeners including markets)
+         */
+        function cleanupAllListenersOnLogout() {
+            console.log("Cleaning up ALL listeners on logout...");
             if (userProfileUnsubscribe) { userProfileUnsubscribe(); userProfileUnsubscribe = null; }
             if (standardMarketsUnsubscribe) { standardMarketsUnsubscribe(); standardMarketsUnsubscribe = null; }
             if (quickPlayUnsubscribe) { quickPlayUnsubscribe(); quickPlayUnsubscribe = null; }
@@ -8211,9 +8233,8 @@
             if (historyStakesUnsubscribe) { historyStakesUnsubscribe(); historyStakesUnsubscribe = null; }
             if (leaderboardUnsubscribe) { leaderboardUnsubscribe(); leaderboardUnsubscribe = null; }
             if (tickerUnsubscribe) { tickerUnsubscribe(); tickerUnsubscribe = null; }
-            if (detailMarketUnsubscribe) { detailMarketUnsubscribe(); detailMarketUnsubscribe = null; } // --- RACE CONDITION FIX (NEW) ---
+            if (detailMarketUnsubscribe) { detailMarketUnsubscribe(); detailMarketUnsubscribe = null; }
 
-            // Clear local data
             userHistoryData = [];
             pledgePoolItems = [];
         }
