@@ -6745,9 +6745,20 @@
                 if (data.success) {
                     console.log('SUCCESS! Resetting...');
                     showToast('✅ Wallet reset successfully! Reloading...', 'success');
-                    localStorage.removeItem('custodialWalletAddress');
-                    localStorage.removeItem('cachedWalletAddress');
-                    setTimeout(() => location.reload(), 1000);
+                    
+                    // Clear ALL local caches
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    
+                    // Force hard reload bypassing cache
+                    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                    
+                    // Force reload with cache busting
+                    setTimeout(() => {
+                        window.location.href = window.location.href + '?t=' + Date.now();
+                    }, 500);
                 } else {
                     showToast(`Failed: ${data.error}`, 'error');
                     if (resetBtn) {
