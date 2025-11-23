@@ -6753,6 +6753,9 @@
                     localStorage.removeItem('walletPrivateKey');
                     sessionStorage.removeItem('currentWallet');
                     
+                    // IMPORTANT: Keep isCustodial flag so staking works after reset!
+                    localStorage.setItem('isCustodial', 'true');
+                    
                     // Force reload with cache busting
                     setTimeout(() => {
                         window.location.href = window.location.href + '?t=' + Date.now();
