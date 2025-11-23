@@ -821,7 +821,7 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 .doc(APP_ID)
                 .collection('public')
                 .doc('data')
-                .collection('user_profiles')
+                .collection(USER_PROFILE_COLLECTION)
                 .doc(userId);
             
             const profileSnap = await transaction.get(profileRef);
