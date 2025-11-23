@@ -697,13 +697,13 @@ app.post('/api/market/create-onchain', async (req, res) => {
         const resolutionTime = Math.floor(new Date(endDate).getTime() / 1000);
         
         // Get deployer wallet to create market
-        const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
-        if (!DEPLOYER_PRIVATE_KEY) {
+        const DEPLOY_PRIVATE_KEY = process.env.DEPLOY_PRIVATE_KEY;
+        if (!DEPLOY_PRIVATE_KEY) {
             return res.status(503).json({ error: 'Market creation service unavailable - missing deployer key' });
         }
         
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-        const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
+        const deployerWallet = new ethers.Wallet(DEPLOY_PRIVATE_KEY, provider);
         
         // Initialize contract with updated ABI including initial liquidity support
         const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB'; // Updated to correct V2 address from v2-deployment.json
@@ -946,8 +946,8 @@ app.post('/api/faucet/claim-simple', async (req, res) => {
         ];
         
         // Use deployer wallet to pay for gas
-        const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
-        if (!DEPLOYER_PRIVATE_KEY) {
+        const DEPLOY_PRIVATE_KEY = process.env.DEPLOY_PRIVATE_KEY;
+        if (!DEPLOY_PRIVATE_KEY) {
             return res.status(503).json({ 
                 error: 'Faucet unavailable', 
                 message: 'Faucet service is temporarily unavailable' 
@@ -955,7 +955,7 @@ app.post('/api/faucet/claim-simple', async (req, res) => {
         }
         
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-        const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
+        const deployerWallet = new ethers.Wallet(DEPLOY_PRIVATE_KEY, provider);
         const predToken = new ethers.Contract('0x45C229bF14A36aD14885148E62058C98284B2ae0', predTokenAbi, deployerWallet); // Updated PRED token address
         
         // Check if user can claim
@@ -1125,8 +1125,8 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
         ];
         
         // Use deployer wallet to pay for gas (gas-sponsored faucet claim)
-        const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
-        if (!DEPLOYER_PRIVATE_KEY) {
+        const DEPLOY_PRIVATE_KEY = process.env.DEPLOY_PRIVATE_KEY;
+        if (!DEPLOY_PRIVATE_KEY) {
             return res.status(503).json({ 
                 error: 'Faucet unavailable', 
                 message: 'Faucet service is temporarily unavailable' 
@@ -1134,7 +1134,7 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
         }
         
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-        const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
+        const deployerWallet = new ethers.Wallet(DEPLOY_PRIVATE_KEY, provider);
         const predToken = new ethers.Contract(PRED_TOKEN_ADDRESS, predTokenAbi, deployerWallet);
         
         // Check if user can claim
@@ -2691,9 +2691,9 @@ Generate 5 quick, fun YES/NO prediction questions about uncertain events in the 
         const collectionPath = `artifacts/${APP_ID}/public/data/quick_plays`;
         
         // ⛓️ ON-CHAIN QUICK PLAY: Create markets on-chain for 100% on-chain functionality
-        const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
-        if (!DEPLOYER_PRIVATE_KEY) {
-            console.warn("ORACLE: DEPLOYER_PRIVATE_KEY not set - Quick Plays will be Firestore-only");
+        const DEPLOY_PRIVATE_KEY = process.env.DEPLOY_PRIVATE_KEY;
+        if (!DEPLOY_PRIVATE_KEY) {
+            console.warn("ORACLE: DEPLOY_PRIVATE_KEY not set - Quick Plays will be Firestore-only");
         }
         
         for (const item of data.questions) {
@@ -2701,10 +2701,10 @@ Generate 5 quick, fun YES/NO prediction questions about uncertain events in the 
             let onChainTxHash = null;
             
             // Create on-chain market if deployer key available
-            if (DEPLOYER_PRIVATE_KEY) {
+            if (DEPLOY_PRIVATE_KEY) {
                 try {
                     const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-                    const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
+                    const deployerWallet = new ethers.Wallet(DEPLOY_PRIVATE_KEY, provider);
                     
                     const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB'; // Updated to correct V2 address
                     const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0'; // Updated PRED token address
@@ -3431,13 +3431,13 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
     }
     
     try {
-        const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
-        if (!DEPLOYER_PRIVATE_KEY) {
+        const DEPLOY_PRIVATE_KEY = process.env.DEPLOY_PRIVATE_KEY;
+        if (!DEPLOY_PRIVATE_KEY) {
             return res.status(503).json({ error: 'Quick play market creation service unavailable' });
         }
         
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-        const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
+        const deployerWallet = new ethers.Wallet(DEPLOY_PRIVATE_KEY, provider);
         
         const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
         const contractABI = [
@@ -4346,8 +4346,8 @@ app.post('/api/indexer/markets/:marketId/odds-snapshot', requireAdmin, async (re
 
 // --- Initialize Auto-Payout Job ---
 const autoPayoutJob = new AutoPayoutJob();
-if (db && process.env.DEPLOYER_PRIVATE_KEY) {
-    const initialized = autoPayoutJob.initialize(process.env.DEPLOYER_PRIVATE_KEY, db);
+if (db && process.env.DEPLOY_PRIVATE_KEY) {
+    const initialized = autoPayoutJob.initialize(process.env.DEPLOY_PRIVATE_KEY, db);
     if (initialized) {
         autoPayoutJob.start(5); // Check every 5 minutes
         console.log('✅ Auto-payout job started (checks every 5 minutes)');
@@ -4358,14 +4358,14 @@ if (db && process.env.DEPLOYER_PRIVATE_KEY) {
 
 // --- Setup unlimited PRED approval at startup ---
 async function setupUnlimitedPredApproval() {
-    if (!process.env.DEPLOYER_PRIVATE_KEY) {
-        console.warn('⚠️  Cannot setup PRED approval (missing DEPLOYER_PRIVATE_KEY)');
+    if (!process.env.DEPLOY_PRIVATE_KEY) {
+        console.warn('⚠️  Cannot setup PRED approval (missing DEPLOY_PRIVATE_KEY)');
         return;
     }
     
     try {
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-        const deployerWallet = new ethers.Wallet(process.env.DEPLOYER_PRIVATE_KEY, provider);
+        const deployerWallet = new ethers.Wallet(process.env.DEPLOY_PRIVATE_KEY, provider);
         const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB'; // Updated to correct V2 address
         const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0'; // Updated PRED token address
         
