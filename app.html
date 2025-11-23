@@ -4973,8 +4973,8 @@
                         // Update market pools in Firestore
                         const { collection, query, where, getDocs, updateDoc, doc, addDoc, increment } = window.firebase.firestore;
                         
-                        // Find Firestore market by onChainMarketId
-                        const marketsRef = collection(db, 'markets');
+                        // Find Firestore market by onChainMarketId (CORRECTED PATH)
+                        const marketsRef = collection(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION);
                         const q = query(marketsRef, where('onChainMarketId', '==', marketId.toNumber()));
                         const snapshot = await getDocs(q);
                         
@@ -4991,8 +4991,8 @@
                             console.log('✅ Market pools updated in Firestore');
                         }
                         
-                        // Store bet record in pledges collection
-                        await addDoc(collection(db, 'pledges'), {
+                        // Store bet record in pledges collection (CORRECTED PATH)
+                        await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', PLEDGES_COLLECTION), {
                             marketId: marketId.toNumber(),
                             userAddress: user,
                             amount: parseFloat(ethers.utils.formatEther(amount)),
@@ -5036,7 +5036,7 @@
                         // Update Firestore market status
                         const { collection, query, where, getDocs, updateDoc, serverTimestamp } = window.firebase.firestore;
                         
-                        const marketsRef = collection(db, 'markets');
+                        const marketsRef = collection(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION);
                         const q = query(marketsRef, where('onChainMarketId', '==', marketId.toNumber()));
                         const snapshot = await getDocs(q);
                         
@@ -5098,7 +5098,7 @@
                         // Update Firestore market status
                         const { collection, query, where, getDocs, updateDoc } = window.firebase.firestore;
                         
-                        const marketsRef = collection(db, 'markets');
+                        const marketsRef = collection(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION);
                         const q = query(marketsRef, where('onChainMarketId', '==', marketId.toNumber()));
                         const snapshot = await getDocs(q);
                         
@@ -9943,6 +9943,36 @@
                             console.warn('Balance refresh after bet failed (non-critical):', refreshError);
                         }
 
+                        // 📊 Update Firestore market pools with fresh on-chain values
+                        if (currentMarket && currentMarket.onChainMarketId) {
+                            try {
+                                // Fetch current AMM odds from backend (which reads from blockchain)
+                                const oddsResponse = await fetch('/api/get-market-odds', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ marketId: currentMarket.onChainMarketId, currency: 'BNB' })
+                                });
+                                
+                                if (oddsResponse.ok) {
+                                    const oddsData = await oddsResponse.json();
+                                    if (oddsData.success && oddsData.yesPool !== undefined && oddsData.noPool !== undefined) {
+                                        // Update Firestore with fresh pool values from blockchain
+                                        const { updateDoc, doc } = window.firebase.firestore;
+                                        const marketRef = doc(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION, currentMarketId);
+                                        await updateDoc(marketRef, {
+                                            yesPool: oddsData.yesPool,
+                                            noPool: oddsData.noPool,
+                                            yesPercent: oddsData.yesPercent,
+                                            noPercent: oddsData.noPercent
+                                        });
+                                        console.log(`✅ Updated Firestore pools: YES $${oddsData.yesPool.toFixed(2)} | NO $${oddsData.noPool.toFixed(2)}`);
+                                    }
+                                }
+                            } catch (poolUpdateError) {
+                                console.warn('Pool update to Firestore skipped:', poolUpdateError.message);
+                            }
+                        }
+                        
                         showLoadingOverlay(false);
                         showToast(`Bet placed on-chain! TX: ${receipt.transactionHash.slice(0, 10)}...`, "success");
                         
