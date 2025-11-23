@@ -6091,6 +6091,55 @@
         window.watchMarketEvents = watchMarketEvents;
         window.getMarketHistory = getMarketHistory;
         
+        // Track cooldown timer interval globally
+        let faucetCooldownInterval = null;
+        
+        /**
+         * Start a continuous timer for faucet cooldown
+         */
+        function startFaucetCooldownTimer() {
+            if (faucetCooldownInterval) {
+                clearInterval(faucetCooldownInterval);
+            }
+            
+            faucetCooldownInterval = setInterval(async () => {
+                if (!userProfile?.walletAddress) return;
+                
+                const claimBtn = document.getElementById('claim-pred-btn');
+                const cooldownMsg = document.getElementById('faucet-cooldown-msg');
+                const cooldownText = cooldownMsg?.querySelector('p');
+                
+                if (!claimBtn) return;
+                
+                try {
+                    const response = await fetch('/api/faucet/check-cooldown', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ walletAddress: userProfile.walletAddress })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.canClaim === false && data.timeLeft > 0) {
+                        if (data.hoursLeft > 0) {
+                            cooldownText.textContent = `Next claim available in ${data.hoursLeft}h ${data.minutesLeft}m`;
+                        } else {
+                            cooldownText.textContent = `Next claim available in ${data.minutesLeft} minutes`;
+                        }
+                    } else if (data.canClaim === true || data.timeLeft <= 0) {
+                        clearInterval(faucetCooldownInterval);
+                        faucetCooldownInterval = null;
+                        claimBtn.disabled = false;
+                        claimBtn.innerHTML = '💰 Claim 50 $PRED';
+                        cooldownMsg.classList.add('hidden');
+                        console.log('✅ Faucet cooldown expired - button re-enabled');
+                    }
+                } catch (error) {
+                    console.warn('Error updating cooldown timer:', error);
+                }
+            }, 30000);
+        }
+        
         /**
          * 🪙 Claim $PRED tokens from faucet
          */
@@ -6155,9 +6204,10 @@
                     localStorage.setItem('lastFaucetClaim', Date.now().toString());
                     
                     // Keep button disabled (don't re-enable after 3 seconds)
-                    // The button will check cooldown on page load and re-enable after 24 hours
                     setTimeout(() => {
                         claimBtn.innerHTML = '⏰ On Cooldown';
+                        // Start the cooldown timer to update countdown and re-enable when done
+                        startFaucetCooldownTimer();
                     }, 3000);
                 } else if (response.status === 429) {
                     // Cooldown error - keep button disabled
@@ -6165,7 +6215,8 @@
                     cooldownMsg.classList.remove('hidden');
                     cooldownText.textContent = data.message;
                     claimBtn.innerHTML = '⏰ On Cooldown';
-                    // Don't re-enable the button - it will remain disabled until cooldown expires
+                    // Start the cooldown timer to update countdown
+                    startFaucetCooldownTimer();
                 } else {
                     throw new Error(data.error || 'Failed to claim tokens');
                 }
@@ -6217,6 +6268,8 @@
                     } else {
                         cooldownText.textContent = `Next claim available in ${data.minutesLeft} minutes`;
                     }
+                    // Start the cooldown timer to continuously update
+                    startFaucetCooldownTimer();
                 } else {
                     // Can claim - enable button
                     claimBtn.disabled = false;
