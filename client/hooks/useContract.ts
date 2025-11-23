@@ -96,3 +96,48 @@ export function useClaimWinnings() {
     error,
   };
 }
+
+export function useCreateMarketContract() {
+  const { data, write, isLoading, error } = useContractWrite({
+    address: PREDICTION_MARKET_ADDRESS,
+    abi: PREDICTION_MARKET_ABI,
+    functionName: 'createMarket',
+  });
+
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransaction({
+    hash: data?.hash,
+  });
+
+  const createMarket = (
+    title: string,
+    description: string,
+    resolutionTime: bigint,
+    initialYesBnb: string = '0',
+    initialNoBnb: string = '0',
+    initialYesPred: string = '0',
+    initialNoPred: string = '0'
+  ) => {
+    if (write) {
+      write({
+        args: [
+          title,
+          description,
+          resolutionTime,
+          parseEther(initialYesBnb),
+          parseEther(initialNoBnb),
+          parseEther(initialYesPred),
+          parseEther(initialNoPred),
+        ],
+        value: parseEther((parseFloat(initialYesBnb) + parseFloat(initialNoBnb)).toString()),
+      });
+    }
+  };
+
+  return {
+    createMarket,
+    hash: data?.hash,
+    isLoading: isLoading || isConfirming,
+    isSuccess,
+    error,
+  };
+}

@@ -1,13 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, CheckCircle } from 'lucide-react';
+import { Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
 import { useCreateMarket } from '@/hooks/useCreateMarket';
+import { useCreateMarketContract } from '@/hooks/useContract';
 
 export function CreateMarket() {
   const [prompt, setPrompt] = useState('');
   const [generatedMarket, setGeneratedMarket] = useState<any>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const { generateMarket, loading, error } = useCreateMarket();
+  const { createMarket, isLoading: isCreating, isSuccess, error: contractError } = useCreateMarketContract();
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -15,8 +19,42 @@ export function CreateMarket() {
     try {
       const marketData = await generateMarket({ userPrompt: prompt });
       setGeneratedMarket(marketData);
+      setPublishError(null);
     } catch (err) {
       console.error('Failed to generate market:', err);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!generatedMarket) return;
+    setIsPublishing(true);
+    setPublishError(null);
+
+    try {
+      const resolutionDate = new Date(generatedMarket.resolutionDate);
+      const resolutionTimeInSeconds = Math.floor(resolutionDate.getTime() / 1000);
+
+      console.log('Publishing market:', {
+        title: generatedMarket.title,
+        description: generatedMarket.description,
+        resolutionTime: resolutionTimeInSeconds,
+      });
+
+      createMarket(
+        generatedMarket.title,
+        generatedMarket.description,
+        BigInt(resolutionTimeInSeconds),
+        '0.01', // Initial YES BNB
+        '0.01', // Initial NO BNB
+        '0',    // Initial YES PRED
+        '0'     // Initial NO PRED
+      );
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to publish market';
+      setPublishError(errorMsg);
+      console.error('Error publishing market:', err);
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -116,9 +154,33 @@ export function CreateMarket() {
               </div>
             </div>
 
-            <button className="w-full py-3 bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-sky-500/30 transition-all">
-              Publish Market
+            <button 
+              onClick={handlePublish}
+              disabled={isPublishing || isCreating}
+              className="w-full py-3 bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-sky-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isPublishing || isCreating ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Publishing...
+                </span>
+              ) : (
+                'Publish Market'
+              )}
             </button>
+
+            {(publishError || contractError) && (
+              <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex gap-2">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <p className="text-red-400 text-sm">{publishError || contractError?.message}</p>
+              </div>
+            )}
+
+            {isSuccess && (
+              <div className="mt-4 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+                <p className="text-green-400 text-sm">Market published successfully!</p>
+              </div>
+            )}
           </div>
         </div>
       )}
