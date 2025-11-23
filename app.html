@@ -2651,6 +2651,17 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="ui-panel p-4 lg:p-6 space-y-3">
+                            <div id="reset-wallet-section">
+                                <h3 class="text-base font-semibold text-red-400 mb-2">⚠️ Wrong Wallet Balance?</h3>
+                                <p class="text-sm text-gray-400 mb-3">If you're seeing the wrong PRED balance, reset your wallet to connect to the correct one.</p>
+                                <button id="reset-wallet-btn" onclick="resetCustodialWallet()" class="btn w-full" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(239, 68, 68, 0.1) 100%); border: 1px solid rgba(239, 68, 68, 0.5); color: #f87171;">
+                                    🔧 Reset Wallet Now
+                                </button>
+                                <p class="text-xs text-gray-500 mt-2">This will delete the old wallet from your account and create a fresh one linked to your actual wallet.</p>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="lg:col-span-2">
@@ -6687,6 +6698,64 @@
                 throw error; // Let completeAuthentication handle the error
             }
         }
+
+        /**
+         * ✅ Reset Custodial Wallet - Delete old wallet and create new one
+         */
+        async function resetCustodialWallet() {
+            if (!currentUser) {
+                showToast('Please log in first', 'error');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to reset your wallet? This will delete the old wallet and create a new one.')) {
+                return;
+            }
+
+            try {
+                const resetBtn = document.getElementById('reset-wallet-btn');
+                resetBtn.disabled = true;
+                resetBtn.textContent = '🔄 Resetting...';
+
+                const idToken = await currentUser.getIdToken();
+                const response = await fetch('/api/wallet/reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        userId: currentUserId, 
+                        idToken 
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('✅ Wallet reset successfully! Reloading...', 'success');
+                    
+                    // Clear cached wallet data
+                    localStorage.removeItem('custodialWalletAddress');
+                    localStorage.removeItem('cachedWalletAddress');
+                    
+                    // Reload page after 2 seconds
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showToast(`Failed to reset wallet: ${data.error}`, 'error');
+                    resetBtn.disabled = false;
+                    resetBtn.textContent = '🔧 Reset Wallet';
+                }
+            } catch (error) {
+                console.error('Error resetting wallet:', error);
+                showToast('Failed to reset wallet. Please try again.', 'error');
+                const resetBtn = document.getElementById('reset-wallet-btn');
+                resetBtn.disabled = false;
+                resetBtn.textContent = '🔧 Reset Wallet';
+            }
+        }
+
+        // Make it global
+        window.resetCustodialWallet = resetCustodialWallet;
 
         /**
          * Sign in with Google - Coming Soon
