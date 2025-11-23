@@ -1526,29 +1526,29 @@ app.post('/api/get-market-odds', async (req, res) => {
         }
         
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB'; // CORRECTED: Use same contract as market creation
+        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
         
-        // ABI - read pool balances for both currencies
+        // ABI - use markets() function which returns the market struct with all pool info
         const abi = [
-            'function yesPoolBnb(uint256) public view returns (uint256)',
-            'function noPoolBnb(uint256) public view returns (uint256)',
-            'function yesPoolPred(uint256) public view returns (uint256)',
-            'function noPoolPred(uint256) public view returns (uint256)',
+            'function markets(uint256) public view returns (uint256 id, string memory title, string memory description, address creator, uint256 createdAt, uint256 resolutionTime, bool isResolved, bool outcome, uint256 yesPoolBnb, uint256 noPoolBnb, uint256 yesPoolPred, uint256 noPoolPred, uint256 totalVolumeBnb, uint256 totalVolumePred, uint8 status, uint256 resolutionSubmittedAt, bool autoPayoutTriggered, uint256 initialLiquidityYesBnb, uint256 initialLiquidityNoBnb, uint256 initialLiquidityYesPred, uint256 initialLiquidityNoPred, string memory evidenceHash)'
         ];
         
         const contract = new ethers.Contract(contractAddress, abi, provider);
         
         try {
+            // Call markets() function to get market data
+            const marketData = await contract.markets(marketId);
+            
             let yesPool, noPool;
             
-            // Get correct pool based on currency
+            // Extract correct pool based on currency
             if (currency === 'PRED') {
-                yesPool = await contract.yesPoolPred(marketId);
-                noPool = await contract.noPoolPred(marketId);
+                yesPool = marketData.yesPoolPred;
+                noPool = marketData.noPoolPred;
             } else {
                 // Default to BNB
-                yesPool = await contract.yesPoolBnb(marketId);
-                noPool = await contract.noPoolBnb(marketId);
+                yesPool = marketData.yesPoolBnb;
+                noPool = marketData.noPoolBnb;
             }
             
             yesPool = parseFloat(ethers.utils.formatEther(yesPool));
@@ -1570,7 +1570,7 @@ app.post('/api/get-market-odds', async (req, res) => {
             const yesPercent = (yesPool / totalPool) * 100;
             const noPercent = (noPool / totalPool) * 100;
             
-            console.log(`📊 Market ${marketId} (${currency}) AMM Odds: YES ${yesPercent.toFixed(1)}% | NO ${noPercent.toFixed(1)}% (Pools: YES ${yesPool.toFixed(4)} | NO ${noPool.toFixed(4)})`);
+            console.log(`📊 Real AMM Odds (${currency}): YES ${yesPercent.toFixed(1)}% | NO ${noPercent.toFixed(1)}% (Pools: YES ${yesPool.toFixed(4)} | NO ${noPool.toFixed(4)})`);
             
             res.json({
                 success: true,
@@ -1618,31 +1618,29 @@ app.post('/api/calculate-amm-payout', async (req, res) => {
         }
         
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-        // CORRECTED: Use same contract address as market creation
         const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
         
-        // Minimal ABI to read market state - try to be flexible with return types
+        // ABI - use markets() function which returns the full market struct
         const abi = [
-            'function markets(uint256) public view returns (address, uint256, uint256, uint256, uint256, uint256, uint256, bool, bool, bool)',
-            'function yesPoolBnb(uint256) public view returns (uint256)',
-            'function noPoolBnb(uint256) public view returns (uint256)',
-            'function yesPoolPred(uint256) public view returns (uint256)',
-            'function noPoolPred(uint256) public view returns (uint256)',
+            'function markets(uint256) public view returns (uint256 id, string memory title, string memory description, address creator, uint256 createdAt, uint256 resolutionTime, bool isResolved, bool outcome, uint256 yesPoolBnb, uint256 noPoolBnb, uint256 yesPoolPred, uint256 noPoolPred, uint256 totalVolumeBnb, uint256 totalVolumePred, uint8 status, uint256 resolutionSubmittedAt, bool autoPayoutTriggered, uint256 initialLiquidityYesBnb, uint256 initialLiquidityNoBnb, uint256 initialLiquidityYesPred, uint256 initialLiquidityNoPred, string memory evidenceHash)'
         ];
         
         const contract = new ethers.Contract(contractAddress, abi, provider);
         
-        // Try to get current market state using individual pool readers
+        // Try to get current market state using markets() function
         let poolYes, poolNo;
         const amountWei = ethers.utils.parseEther(amount.toString());
         
         try {
+            // Get market data
+            const marketData = await contract.markets(marketId);
+            
             if (currency === 'BNB') {
-                poolYes = await contract.yesPoolBnb(marketId);
-                poolNo = await contract.noPoolBnb(marketId);
+                poolYes = marketData.yesPoolBnb;
+                poolNo = marketData.noPoolBnb;
             } else if (currency === 'PRED') {
-                poolYes = await contract.yesPoolPred(marketId);
-                poolNo = await contract.noPoolPred(marketId);
+                poolYes = marketData.yesPoolPred;
+                poolNo = marketData.noPoolPred;
             } else {
                 return res.status(400).json({ error: 'Invalid currency. Use BNB or PRED' });
             }
