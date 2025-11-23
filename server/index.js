@@ -748,6 +748,93 @@ app.post('/api/market/create-onchain', async (req, res) => {
     }
 });
 
+// 🪙 SIMPLE $PRED Token Faucet - Direct to Wallet Address (No Firestore Required)
+app.post('/api/faucet/claim-simple', async (req, res) => {
+    const { walletAddress } = req.body;
+    
+    if (!walletAddress) {
+        return res.status(400).json({ error: 'Wallet address is required' });
+    }
+    
+    // Validate wallet address format
+    if (!ethers.utils.isAddress(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+    }
+    
+    try {
+        // PredToken contract ABI
+        const predTokenAbi = [
+            'function mint(address to, uint256 amount) external',
+            'function canClaimFaucet(address user) external view returns (bool)',
+            'function timeUntilNextClaim(address user) external view returns (uint256)',
+            'function balanceOf(address account) external view returns (uint256)',
+            'function faucetAmount() external view returns (uint256)'
+        ];
+        
+        // Use deployer wallet to pay for gas
+        const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
+        if (!DEPLOYER_PRIVATE_KEY) {
+            return res.status(503).json({ 
+                error: 'Faucet unavailable', 
+                message: 'Faucet service is temporarily unavailable' 
+            });
+        }
+        
+        const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+        const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
+        const predToken = new ethers.Contract('0x45C229bF14A36aD14885148E62058C98284B2ae0', predTokenAbi, deployerWallet);
+        
+        // Check if user can claim
+        const canClaim = await predToken.canClaimFaucet(walletAddress);
+        
+        if (!canClaim) {
+            const timeLeft = await predToken.timeUntilNextClaim(walletAddress);
+            const hoursLeft = Math.ceil(Number(timeLeft) / 3600);
+            return res.status(429).json({ 
+                error: 'Faucet on cooldown',
+                message: `You can claim again in ${hoursLeft} hours`,
+                timeLeft: hoursLeft
+            });
+        }
+        
+        // Get faucet amount
+        const faucetAmountWei = await predToken.faucetAmount();
+        const faucetAmount = Number(ethers.utils.formatEther(faucetAmountWei));
+        
+        // Mint tokens
+        console.log(`🪙 Minting ${faucetAmount} $PRED to ${walletAddress}...`);
+        const tx = await predToken.mint(walletAddress, faucetAmountWei, { gasLimit: 200000 });
+        const receipt = await tx.wait();
+        
+        // Get new balance
+        const balanceWei = await predToken.balanceOf(walletAddress);
+        const balance = Number(ethers.utils.formatEther(balanceWei));
+        
+        console.log(`✅ Faucet: Minted ${faucetAmount} $PRED to ${walletAddress}`);
+        console.log(`   Tx: ${tx.hash}, New balance: ${balance} $PRED`);
+        
+        res.status(200).json({ 
+            success: true, 
+            amount: faucetAmount,
+            newBalance: balance,
+            message: `Successfully claimed ${faucetAmount} $PRED tokens!`,
+            txHash: tx.hash,
+            onChain: true
+        });
+    } catch (error) {
+        console.error('Error claiming from faucet:', error);
+        
+        if (error.message && error.message.includes('Faucet cooldown not expired')) {
+            return res.status(429).json({ 
+                error: 'Faucet on cooldown',
+                message: 'You can claim again in 24 hours'
+            });
+        }
+        
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // 🪙 $PRED Token Faucet - NOW MINTS REAL ERC20 TOKENS ON-CHAIN
 app.post('/api/faucet/claim-pred', async (req, res) => {
     const { userId, idToken } = req.body;
