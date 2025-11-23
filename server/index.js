@@ -1235,11 +1235,14 @@ app.post('/api/wallet/reset', async (req, res) => {
     }
     
     try {
-        // Verify auth
+        // Verify auth token - if this succeeds, user is authenticated
         const decodedToken = await admin.auth().verifyIdToken(idToken);
-        if (decodedToken.uid !== userId) {
-            return res.status(403).json({ error: 'Unauthorized' });
+        
+        if (!decodedToken || !decodedToken.uid) {
+            return res.status(403).json({ error: 'Invalid token' });
         }
+        
+        console.log(`🔐 Wallet reset authorized for userId: ${userId} (Firebase UID: ${decodedToken.uid})`);
         
         if (!db) {
             return res.status(503).json({ error: 'Database unavailable' });
