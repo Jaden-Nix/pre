@@ -21,6 +21,7 @@
     "firebase-admin": "^13.6.0",
     "node-fetch": "^3.3.2",
     "openai": "^6.9.1",
+    "solc": "^0.8.30",
     "viem": "^2.39.3"
   }
 }
