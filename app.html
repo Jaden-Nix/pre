@@ -5560,9 +5560,40 @@
             if (!walletAddress) {
                 const isCustodial = localStorage.getItem('isCustodial') === 'true';
                 if (isCustodial && currentUserId) {
-                    console.log('   Custodial wallet detected, wallet address may be managed server-side');
-                    // For custodial wallets, we might not have a wallet address client-side
-                    // Skip blockchain balance refresh but return success
+                    console.log('   Custodial wallet detected, fetching full profile from Firestore...');
+                    // For custodial wallets, fetch full profile from Firestore to get balances
+                    try {
+                        const { doc, getDoc } = window.firebase.firestore;
+                        const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
+                        const profileSnap = await getDoc(profileRef);
+                        
+                        if (profileSnap.exists()) {
+                            const data = profileSnap.data();
+                            
+                            // Merge Firestore data into existing userProfile to preserve all fields
+                            Object.assign(userProfile, {
+                                predBalance: data.predBalance || 0,
+                                bnbBalance: data.bnbBalance || 0,
+                                cakeBalance: data.cakeBalance || 0,
+                                walletAddress: data.walletAddress || userProfile.walletAddress,
+                                lastBalanceUpdate: Date.now()
+                            });
+                            
+                            console.log(`✅ Custodial wallet balances updated from Firestore: BNB=${userProfile.bnbBalance.toFixed(4)}, PRED=${userProfile.predBalance.toFixed(2)}`);
+                        }
+                        
+                        // Use the same UI update pipeline as non-custodial wallets (no conditional checks)
+                        updateProfileUI(userProfile);
+                        
+                        // Update asset selector dropdowns with new balances
+                        if (typeof populateAssetSelector === 'function') {
+                            populateAssetSelector();
+                        }
+                        
+                        console.log('✅ Balances refreshed from Firestore and UI updated');
+                    } catch (error) {
+                        console.error('❌ Failed to fetch custodial wallet balance from Firestore:', error);
+                    }
                     return;
                 }
                 
@@ -9682,7 +9713,7 @@
          * Updates AMM Price Impact Display with real-time calculations
          * Shows current odds, new odds after bet, price impact, and pool sizes
          */
-        window.updateAMMImpactDisplay = (pick = null) => {
+        window.updateAMMImpactDisplay = async (pick = null) => {
             try {
                 // Get DOM elements
                 const ammPanel = document.getElementById('amm-impact-panel');
@@ -9698,10 +9729,9 @@
                     currentPickSelection = pick;
                 }
                 
-                // Get bet amount and asset
+                // Get bet amount and asset in native currency
                 const amount = parseFloat(stakeInput.value) || 0;
                 const asset = stakeAssetSelect.value;
-                const amountUsd = amount * getMockPrice(asset);
                 
                 // Hide panel if no market or no amount
                 if (!currentMarket || amount <= 0) {
@@ -9709,19 +9739,60 @@
                     return;
                 }
                 
-                // Only show for markets with pools (AMM markets)
-                // Check if pools exist as properties (even if 0)
-                if (currentMarket.yesPool === undefined || currentMarket.noPool === undefined) {
-                    ammPanel.classList.add('hidden');
-                    return;
+                // Only show for on-chain markets with AMM pools
+                if (!currentMarket.onChainMarketId) {
+                    // For Firestore markets, check if pools exist
+                    if (currentMarket.yesPool === undefined || currentMarket.noPool === undefined) {
+                        ammPanel.classList.add('hidden');
+                        return;
+                    }
                 }
                 
                 // Show the panel
                 ammPanel.classList.remove('hidden');
                 
-                // Get current pools
-                let yesPool = parseFloat(currentMarket.yesPool) || 0;
-                let noPool = parseFloat(currentMarket.noPool) || 0;
+                // Get current pools - fetch from blockchain for on-chain markets
+                let yesPool, noPool;
+                
+                if (currentMarket.onChainMarketId) {
+                    // On-chain market: fetch pools for the selected currency
+                    try {
+                        const response = await fetch('/api/get-market-odds', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                marketId: currentMarket.onChainMarketId, 
+                                currency: asset 
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.success) {
+                                yesPool = data.yesPool || 0;
+                                noPool = data.noPool || 0;
+                                console.log(`📊 Fetched ${asset} pools: YES ${yesPool.toFixed(4)} | NO ${noPool.toFixed(4)}`);
+                            } else {
+                                // Fallback to currentMarket pools
+                                yesPool = parseFloat(currentMarket.yesPool) || 0;
+                                noPool = parseFloat(currentMarket.noPool) || 0;
+                            }
+                        } else {
+                            // Fallback to currentMarket pools
+                            yesPool = parseFloat(currentMarket.yesPool) || 0;
+                            noPool = parseFloat(currentMarket.noPool) || 0;
+                        }
+                    } catch (error) {
+                        console.warn('Failed to fetch pool data, using currentMarket values:', error);
+                        yesPool = parseFloat(currentMarket.yesPool) || 0;
+                        noPool = parseFloat(currentMarket.noPool) || 0;
+                    }
+                } else {
+                    // Firestore market: use stored pools
+                    yesPool = parseFloat(currentMarket.yesPool) || 0;
+                    noPool = parseFloat(currentMarket.noPool) || 0;
+                }
+                
                 const totalPool = yesPool + noPool;
                 
                 // Calculate current odds (percentages)
@@ -9733,18 +9804,18 @@
                 document.getElementById('amm-current-no').textContent = `${currentNoPercent.toFixed(1)}%`;
                 
                 // Calculate AMM impact using constant product formula (x * y = k)
-                // This matches the Firestore binary market implementation (lines 10075-10102)
+                // Use the actual bet amount in native currency (not USD) since pools are in native currency
                 const k = yesPool * noPool;
                 let newYesPool, newNoPool, potentialPayout;
                 
                 if (currentPickSelection === 'YES') {
                     // User bets on YES
-                    newYesPool = yesPool + amountUsd;
+                    newYesPool = yesPool + amount;
                     newNoPool = k / newYesPool;
                     potentialPayout = noPool - newNoPool;
                 } else {
                     // User bets on NO
-                    newNoPool = noPool + amountUsd;
+                    newNoPool = noPool + amount;
                     newYesPool = k / newNoPool;
                     potentialPayout = yesPool - newYesPool;
                 }
@@ -9760,36 +9831,43 @@
                 const priceImpact = Math.max(priceImpactYes, priceImpactNo);
                 
                 // Update displays
-                document.getElementById('amm-your-bet').innerHTML = `$${amountUsd.toFixed(2)} on <span class="font-semibold">${currentPickSelection}</span>`;
+                document.getElementById('amm-your-bet').innerHTML = `${amount.toFixed(4)} ${asset} on <span class="font-semibold">${currentPickSelection}</span>`;
                 document.getElementById('amm-price-impact').textContent = `${priceImpact.toFixed(2)}%`;
                 
                 // Update new odds display
                 document.getElementById('amm-new-yes').textContent = `${newYesPercent.toFixed(1)}%`;
                 document.getElementById('amm-new-no').textContent = `${newNoPercent.toFixed(1)}%`;
                 
-                // Update pool displays
-                document.getElementById('amm-yes-pool').textContent = `$${yesPool.toFixed(2)}`;
-                document.getElementById('amm-no-pool').textContent = `$${noPool.toFixed(2)}`;
-                document.getElementById('amm-total-pool').textContent = `$${totalPool.toFixed(2)}`;
+                // Update pool displays - show values in native currency
+                const poolDecimals = asset === 'BNB' ? 4 : 2;
+                document.getElementById('amm-yes-pool').textContent = `${yesPool.toFixed(poolDecimals)} ${asset}`;
+                document.getElementById('amm-no-pool').textContent = `${noPool.toFixed(poolDecimals)} ${asset}`;
+                document.getElementById('amm-total-pool').textContent = `${totalPool.toFixed(poolDecimals)} ${asset}`;
                 
-                // Update potential return
-                const potentialReturnUsd = amountUsd + potentialPayout;
-                document.getElementById('amm-potential-return').textContent = `$${potentialReturnUsd.toFixed(2)}`;
+                // Calculate potential return in native currency
+                const potentialReturn = amount + potentialPayout;
+                const returnDecimals = asset === 'BNB' ? 4 : 2;
                 
-                // Also update the old calc-stake element for backward compatibility
-                const calcStakeEl = document.getElementById('calc-stake');
-                if (calcStakeEl) {
-                    calcStakeEl.innerText = `$${potentialReturnUsd.toFixed(2)}`;
-                }
+                // Calculate USD equivalent only for display purposes
+                const potentialReturnUsd = potentialReturn * getMockPrice(asset);
+                
+                // Display return in native currency with USD as supplementary info
+                document.getElementById('amm-potential-return').textContent = `${potentialReturn.toFixed(returnDecimals)} ${asset} ($${potentialReturnUsd.toFixed(2)})`;
+                
+                // Calculate ROI based on native currency (not USD)
+                const roi = potentialPayout > 0 ? ((potentialPayout / amount) * 100) : 0;
                 
                 // Log the calculation
-                const roi = ((potentialReturnUsd - amountUsd) / amountUsd * 100);
                 console.log(`📊 AMM Impact Calculation:`);
-                console.log(`   Current: YES ${currentYesPercent.toFixed(1)}% | NO ${currentNoPercent.toFixed(1)}%`);
-                console.log(`   Bet: $${amountUsd.toFixed(2)} on ${currentPickSelection}`);
-                console.log(`   New: YES ${newYesPercent.toFixed(1)}% | NO ${newNoPercent.toFixed(1)}%`);
+                console.log(`   Currency: ${asset}`);
+                console.log(`   Current Pools: YES ${yesPool.toFixed(returnDecimals)} | NO ${noPool.toFixed(returnDecimals)} ${asset}`);
+                console.log(`   Current Odds: YES ${currentYesPercent.toFixed(1)}% | NO ${currentNoPercent.toFixed(1)}%`);
+                console.log(`   Bet: ${amount.toFixed(returnDecimals)} ${asset} on ${currentPickSelection}`);
+                console.log(`   New Odds: YES ${newYesPercent.toFixed(1)}% | NO ${newNoPercent.toFixed(1)}%`);
                 console.log(`   Price Impact: ${priceImpact.toFixed(2)}%`);
-                console.log(`   Potential Return: $${potentialReturnUsd.toFixed(2)} (ROI: ${roi.toFixed(1)}%)`);
+                console.log(`   Potential Payout: ${potentialPayout.toFixed(returnDecimals)} ${asset}`);
+                console.log(`   Total Return: ${potentialReturn.toFixed(returnDecimals)} ${asset} (~$${potentialReturnUsd.toFixed(2)})`);
+                console.log(`   ROI: ${roi.toFixed(1)}%`);
                 
             } catch (error) {
                 console.error('❌ Error calculating AMM impact:', error);
