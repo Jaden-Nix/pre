@@ -5491,6 +5491,11 @@
                     updateProfileUI(userProfile);
                 }
                 
+                // Update asset selector dropdowns with new balances
+                if (typeof populateAssetSelector === 'function') {
+                    populateAssetSelector();
+                }
+                
                 console.log('✅ Balances refreshed from blockchain');
             } catch (error) {
                 console.error('❌ Failed to refresh balances:', error);
@@ -7071,14 +7076,14 @@
 
                 await initializeUserProfile();
 
-                // Fetch real BNB balance from blockchain
+                // Fetch real balances from blockchain (BNB and PRED)
                 try {
-                    const realBnbBalance = await getRealBNBBalance();
-                    userProfile.bnbBalance = parseFloat(realBnbBalance);
-                    console.log('✅ Real BNB Balance fetched:', realBnbBalance, 'tBNB');
+                    await refreshAllBalances();
+                    console.log('✅ All balances fetched - BNB:', userProfile.bnbBalance, 'PRED:', userProfile.predBalance);
                 } catch (balanceError) {
-                    console.error('Failed to fetch BNB balance:', balanceError);
+                    console.error('Failed to fetch balances:', balanceError);
                     userProfile.bnbBalance = 0;
+                    userProfile.predBalance = 0;
                 }
 
                 const { getDoc, doc } = window.firebase.firestore;
@@ -7089,13 +7094,13 @@
                     showScreen('onboarding-screen');
                 } else {
                     userProfile = { ...userProfile, ...profileSnap.data() };
-                    // Update profile with real balance
-                    userProfile.bnbBalance = parseFloat(await getRealBNBBalance());
+                    // Update profile with real balances
+                    await refreshAllBalances();
                     showScreen('home-screen');
                 }
 
                 showLoadingOverlay(false);
-                showToast(`🎉 Wallet connected successfully! Balance: ${userProfile.bnbBalance.toFixed(4)} tBNB`, "success");
+                showToast(`🎉 Wallet connected! BNB: ${userProfile.bnbBalance.toFixed(4)} | PRED: ${userProfile.predBalance.toFixed(2)}`, "success");
 
             } catch (error) {
                 console.error('Web3 wallet connection error:', error);
