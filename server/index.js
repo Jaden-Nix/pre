@@ -1185,7 +1185,9 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
         // This is gas-sponsored - user doesn't need BNB
         console.log(`🪙 Minting ${faucetAmount} $PRED tokens for ${userId} (${walletAddress})...`);
         const tx = await predToken.mint(walletAddress, faucetAmountWei, { gasLimit: 200000 });
+        console.log(`🔄 MINT TX SUBMITTED: ${tx.hash}`);
         const receipt = await tx.wait();
+        console.log(`✅ MINT RECEIPT CONFIRMED`);
         
         // Get new balance
         const balanceWei = await predToken.balanceOf(walletAddress);
@@ -1196,7 +1198,9 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
         console.log(`   New balance: ${balance} $PRED`);
         
         // Add claimed PRED to Firestore user balance (not replace, add to existing balance)
+        console.log(`⏱️ BEFORE addPredBalance call`);
         const addResult = await addPredBalance(userId, faucetAmount);
+        console.log(`⏱️ AFTER addPredBalance call, result: ${addResult}`);
         
         // Also update claim timestamp
         console.log(`📝 Attempting to update claim timestamp... (db exists: ${!!db})`);
