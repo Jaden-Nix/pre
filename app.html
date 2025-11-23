@@ -5577,31 +5577,31 @@
             console.log('   Wallet address:', walletAddress);
             
             try {
-                // Fetch real balances in parallel
-                const [bnb, pred] = await Promise.all([
-                    getRealBNBBalance(),
-                    getRealCAKEBalance()  // This fetches PRED tokens (CAKE_CONTRACT_ADDRESS is actually PRED contract)
-                ]);
+                // Fetch BNB from blockchain, but PRED from Firestore (virtual balance)
+                const bnb = await getRealBNBBalance();
                 
-                console.log(`✅ Fetched: ${bnb} BNB, ${pred} PRED`);
+                // PRED is managed as virtual balance in Firestore (not on-chain)
+                // Get it from the current userProfile if available
+                const pred = userProfile?.predBalance ?? 0;
                 
-                // Update userProfile with blockchain balances (source of truth)
+                console.log(`✅ Fetched: ${bnb} BNB, ${pred} PRED (from Firestore)`);
+                
+                // Update userProfile
                 userProfile.bnbBalance = bnb;
-                userProfile.predBalance = pred;
                 userProfile.walletAddress = walletAddress;
+                // predBalance comes from Firestore subscription, don't override here
                 
-                // Update Firestore (for caching purposes only)
+                // Update Firestore with BNB balance only (PRED managed server-side)
                 if (currentUserId) {
                     try {
                         const { doc, updateDoc } = window.firebase.firestore;
                         await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId), {
                             bnbBalance: bnb,
-                            predBalance: pred,
                             walletAddress: walletAddress,
                             lastBalanceUpdate: Date.now()
                         });
                     } catch (firestoreError) {
-                        console.warn('Could not update Firestore with balances:', firestoreError);
+                        console.warn('Could not update Firestore with BNB balance:', firestoreError);
                     }
                 }
                 

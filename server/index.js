@@ -56,6 +56,27 @@ async function addXpToUser(userId, amount, reason) {
     }
 }
 
+// Helper function to deduct PRED balance from Firestore after bet
+async function deductPredBalance(userId, amount) {
+    if (!db || !userId || amount <= 0) return false;
+    try {
+        // Update user's PRED balance in Firestore
+        const userDocPath = `artifacts/${APP_ID}/public/data/${USER_PROFILE_COLLECTION}/${userId}`;
+        const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
+        
+        await userRef.set({
+            predBalance: admin.firestore.FieldValue.increment(-amount),
+            lastBalanceUpdate: Date.now()
+        }, { merge: true });
+        
+        console.log(`💸 PRED: Deducted ${amount} PRED from ${userId}`);
+        return true;
+    } catch (error) {
+        console.warn(`⚠️  Could not deduct PRED balance: ${error.message}`);
+        return false;
+    }
+}
+
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 let openai = null;
 if (OPENAI_API_KEY) {
@@ -1424,6 +1445,11 @@ app.post('/api/custodial/place-bet', async (req, res) => {
         // Award XP for placing bet
         await addXpToUser(userId, XP_VALUES.PLACE_BET, `Placed a bet on market ${marketId}`);
         
+        // Deduct PRED balance from Firestore if PRED bet
+        if (currency === 'PRED') {
+            await deductPredBalance(userId, parseFloat(amount));
+        }
+        
         res.json({
             success: true,
             txHash: receipt.transactionHash,
@@ -1500,6 +1526,17 @@ app.post('/api/custodial/place-batch-bets', async (req, res) => {
         // Wait for confirmation
         const receipt = await tx.wait();
         console.log(`✅ Batch bet confirmed in block ${receipt.blockNumber}`);
+        
+        // Deduct PRED balances for all PRED bets from Firestore
+        for (const bet of bets) {
+            if (bet.currency === 'PRED') {
+                await deductPredBalance(userId, parseFloat(bet.amount));
+            }
+        }
+        
+        // Award XP for placing bets
+        const totalXp = bets.length * XP_VALUES.PLACE_BET;
+        await addXpToUser(userId, totalXp, `Placed batch of ${bets.length} bets`);
         
         res.json({
             success: true,
