@@ -9461,16 +9461,36 @@
                     return;
                 }
 
-                // 5. --- FIRESTORE-ONLY PATH (for email users or markets without on-chain ID) ---
-                showLoadingOverlay(true, "Confirming on-chain...");
-                await new Promise(res => setTimeout(res, 1500)); // Shortened delay
-
-                // 6. --- MAIN LOGIC (NOW INSIDE A TRANSACTION) ---
+                // 5. --- CUSTODIAL WALLET PATH (for email users or markets without on-chain ID) ---
+                showLoadingOverlay(true, "Placing bet on-chain...");
+                
+                // 6. --- PLACE BET VIA BACKEND API (REAL ON-CHAIN) ---
                 try {
                 const balanceFieldToUpdate = getBalanceField(selectedAsset);
                 const amountInUsd = amount * getMockPrice(selectedAsset);
                 const xpToAward = getRandomXP(10);
-                const txHash = generateFakeTxHash();
+                
+                // ✅ FIX: Call backend API to place real on-chain bet
+                console.log(`🎯 Calling /api/custodial/place-bet for ${selectedAsset}...`);
+                const betResponse = await fetch('/api/custodial/place-bet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUserId,
+                        marketId: currentMarketId,
+                        pick: pick === 'YES',
+                        amount: amount,
+                        currency: selectedAsset
+                    })
+                });
+                
+                const betResult = await betResponse.json();
+                if (!betResult.success) {
+                    throw new Error(betResult.error || 'Failed to place bet on-chain');
+                }
+                
+                console.log(`✅ Real on-chain bet placed! TX: ${betResult.txHash}`);
+                const txHash = betResult.txHash; // ✅ USE REAL TRANSACTION HASH
 
                 // --- THIS IS THE FIX ---
                 // We wrap all database reads and writes in a transaction
