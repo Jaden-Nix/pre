@@ -676,7 +676,7 @@ app.post('/api/profile/sync-wallet-address', async (req, res) => {
 
 // 🎯 On-Chain Market Creation - Creates markets using PRED from user's balance
 app.post('/api/market/create-onchain', async (req, res) => {
-    const { title, description, category, endDate, liquidityPRED, marketStructure, initialOdds, options } = req.body;
+    const { title, description, category, endDate, liquidityPRED, marketStructure, initialOdds, options, walletAddress } = req.body;
     
     // Accept both liquidityBNB (legacy) and liquidityPRED (new PRED-based)
     const liquidityAmount = liquidityPRED || req.body.liquidityBNB;
@@ -811,17 +811,16 @@ app.post('/api/market/create-onchain', async (req, res) => {
         
         const profileSnap = await profileRef.get();
         if (!profileSnap.exists) {
-            console.log(`⚠️  Profile not found for ${userId}, syncing from blockchain...`);
-            // Try to sync from blockchain before proceeding
-            const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-            const userAddr = decodedToken.wallet || decodedToken.walletAddress;
-            if (userAddr) {
+            console.log(`⚠️  Profile not found for ${userId}, creating from request data...`);
+            // Create profile using walletAddress from request
+            if (walletAddress) {
                 try {
-                    const bnbBalance = await provider.getBalance(userAddr);
-                    const predBalance = await predContract.balanceOf(userAddr);
+                    const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+                    const bnbBalance = await provider.getBalance(walletAddress);
+                    const predBalance = await predContract.balanceOf(walletAddress);
                     await profileRef.set({
                         userId: userId,
-                        walletAddress: userAddr,
+                        walletAddress: walletAddress,
                         bnbBalance: parseFloat(ethers.utils.formatEther(bnbBalance)),
                         predBalance: parseFloat(ethers.utils.formatEther(predBalance)),
                         lastBalanceUpdate: Date.now(),
@@ -833,10 +832,12 @@ app.post('/api/market/create-onchain', async (req, res) => {
                         streak: 0,
                         createdAt: new Date().toISOString()
                     });
-                    console.log(`✅ Profile created for ${userId}`);
+                    console.log(`✅ Profile created for ${userId} with wallet ${walletAddress}`);
                 } catch (syncErr) {
-                    console.warn(`⚠️  Failed to sync profile: ${syncErr.message}`);
+                    console.warn(`⚠️  Failed to create profile: ${syncErr.message}`);
                 }
+            } else {
+                console.warn(`⚠️  No wallet address provided to create profile`);
             }
         }
         

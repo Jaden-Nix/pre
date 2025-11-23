@@ -11934,13 +11934,18 @@
                 // Get Firebase ID token for authentication
                 const idToken = await auth.currentUser.getIdToken();
                 
-                // Convert liquidityAsset to BNB (only BNB supported for on-chain markets currently)
-                let liquidityBNB = liquidityAmount;
-                if (liquidityAsset !== 'BNB') {
-                    // Convert to BNB using mock price
+                // Get the liquidity amount in PRED (the actual token being used)
+                let liquidityPRED = liquidityAmount;
+                if (liquidityAsset === 'BNB') {
+                    // Convert from BNB to PRED
                     const bnbPrice = getMockPrice('BNB');
+                    const predPrice = getMockPrice('PRED');
+                    liquidityPRED = (liquidityAmount * bnbPrice) / predPrice;
+                } else if (liquidityAsset !== 'PRED') {
+                    // Convert from other asset to PRED
                     const assetPrice = getMockPrice(liquidityAsset);
-                    liquidityBNB = (liquidityAmount * assetPrice) / bnbPrice;
+                    const predPrice = getMockPrice('PRED');
+                    liquidityPRED = (liquidityAmount * assetPrice) / predPrice;
                 }
                 
                 // Call backend to create on-chain market
@@ -11955,7 +11960,8 @@
                         description: insight || "No description",
                         category: category,
                         endDate: resolutionDate,
-                        liquidityBNB: liquidityBNB.toString(),
+                        liquidityPRED: liquidityPRED.toString(),
+                        walletAddress: userWalletAddress,
                         marketStructure: marketStructure,
                         initialOdds: marketStructure === 'binary' ? { yesPercent, noPercent } : null,
                         options: marketStructure === 'multi-option' ? multiOptions : null
