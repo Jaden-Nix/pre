@@ -120,6 +120,29 @@ async function syncPredBalanceFromBlockchain(userId, walletAddress) {
     }
 }
 
+// Helper function to sync BNB balance from blockchain to Firestore for a user
+async function syncBnbBalanceFromBlockchain(userId, walletAddress) {
+    if (!db || !userId || !walletAddress) return false;
+    try {
+        const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+        
+        const balance = await provider.getBalance(walletAddress);
+        const balanceAmount = parseFloat(ethers.utils.formatEther(balance));
+        
+        const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
+        await userRef.set({
+            bnbBalance: balanceAmount,
+            lastBalanceUpdate: Date.now()
+        }, { merge: true });
+        
+        console.log(`🔄 BNB: Synced ${userId} balance from blockchain: ${balanceAmount} BNB`);
+        return true;
+    } catch (error) {
+        console.warn(`⚠️  Could not sync BNB balance from blockchain: ${error.message}`);
+        return false;
+    }
+}
+
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 let openai = null;
 if (OPENAI_API_KEY) {
@@ -1490,9 +1513,11 @@ app.post('/api/custodial/place-bet', async (req, res) => {
         // Award XP for placing bet
         await addXpToUser(userId, XP_VALUES.PLACE_BET, `Placed a bet on market ${marketId}`);
         
-        // Deduct PRED balance from Firestore if PRED bet
-        if (currency === 'PRED') {
-            await deductPredBalance(userId, parseFloat(amount));
+        // Sync balance from blockchain to Firestore to reflect the bet deduction
+        if (currency === 'BNB') {
+            await syncBnbBalanceFromBlockchain(userId, signer.address);
+        } else if (currency === 'PRED') {
+            await syncPredBalanceFromBlockchain(userId, signer.address);
         }
         
         res.json({
