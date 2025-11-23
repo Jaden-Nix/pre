@@ -61,7 +61,6 @@ async function deductPredBalance(userId, amount) {
     if (!db || !userId || amount <= 0) return false;
     try {
         // Update user's PRED balance in Firestore
-        const userDocPath = `artifacts/${APP_ID}/public/data/${USER_PROFILE_COLLECTION}/${userId}`;
         const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
         
         await userRef.set({
@@ -73,6 +72,50 @@ async function deductPredBalance(userId, amount) {
         return true;
     } catch (error) {
         console.warn(`⚠️  Could not deduct PRED balance: ${error.message}`);
+        return false;
+    }
+}
+
+// Helper function to add PRED balance to Firestore (for faucet claims and payouts)
+async function addPredBalance(userId, amount) {
+    if (!db || !userId || amount <= 0) return false;
+    try {
+        const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
+        
+        await userRef.set({
+            predBalance: admin.firestore.FieldValue.increment(amount),
+            lastBalanceUpdate: Date.now()
+        }, { merge: true });
+        
+        console.log(`➕ PRED: Added ${amount} PRED to ${userId}`);
+        return true;
+    } catch (error) {
+        console.warn(`⚠️  Could not add PRED balance: ${error.message}`);
+        return false;
+    }
+}
+
+// Helper function to sync PRED balance from blockchain to Firestore for a user
+async function syncPredBalanceFromBlockchain(userId, walletAddress) {
+    if (!db || !userId || !walletAddress) return false;
+    try {
+        const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+        const predTokenAbi = ['function balanceOf(address) view returns (uint256)'];
+        const predContract = new ethers.Contract(PRED_TOKEN_ADDRESS, predTokenAbi, provider);
+        
+        const balance = await predContract.balanceOf(walletAddress);
+        const balanceAmount = parseFloat(ethers.utils.formatEther(balance));
+        
+        const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
+        await userRef.set({
+            predBalance: balanceAmount,
+            lastBalanceUpdate: Date.now()
+        }, { merge: true });
+        
+        console.log(`🔄 PRED: Synced ${userId} balance from blockchain: ${balanceAmount} PRED`);
+        return true;
+    } catch (error) {
+        console.warn(`⚠️  Could not sync PRED balance from blockchain: ${error.message}`);
         return false;
     }
 }
@@ -856,6 +899,9 @@ app.post('/api/faucet/claim-simple', async (req, res) => {
         console.log(`✅ Faucet: Minted ${faucetAmount} $PRED to ${walletAddress}`);
         console.log(`   Tx: ${tx.hash}, New balance: ${balance} $PRED`);
         
+        // Update Firestore balance (user ID not available in simple endpoint, so we skip it)
+        // Frontend will update automatically when it next fetches balance
+        
         res.status(200).json({ 
             success: true, 
             amount: faucetAmount,
@@ -993,20 +1039,19 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
         console.log(`   Transaction: ${tx.hash}`);
         console.log(`   New balance: ${balance} $PRED`);
         
-        // Update Firebase profile with new balance and claim timestamp
+        // Add claimed PRED to Firestore user balance (not replace, add to existing balance)
+        const addResult = await addPredBalance(userId, faucetAmount);
+        
+        // Also update claim timestamp
         try {
             if (db) {
-                await db.collection('users').doc(userId).set({
-                    predBalance: balance,
-                    lastPredClaim: Date.now(),
-                    lastBalanceUpdate: Date.now(),
-                    walletAddress: walletAddress
+                const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
+                await userRef.set({
+                    lastPredClaim: Date.now()
                 }, { merge: true });
-                console.log(`✅ Updated Firebase profile for ${userId}: predBalance=${balance}`);
             }
         } catch (dbError) {
-            console.warn(`⚠️  Could not update Firebase profile: ${dbError.message}`);
-            // Continue anyway - the balance is still on-chain
+            console.warn(`⚠️  Could not update claim timestamp: ${dbError.message}`);
         }
         
         res.status(200).json({ 
