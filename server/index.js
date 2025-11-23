@@ -106,7 +106,8 @@ async function syncPredBalanceFromBlockchain(userId, walletAddress) {
         const balance = await predContract.balanceOf(walletAddress);
         const balanceAmount = parseFloat(ethers.utils.formatEther(balance));
         
-        const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
+        // Use hardcoded path since constants may not be in scope
+        const userRef = db.collection('artifacts').doc('predora-hackathon').collection('public').doc('data').collection('user-profiles').doc(userId);
         await userRef.set({
             predBalance: balanceAmount,
             lastBalanceUpdate: Date.now()
@@ -129,7 +130,8 @@ async function syncBnbBalanceFromBlockchain(userId, walletAddress) {
         const balance = await provider.getBalance(walletAddress);
         const balanceAmount = parseFloat(ethers.utils.formatEther(balance));
         
-        const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
+        // Use hardcoded path since constants may not be in scope
+        const userRef = db.collection('artifacts').doc('predora-hackathon').collection('public').doc('data').collection('user-profiles').doc(userId);
         await userRef.set({
             bnbBalance: balanceAmount,
             lastBalanceUpdate: Date.now()
