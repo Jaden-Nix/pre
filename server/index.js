@@ -610,6 +610,58 @@ app.post('/api/custodial-wallet/info', async (req, res) => {
     }
 });
 
+// 🔄 Sync custodial wallet address to user profile - Fixes balance display issues
+app.post('/api/profile/sync-wallet-address', async (req, res) => {
+    const { userId, idToken } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    if (!idToken) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    try {
+        // Verify auth token
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        if (decodedToken.uid !== userId && decodedToken.uid.substring(0, 10) !== userId) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+        
+        // Get custodial wallet for this user
+        const walletDoc = await db.collection('custodialWallets').doc(userId).get();
+        
+        if (!walletDoc.exists) {
+            return res.status(404).json({ error: 'No custodial wallet found for user' });
+        }
+        
+        const custodialWalletAddress = walletDoc.data().address;
+        
+        if (!custodialWalletAddress) {
+            return res.status(400).json({ error: 'Custodial wallet has no address' });
+        }
+        
+        // Update user profile with correct custodial wallet address
+        await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId).update({
+            walletAddress: custodialWalletAddress,
+            isCustodial: true,
+            lastWalletSync: new Date().toISOString()
+        });
+        
+        console.log(`✅ Synced custodial wallet address for ${userId}: ${custodialWalletAddress}`);
+        
+        res.status(200).json({ 
+            success: true, 
+            message: 'Wallet address synced successfully',
+            walletAddress: custodialWalletAddress
+        });
+    } catch (error) {
+        console.error('❌ Error syncing wallet address:', error);
+        res.status(500).json({ error: 'Failed to sync wallet address: ' + error.message });
+    }
+});
+
 // 🎯 On-Chain Market Creation - Creates markets on PredictionMarketV2 contract + Firestore
 app.post('/api/market/create-onchain', async (req, res) => {
     const { title, description, category, endDate, liquidityBNB, marketStructure, initialOdds, options } = req.body;
