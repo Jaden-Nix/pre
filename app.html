@@ -6408,6 +6408,18 @@
             // --- Create Market Liquidity Inputs ---
             dom.marketLiquidityInput = document.getElementById('market-liquidity-input');
             dom.marketLiquidityAsset = document.getElementById('market-liquidity-asset');
+            
+            // Add event listener for asset selector to warn external wallets about PRED
+            if (dom.stakeAssetSelect) {
+                dom.stakeAssetSelect.addEventListener('change', function() {
+                    const isCustodialWallet = localStorage.getItem('isCustodial') === 'true';
+                    const selectedAsset = this.value;
+                    
+                    if (selectedAsset === 'PRED' && !isCustodialWallet) {
+                        showToast('⚠️ PRED staking requires a custodial wallet. External wallets can only stake with BNB. Sign in with email to create a custodial wallet.', 'warning');
+                    }
+                });
+            }
 
         }
 
