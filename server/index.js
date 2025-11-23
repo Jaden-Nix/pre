@@ -922,9 +922,9 @@ app.post('/api/market/create-onchain', async (req, res) => {
     }
 });
 
-// 🪙 SIMPLE $PRED Token Faucet - Direct to Wallet Address (No Firestore Required)
+// 🪙 SIMPLE $PRED Token Faucet - Direct to Wallet Address (With Firestore Cooldown)
 app.post('/api/faucet/claim-simple', async (req, res) => {
-    const { walletAddress } = req.body;
+    const { walletAddress, userId } = req.body;
     
     if (!walletAddress) {
         return res.status(400).json({ error: 'Wallet address is required' });
@@ -936,6 +936,33 @@ app.post('/api/faucet/claim-simple', async (req, res) => {
     }
     
     try {
+        // 🔐 SERVER-SIDE COOLDOWN CHECK (24 hours) - Only if userId provided
+        if (userId && db) {
+            try {
+                const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
+                const userDoc = await userRef.get();
+                if (userDoc.exists) {
+                    const lastClaim = userDoc.data().lastPredClaim;
+                    if (lastClaim) {
+                        const now = Date.now();
+                        const hoursSinceLastClaim = (now - lastClaim) / (1000 * 60 * 60);
+                        if (hoursSinceLastClaim < 24) {
+                            const hoursLeft = Math.ceil(24 - hoursSinceLastClaim);
+                            console.warn(`⏱️ Faucet cooldown: User ${userId} tried to claim after only ${hoursSinceLastClaim.toFixed(1)} hours`);
+                            return res.status(429).json({ 
+                                error: 'Faucet on cooldown',
+                                message: `You can claim again in ${hoursLeft} hour${hoursLeft === 1 ? '' : 's'}`,
+                                timeLeft: hoursLeft
+                            });
+                        }
+                    }
+                }
+            } catch (cooldownError) {
+                console.warn(`⚠️ Failed to check server cooldown: ${cooldownError.message}`);
+                // Continue anyway - don't fail the request
+            }
+        }
+        
         // PredToken contract ABI
         const predTokenAbi = [
             'function mint(address to, uint256 amount) external',
@@ -987,8 +1014,21 @@ app.post('/api/faucet/claim-simple', async (req, res) => {
         console.log(`✅ Faucet: Minted ${faucetAmount} $PRED to ${walletAddress}`);
         console.log(`   Tx: ${tx.hash}, New balance: ${balance} $PRED`);
         
-        // Update Firestore balance (user ID not available in simple endpoint, so we skip it)
-        // Frontend will update automatically when it next fetches balance
+        // Update Firestore cooldown timestamp
+        if (userId && db) {
+            try {
+                const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
+                const timestamp = Date.now();
+                console.log(`⏱️ Updating lastPredClaim timestamp for ${userId} to ${new Date(timestamp).toISOString()}`);
+                await userRef.update({
+                    lastPredClaim: timestamp
+                });
+                console.log(`✅ Cooldown timestamp updated for user ${userId}`);
+            } catch (updateError) {
+                console.warn(`⚠️ Could not update cooldown timestamp: ${updateError.message}`);
+                // Don't fail the response - faucet claim already succeeded on-chain
+            }
+        }
         
         res.status(200).json({ 
             success: true, 
