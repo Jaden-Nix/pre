@@ -1368,12 +1368,22 @@ app.post('/api/custodial/place-bet', async (req, res) => {
         const receipt = await tx.wait();
         console.log(`✅ Bet confirmed in block ${receipt.blockNumber}`);
         
+        // Verify transaction hash is valid before returning
+        if (!receipt.transactionHash) {
+            console.error('❌ WARNING: Receipt missing transactionHash!');
+            return res.status(500).json({ 
+                error: 'Transaction confirmed but missing blockchain hash' 
+            });
+        }
+        
+        console.log(`✅ Real BSC Testnet TX: https://testnet.bscscan.com/tx/${receipt.transactionHash}`);
+        
         // Award XP for placing bet
         await addXpToUser(userId, XP_VALUES.PLACE_BET, `Placed a bet on market ${marketId}`);
         
         res.json({
             success: true,
-            txHash: tx.hash,
+            txHash: receipt.transactionHash,
             blockNumber: receipt.blockNumber,
             gasUsed: receipt.gasUsed.toString(),
             onChain: true
