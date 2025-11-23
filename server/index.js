@@ -674,11 +674,14 @@ app.post('/api/profile/sync-wallet-address', async (req, res) => {
     }
 });
 
-// 🎯 On-Chain Market Creation - Creates markets on PredictionMarketV2 contract + Firestore
+// 🎯 On-Chain Market Creation - Creates markets using PRED from user's balance
 app.post('/api/market/create-onchain', async (req, res) => {
-    const { title, description, category, endDate, liquidityBNB, marketStructure, initialOdds, options } = req.body;
+    const { title, description, category, endDate, liquidityPRED, marketStructure, initialOdds, options } = req.body;
     
-    if (!title || !description || !category || !endDate || !liquidityBNB) {
+    // Accept both liquidityBNB (legacy) and liquidityPRED (new PRED-based)
+    const liquidityAmount = liquidityPRED || req.body.liquidityBNB;
+    
+    if (!title || !description || !category || !endDate || !liquidityAmount) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
     
@@ -697,75 +700,81 @@ app.post('/api/market/create-onchain', async (req, res) => {
         // Convert endDate to Unix timestamp
         const resolutionTime = Math.floor(new Date(endDate).getTime() / 1000);
         
-        // Get deployer wallet to create market
+        const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
         const DEPLOY_PRIVATE_KEY = process.env.DEPLOY_PRIVATE_KEY;
         if (!DEPLOY_PRIVATE_KEY) {
-            return res.status(503).json({ error: 'Market creation service unavailable - missing deployer key' });
+            return res.status(503).json({ error: 'Market creation service unavailable' });
         }
-        
-        const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
         const deployerWallet = new ethers.Wallet(DEPLOY_PRIVATE_KEY, provider);
         
-        // Check deployer wallet balance BEFORE attempting transaction
+        // Check deployer has enough BNB for gas ONLY (not for liquidity)
         const deployerBalance = await provider.getBalance(deployerWallet.address);
-        const liquidityBnbWei = ethers.utils.parseEther(liquidityBNB.toString());
-        const estimatedGasCost = ethers.utils.parseEther('0.01'); // Rough estimate for gas
-        const requiredFunds = liquidityBnbWei.add(estimatedGasCost);
+        const estimatedGasCost = ethers.utils.parseEther('0.05');
         
-        console.log(`💰 Deployer wallet balance: ${ethers.utils.formatEther(deployerBalance)} BNB`);
-        console.log(`💰 Required for transaction: ${ethers.utils.formatEther(requiredFunds)} BNB (${liquidityBNB} liquidity + gas)`);
+        console.log(`🎯 Creating market with PRED liquidity: "${title}"`);
+        console.log(`   💰 PRED liquidity requested: ${liquidityAmount} PRED`);
+        console.log(`   ⛽ Deployer balance for gas: ${ethers.utils.formatEther(deployerBalance)} BNB`);
         
-        if (deployerBalance.lt(requiredFunds)) {
-            const shortfall = requiredFunds.sub(deployerBalance);
-            const shortfallBnb = ethers.utils.formatEther(shortfall);
-            console.error(`❌ Deployer wallet insufficient funds. Need ${shortfallBnb} BNB more`);
+        if (deployerBalance.lt(estimatedGasCost)) {
+            console.error(`❌ Insufficient deployer BNB for gas fees`);
             return res.status(402).json({ 
-                error: 'Insufficient funds for market creation',
-                message: `Deployer wallet needs ${shortfallBnb} BNB more to create this market. Current balance: ${ethers.utils.formatEther(deployerBalance)} BNB. Required: ${ethers.utils.formatEther(requiredFunds)} BNB.`,
-                deployerAddress: deployerWallet.address,
-                currentBalance: ethers.utils.formatEther(deployerBalance),
-                requiredFunds: ethers.utils.formatEther(requiredFunds),
-                shortfall: shortfallBnb
+                error: 'Service temporarily unavailable',
+                message: 'Insufficient gas funds'
             });
         }
         
-        // Initialize contract with updated ABI including initial liquidity support
-        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB'; // Updated to correct V2 address from v2-deployment.json
+        // Get user's PRED balance from Firestore
+        const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
+        const userDoc = await userRef.get();
+        if (!userDoc.exists) {
+            return res.status(404).json({ error: 'User profile not found' });
+        }
+        
+        const userPredBalance = userDoc.data().predBalance || 0;
+        if (userPredBalance < liquidityAmount) {
+            return res.status(400).json({ 
+                error: 'Insufficient PRED balance',
+                message: `You have ${userPredBalance} PRED but need ${liquidityAmount} PRED`,
+                userBalance: userPredBalance,
+                required: liquidityAmount
+            });
+        }
+        
+        // Convert PRED amount to wei
+        const liquidityPredWei = ethers.utils.parseEther(liquidityAmount.toString());
+        const halfLiquidityPred = liquidityPredWei.div(2);
+        
+        // Initialize contracts
+        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
         const contractABI = [
             'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
             'event MarketCreated(uint256 indexed marketId, string title, address indexed creator, uint256 initialYesBnb, uint256 initialNoBnb, uint256 initialYesPred, uint256 initialNoPred)'
         ];
+        
+        const PRED_TOKEN_ADDRESS = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+        const erc20Abi = [
+            'function approve(address spender, uint256 amount) external returns (bool)',
+            'function transfer(address to, uint256 amount) external returns (bool)',
+            'function balanceOf(address account) external view returns (uint256)'
+        ];
+        
+        const predTokenContract = new ethers.Contract(PRED_TOKEN_ADDRESS, erc20Abi, deployerWallet);
+        
+        // Approve market contract to spend PRED
+        console.log(`📋 Approving market contract to spend ${liquidityAmount} PRED...`);
+        const approveTx = await predTokenContract.approve(contractAddress, liquidityPredWei);
+        await approveTx.wait();
+        console.log(`✅ Approval successful`);
+        
+        // Create market with PRED
         const predictionMarketContract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
         
-        // Calculate initial liquidity split (50/50 YES/NO for balanced market)
-        // Dual currency support: BNB + PRED initial liquidity
-        const halfLiquidityBnb = liquidityBnbWei.div(2);
+        console.log(`📋 Creating market with parameters:`);
+        console.log(`   Title: "${title}"`);
+        console.log(`   Half liquidity per side: ${ethers.utils.formatEther(halfLiquidityPred)} PRED`);
         
-        // Temporarily DISABLED PRED liquidity to test BNB-only market creation
-        // This helps isolate whether the issue is with the PRED transfer or something else
-        const predLiquidityAmount = ethers.BigNumber.from(0);
-        const halfLiquidityPred = ethers.BigNumber.from(0);
-        
-        // Create market on-chain with BNB-only liquidity (PRED temporarily disabled)
-        console.log(`🎯 Creating on-chain market: "${title}"`);
-        console.log(`   💰 BNB liquidity: ${liquidityBNB} BNB (${halfLiquidityBnb.toString()} per side)`);
-        console.log(`   🪙 PRED liquidity: DISABLED FOR TESTING`);
-        
-        // Debug: Log the exact parameters being sent to the contract
-        console.log(`📋 Contract call parameters:`);
-        console.log(`   title: "${title}"`);
-        console.log(`   description: "${description}"`);
-        console.log(`   resolutionTime: ${resolutionTime} (${new Date(resolutionTime * 1000).toISOString()})`);
-        console.log(`   halfLiquidityBnb: ${halfLiquidityBnb.toString()} wei (${ethers.utils.formatEther(halfLiquidityBnb)} BNB)`);
-        console.log(`   halfLiquidityPred: ${halfLiquidityPred.toString()} wei (${ethers.utils.formatEther(halfLiquidityPred)} PRED)`);
-        console.log(`   msg.value: ${liquidityBnbWei.toString()} wei (${ethers.utils.formatEther(liquidityBnbWei)} BNB)`);
-        
-        // Verify validation requirements
         const currentTime = Math.floor(Date.now() / 1000);
-        console.log(`✅ Current time: ${currentTime}`);
-        console.log(`✅ Resolution time is in future: ${resolutionTime > currentTime}`);
-        console.log(`✅ Title is not empty: ${title.length > 0}`);
-        console.log(`✅ BNB amounts match: ${liquidityBnbWei.toString()} == ${halfLiquidityBnb.add(halfLiquidityBnb).toString()}`);
+        console.log(`✅ Time check: current=${currentTime}, resolution=${resolutionTime}, future=${resolutionTime > currentTime}`);
         
         let tx;
         try {
@@ -773,19 +782,14 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 title, 
                 description, 
                 resolutionTime,
-                halfLiquidityBnb,   // _initialYesBnb
-                halfLiquidityBnb,   // _initialNoBnb
-                halfLiquidityPred,  // _initialYesPred = 0 (disabled)
-                halfLiquidityPred,  // _initialNoPred = 0 (disabled)
-                {
-                    value: liquidityBnbWei,
-                    gasLimit: 600000  // Increased from 500000 to 600000 to prevent out-of-gas errors
-                }
+                0,                  // _initialYesBnb = 0 (PRED only)
+                0,                  // _initialNoBnb = 0 (PRED only)
+                halfLiquidityPred,  // _initialYesPred
+                halfLiquidityPred,  // _initialNoPred
+                { gasLimit: 600000 }
             );
         } catch (createError) {
             console.error(`❌ Smart contract call failed:`, createError.message);
-            console.error(`   Code: ${createError.code}`);
-            console.error(`   Data: ${createError.data}`);
             throw createError;
         }
         
@@ -794,31 +798,24 @@ app.post('/api/market/create-onchain', async (req, res) => {
             receipt = await tx.wait();
         } catch (waitError) {
             console.error(`❌ Transaction wait failed:`, waitError.message);
-            console.error(`   Transaction hash: ${tx?.hash}`);
             throw waitError;
         }
         
-        // Extract market ID from MarketCreated event
+        // Extract market ID
         const marketCreatedEvent = receipt.events?.find(e => e.event === 'MarketCreated');
         const onChainMarketId = marketCreatedEvent?.args?.marketId?.toNumber();
         
         if (onChainMarketId === undefined && onChainMarketId !== 0) {
-            console.error('❌ Failed to extract market ID from transaction receipt');
+            console.error('❌ Failed to extract market ID');
             return res.status(500).json({ error: 'Failed to extract market ID from blockchain transaction' });
         }
         
-        console.log(`✅ On-chain market created: ID ${onChainMarketId}, TX: ${tx.hash}`);
+        console.log(`✅ On-chain market created: ID ${onChainMarketId}`);
         
-        // NOTE: In this simplified flow, deployer wallet provides liquidity (not user)
-        // This allows gasless market creation for demo purposes
-        // TODO: For production, deduct liquidityBNB from user's balance and use their custodial wallet
-        
-        // Create Firestore document with market data + award XP to creator
+        // Create Firestore document
         const firestore = admin.firestore();
         
-        // Use Firestore transaction to atomically create market + award XP
         const marketId = await firestore.runTransaction(async (transaction) => {
-            // Get user profile for XP update
             const profileRef = firestore
                 .collection('artifacts')
                 .doc(APP_ID)
@@ -827,32 +824,20 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 .collection('user_profiles')
                 .doc(userId);
             
-            const publicProfileRef = firestore
-                .collection('artifacts')
-                .doc(APP_ID)
-                .collection('public')
-                .doc('data')
-                .collection('public_leaderboard')
-                .doc(userId);
-            
-            // Read profile to get displayName
             const profileSnap = await transaction.get(profileRef);
             const displayName = profileSnap.exists ? (profileSnap.data().displayName || 'Anonymous') : 'Anonymous';
             
-            // Create market document
             const marketRef = firestore
                 .collection('artifacts')
                 .doc(APP_ID)
                 .collection('public')
                 .doc('data')
                 .collection('standard_markets')
-                .doc(); // Generate new doc ID
+                .doc();
             
-            // Markets now start with dual currency initial liquidity (BNB + PRED)
-            const initialLiquidityBnbUsd = liquidityBNB * 600; // Mock BNB price at $600
-            const initialLiquidityPredTokens = liquidityBNB * 600; // PRED tokens (1 PRED ≈ $1)
-            const totalInitialLiquidityUsd = initialLiquidityBnbUsd + initialLiquidityPredTokens;
-            const halfLiquidityUsd = totalInitialLiquidityUsd / 2;
+            // Market liquidity (all PRED)
+            const initialLiquidityPredUsd = liquidityAmount; // 1 PRED ≈ $1
+            const halfLiquidityUsd = initialLiquidityPredUsd / 2;
             
             const marketData = {
                 title,
@@ -860,7 +845,7 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 category,
                 marketStructure: marketStructure || 'binary',
                 resolutionDate: endDate,
-                stakingDeadline: endDate, // Same as resolution for on-chain markets
+                stakingDeadline: endDate,
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 createdBy: userId,
                 createdByDisplayName: displayName,
@@ -869,92 +854,74 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 onChainMarketId: onChainMarketId,
                 onChainTxHash: tx.hash,
                 onChainCreatedAt: Date.now(),
-                // Volume fields - track only user bets (initial liquidity is separate)
                 totalStakeVolume: 0,
                 totalVolume: 0,
                 uniqueStakerCount: 0,
-                // Initial liquidity tracking (protocol-owned, separate from user volume)
-                // Dual currency: BNB + PRED
-                initialLiquidityBnb: liquidityBNB,
-                initialLiquidityBnbUsd: initialLiquidityBnbUsd,
-                initialLiquidityPred: initialLiquidityPredTokens,
-                initialLiquidityPredUsd: initialLiquidityPredTokens, // 1 PRED ≈ $1
-                initialLiquidityTotalUsd: totalInitialLiquidityUsd,
-                // Market type fields
-                isFixedPot: false, // On-chain markets use AMM pools
+                initialLiquidityBnb: 0,
+                initialLiquidityBnbUsd: 0,
+                initialLiquidityPred: liquidityAmount,
+                initialLiquidityPredUsd: initialLiquidityPredUsd,
+                initialLiquidityTotalUsd: initialLiquidityPredUsd,
+                isFixedPot: false,
                 yieldProtocol: null,
                 protocolApy: 0,
                 totalPrincipalUsd: 0,
                 lastAccrualAt: admin.firestore.FieldValue.serverTimestamp(),
                 accruedYieldUsd: 0,
-                // Dispute and admin fields
                 disputes: [],
                 resolutionSource: null,
                 adminEvents: [],
-                // Pool management
                 refundVolumeGoal: 100,
                 refundStakerGoal: 10
             };
             
-            // Add structure-specific fields
             if (marketStructure === 'binary') {
                 const yesPercent = (initialOdds && initialOdds.yesPercent) || 50;
                 const noPercent = (initialOdds && initialOdds.noPercent) || 50;
                 marketData.yesPercent = yesPercent;
                 marketData.noPercent = noPercent;
-                // Pools display includes initial liquidity for AMM calculations
-                // But volume tracking excludes it (see totalVolume = 0 above)
                 marketData.yesPool = halfLiquidityUsd;
                 marketData.noPool = halfLiquidityUsd;
             } else if (marketStructure === 'multi-option' && options) {
-                // Multi-option market - distribute liquidity equally across options
-                const liquidityPerOption = initialLiquidityUsd / options.length;
+                const liquidityPerOption = initialLiquidityPredUsd / options.length;
                 marketData.options = options.map(opt => ({
                     ...opt,
                     pool: liquidityPerOption
                 }));
             } else {
-                // Default binary with 50/50 initial odds and liquidity
                 marketData.yesPercent = 50;
                 marketData.noPercent = 50;
                 marketData.yesPool = halfLiquidityUsd;
                 marketData.noPool = halfLiquidityUsd;
             }
             
-            // Write market
             transaction.set(marketRef, marketData);
-            
             return marketRef.id;
         });
         
         console.log(`✅ Firestore market created: ${marketId}`);
         
-        // Award XP for creating market with liquidity
+        // Award XP
         await addXpToUser(userId, XP_VALUES.CREATE_MARKET, `Created market: ${title}`);
         
-        // Deduct liquidity from user's balance in Firestore
-        // Since deployer wallet paid for the transaction, we deduct the equivalent USD value from user's mock balance
+        // Deduct PRED from user's balance
         try {
-            const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
-            const balanceDeduction = liquidityBNB * 600; // Mock BNB price at $600
-            
             await userRef.update({
-                predBalance: admin.firestore.FieldValue.increment(-balanceDeduction),
+                predBalance: admin.firestore.FieldValue.increment(-liquidityAmount),
                 lastBalanceUpdate: Date.now(),
-                totalLiquidityProvided: admin.firestore.FieldValue.increment(liquidityBNB),
+                totalLiquidityProvided: admin.firestore.FieldValue.increment(liquidityAmount),
                 liquidityHistoryMarkets: admin.firestore.FieldValue.arrayUnion({
                     marketId: marketId,
-                    liquidityBnb: liquidityBNB,
-                    liquidityUsd: balanceDeduction,
+                    liquidityPred: liquidityAmount,
+                    liquidityUsd: liquidityAmount,
                     timestamp: Date.now(),
                     title: title
                 })
             });
             
-            console.log(`💰 Deducted ${balanceDeduction} USD (${liquidityBNB} BNB equivalent) from user ${userId} balance for market creation`);
+            console.log(`💰 Deducted ${liquidityAmount} PRED from user ${userId}`);
         } catch (deductError) {
-            console.warn(`⚠️ Failed to deduct liquidity from user balance: ${deductError.message}`);
-            // Don't fail the request - market was already created successfully
+            console.warn(`⚠️ Failed to deduct PRED: ${deductError.message}`);
         }
         
         res.status(200).json({
@@ -963,15 +930,13 @@ app.post('/api/market/create-onchain', async (req, res) => {
             onChainMarketId: onChainMarketId,
             txHash: tx.hash,
             blockNumber: receipt.blockNumber,
-            liquidityDeducted: liquidityBNB
+            liquidityDeducted: liquidityAmount
         });
     } catch (error) {
         console.error('❌ Error creating on-chain market:', error);
         res.status(500).json({ error: error.message });
     }
 });
-
-// 🪙 SIMPLE $PRED Token Faucet - Direct to Wallet Address (With Firestore Cooldown)
 app.post('/api/faucet/claim-simple', async (req, res) => {
     const { walletAddress, userId } = req.body;
     
