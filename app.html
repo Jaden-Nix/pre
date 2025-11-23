@@ -9432,6 +9432,13 @@
                             }
                         }
 
+                        // 🔄 Refresh balance immediately after bet placed
+                        try {
+                            await refreshAllBalances();
+                        } catch (refreshError) {
+                            console.warn('Balance refresh after bet failed (non-critical):', refreshError);
+                        }
+
                         showLoadingOverlay(false);
                         showToast(`Bet placed on-chain! TX: ${receipt.transactionHash.slice(0, 10)}...`, "success");
                         showScreen('home-screen');
