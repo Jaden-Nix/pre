@@ -9491,8 +9491,11 @@
                             console.log('💰 Using regular transaction (user pays gas)...');
                             
                             // Check wallet connection for external wallet users
-                            if (!ethersProvider || !userWalletAddress) {
-                                showToast("Please connect your wallet first", "error");
+                            // Allow custodial wallet users to proceed - they don't need an external wallet
+                            const isCustodialWallet = localStorage.getItem('isCustodial') === 'true';
+                            
+                            if (!isCustodialWallet && (!ethersProvider || !userWalletAddress)) {
+                                showToast("Please connect your wallet or sign in with email for custodial wallet", "error");
                                 showLoadingOverlay(false);
                                 return;
                             }
