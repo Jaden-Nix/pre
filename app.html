@@ -2656,7 +2656,7 @@
                             <div id="reset-wallet-section">
                                 <h3 class="text-base font-semibold text-red-400 mb-2">⚠️ Wrong Wallet Balance?</h3>
                                 <p class="text-sm text-gray-400 mb-3">If you're seeing the wrong PRED balance, reset your wallet to connect to the correct one.</p>
-                                <button id="reset-wallet-btn" onclick="resetCustodialWallet()" class="btn w-full" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(239, 68, 68, 0.1) 100%); border: 1px solid rgba(239, 68, 68, 0.5); color: #f87171;">
+                                <button id="reset-wallet-btn" type="button" onclick="handleResetWallet()" class="btn w-full" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(239, 68, 68, 0.1) 100%); border: 1px solid rgba(239, 68, 68, 0.5); color: #f87171; cursor: pointer;">
                                     🔧 Reset Wallet Now
                                 </button>
                                 <p class="text-xs text-gray-500 mt-2">This will delete the old wallet from your account and create a fresh one linked to your actual wallet.</p>
@@ -6756,6 +6756,12 @@
 
         // Make it global
         window.resetCustodialWallet = resetCustodialWallet;
+
+        // Simple wrapper for onclick handler
+        window.handleResetWallet = () => {
+            console.log('🔧 Reset wallet button clicked');
+            window.resetCustodialWallet();
+        };
 
         /**
          * Sign in with Google - Coming Soon
