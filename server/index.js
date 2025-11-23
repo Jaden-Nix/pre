@@ -1526,7 +1526,7 @@ app.post('/api/get-market-odds', async (req, res) => {
         }
         
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-        const contractAddress = '0xda27eAd38F3D4A656Cc64C2D70b6166A7061AD48';
+        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB'; // CORRECTED: Use same contract as market creation
         
         // ABI - read pool balances for both currencies
         const abi = [
@@ -1618,8 +1618,8 @@ app.post('/api/calculate-amm-payout', async (req, res) => {
         }
         
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-        // Try correct contract address first
-        const contractAddress = '0xda27eAd38F3D4A656Cc64C2D70b6166A7061AD48';
+        // CORRECTED: Use same contract address as market creation
+        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
         
         // Minimal ABI to read market state - try to be flexible with return types
         const abi = [
