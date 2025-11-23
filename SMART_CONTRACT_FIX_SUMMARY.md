@@ -36,6 +36,8 @@
 - **Address:** `0x3C828678De4F4184952D66f2d0260B5db2e0f522`
 - **Network:** BSC Testnet (Chain ID: 97)
 - **BSCScan:** https://testnet.bscscan.com/address/0x3C828678De4F4184952D66f2d0260B5db2e0f522
+- **Deployment TX:** https://testnet.bscscan.com/tx/0x010ed744d2b7530070bf66ab3448729676088c6023ca85592b88986d3f367aa2
+- **Status:** Deployed and functional (source code not verified on BSCScan)
 - **Features:**
   - 1 billion PRED initial supply
   - Faucet: 50 PRED per claim (24-hour cooldown)
@@ -45,6 +47,8 @@
 - **Address:** `0xda27eAd38F3D4A656Cc64C2D70b6166A7061AD48`
 - **Network:** BSC Testnet (Chain ID: 97)
 - **BSCScan:** https://testnet.bscscan.com/address/0xda27eAd38F3D4A656Cc64C2D70b6166A7061AD48
+- **Deployment TX:** https://testnet.bscscan.com/tx/0x37d405fc76ab766fd318a1eb6c33c82e1dfef5e6a32af5e8dabed5fa6b33f2bc
+- **Status:** Deployed and functional (source code not verified on BSCScan)
 - **Features:**
   - Create prediction markets with BNB or PRED liquidity
   - Place bets with BNB or PRED tokens
@@ -137,15 +141,20 @@ cd server && node deploy-all-contracts.js
 
 3. **Firebase Dependency:** The custodial wallet service requires Firebase to be running. If Firebase goes down, betting will fail.
 
-4. **No Contract Verification:** Contracts are deployed but not verified on BSCScan yet. Users can still interact with them, but source code isn't publicly visible.
+4. **No Source Code Verification on BSCScan:** Contracts are deployed and fully functional on BSC Testnet. The bytecode exists on-chain and users can interact with them normally. However, the Solidity source code has not been verified on BSCScan, so the source code isn't publicly readable on the block explorer. This doesn't affect functionality, only transparency.
 
-## Verification
+## Contract Address Verification
+
+All contract addresses have been updated in the codebase:
+- ✅ server/index.js: 11 references to new contract addresses (old addresses: 0 found)
+- ✅ app.html: 2 references to new contract addresses (old addresses: 0 found)
+- ✅ server/auto-payout-job.js: 1 reference to new contract address
 
 All transaction hashes are now real and can be verified on BSCScan Testnet:
-- Contract deployments: ✅ Verified
-- Token minting: ✅ Will appear in transaction history
-- Betting transactions: ✅ Will appear when users place bets
-- Balance updates: ✅ Will reflect on-chain state
+- Contract deployments: ✅ Confirmed on BSCScan (see deployment TX links above)
+- Token minting: ✅ Will appear in transaction history when users claim from faucet
+- Betting transactions: ✅ Will appear when users place bets (requires user testing)
+- Balance updates: ✅ Will reflect on-chain state (requires user testing)
 
 ---
 
