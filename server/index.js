@@ -576,20 +576,52 @@ app.post('/api/market/create-onchain', async (req, res) => {
         console.log(`   💰 BNB liquidity: ${liquidityBNB} BNB (${halfLiquidityBnb.toString()} per side)`);
         console.log(`   🪙 PRED liquidity: DISABLED FOR TESTING`);
         
-        const tx = await predictionMarketContract.createMarket(
-            title, 
-            description, 
-            resolutionTime,
-            halfLiquidityBnb,   // _initialYesBnb
-            halfLiquidityBnb,   // _initialNoBnb
-            halfLiquidityPred,  // _initialYesPred = 0 (disabled)
-            halfLiquidityPred,  // _initialNoPred = 0 (disabled)
-            {
-                value: liquidityBnbWei,
-                gasLimit: 500000
-            }
-        );
-        const receipt = await tx.wait();
+        // Debug: Log the exact parameters being sent to the contract
+        console.log(`📋 Contract call parameters:`);
+        console.log(`   title: "${title}"`);
+        console.log(`   description: "${description}"`);
+        console.log(`   resolutionTime: ${resolutionTime} (${new Date(resolutionTime * 1000).toISOString()})`);
+        console.log(`   halfLiquidityBnb: ${halfLiquidityBnb.toString()} wei (${ethers.utils.formatEther(halfLiquidityBnb)} BNB)`);
+        console.log(`   halfLiquidityPred: ${halfLiquidityPred.toString()} wei (${ethers.utils.formatEther(halfLiquidityPred)} PRED)`);
+        console.log(`   msg.value: ${liquidityBnbWei.toString()} wei (${ethers.utils.formatEther(liquidityBnbWei)} BNB)`);
+        
+        // Verify validation requirements
+        const currentTime = Math.floor(Date.now() / 1000);
+        console.log(`✅ Current time: ${currentTime}`);
+        console.log(`✅ Resolution time is in future: ${resolutionTime > currentTime}`);
+        console.log(`✅ Title is not empty: ${title.length > 0}`);
+        console.log(`✅ BNB amounts match: ${liquidityBnbWei.toString()} == ${halfLiquidityBnb.add(halfLiquidityBnb).toString()}`);
+        
+        let tx;
+        try {
+            tx = await predictionMarketContract.createMarket(
+                title, 
+                description, 
+                resolutionTime,
+                halfLiquidityBnb,   // _initialYesBnb
+                halfLiquidityBnb,   // _initialNoBnb
+                halfLiquidityPred,  // _initialYesPred = 0 (disabled)
+                halfLiquidityPred,  // _initialNoPred = 0 (disabled)
+                {
+                    value: liquidityBnbWei,
+                    gasLimit: 500000
+                }
+            );
+        } catch (createError) {
+            console.error(`❌ Smart contract call failed:`, createError.message);
+            console.error(`   Code: ${createError.code}`);
+            console.error(`   Data: ${createError.data}`);
+            throw createError;
+        }
+        
+        let receipt;
+        try {
+            receipt = await tx.wait();
+        } catch (waitError) {
+            console.error(`❌ Transaction wait failed:`, waitError.message);
+            console.error(`   Transaction hash: ${tx?.hash}`);
+            throw waitError;
+        }
         
         // Extract market ID from MarketCreated event
         const marketCreatedEvent = receipt.events?.find(e => e.event === 'MarketCreated');
