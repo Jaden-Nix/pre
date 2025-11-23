@@ -605,11 +605,15 @@ app.post('/api/custodial-wallet/info', async (req, res) => {
         return res.status(503).json({ error: 'Custodial wallet service unavailable' });
     }
     
+    console.log(`🔍 Fetching custodial wallet for userId: ${userId}`);
+    
     const result = await custodialWalletService.getWallet(userId);
     
     if (result.success) {
+        console.log(`✅ Found wallet for ${userId}: ${result.address}`);
         res.status(200).json(result);
     } else {
+        console.log(`❌ No wallet found for ${userId}: ${result.error}`);
         res.status(404).json(result);
     }
 });
@@ -1216,6 +1220,98 @@ app.post('/api/custodial-wallet/balance', async (req, res) => {
         res.status(200).json(result);
     } else {
         res.status(400).json(result);
+    }
+});
+
+// 🔧 RESET: Delete old wallet and force recreation
+app.post('/api/wallet/reset', async (req, res) => {
+    const { userId, idToken } = req.body;
+    
+    if (!userId || !idToken) {
+        return res.status(400).json({ error: 'userId and idToken required' });
+    }
+    
+    try {
+        // Verify auth
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        if (decodedToken.uid !== userId) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+        
+        if (!db) {
+            return res.status(503).json({ error: 'Database unavailable' });
+        }
+        
+        // Delete the old wallet record
+        await db.collection('custodialWallets').doc(userId).delete();
+        console.log(`🔧 Deleted old wallet for userId: ${userId}`);
+        
+        res.status(200).json({ 
+            success: true,
+            message: 'Old wallet deleted. A new one will be created on next login.' 
+        });
+    } catch (error) {
+        console.error('Wallet reset failed:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 🐛 DEBUG: Check what wallet is stored in Firebase for a user
+app.post('/api/debug/check-wallet', async (req, res) => {
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    try {
+        if (!db) {
+            return res.status(503).json({ error: 'Database unavailable' });
+        }
+        
+        // Check custodialWallets collection
+        const walletDoc = await db.collection('custodialWallets').doc(userId).get();
+        
+        if (!walletDoc.exists) {
+            return res.status(404).json({ 
+                error: 'No wallet found in custodialWallets',
+                userId 
+            });
+        }
+        
+        const walletData = walletDoc.data();
+        const storedAddress = walletData.address;
+        
+        // Check balance of the stored address
+        let balance = 'unknown';
+        try {
+            const provider = new ethers.providers.JsonRpcProvider('https://bsc-testnet-dataseed.bnbchain.org');
+            const PRED_TOKEN_ADDRESS = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+            
+            const erc20Abi = [
+                "function balanceOf(address owner) view returns (uint256)",
+                "function decimals() view returns (uint8)"
+            ];
+            
+            const tokenContract = new ethers.Contract(PRED_TOKEN_ADDRESS, erc20Abi, provider);
+            const rawBalance = await tokenContract.balanceOf(storedAddress);
+            const decimals = await tokenContract.decimals();
+            balance = ethers.utils.formatUnits(rawBalance, decimals);
+        } catch (e) {
+            console.error('Error fetching balance:', e.message);
+        }
+        
+        res.status(200).json({
+            userId,
+            storedWalletAddress: storedAddress,
+            predBalance: balance,
+            createdAt: walletData.createdAt
+        });
+    } catch (error) {
+        console.error('Debug check failed:', error);
+        res.status(500).json({ 
+            error: error.message 
+        });
     }
 });
 
