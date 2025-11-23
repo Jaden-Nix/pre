@@ -16,6 +16,8 @@ export function UserProfile() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   useEffect(() => {
     if (!auth) {
@@ -145,6 +147,48 @@ export function UserProfile() {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
+  const resetWallet = async () => {
+    if (!userId || !auth.currentUser) {
+      alert('Please log in first');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to reset your wallet? This will delete the old wallet and create a new one. Make sure you have transferred any funds out first!')) {
+      return;
+    }
+
+    try {
+      setResetting(true);
+      const idToken = await auth.currentUser.getIdToken();
+      
+      const response = await fetch('/api/wallet/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, idToken })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setResetSuccess(true);
+        setWalletInfo(null);
+        
+        // Refresh wallet info after a short delay
+        setTimeout(() => {
+          fetchWalletInfo(userId);
+          setResetSuccess(false);
+        }, 2000);
+      } else {
+        alert('Failed to reset wallet: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Error resetting wallet:', error);
+      alert('Failed to reset wallet. Please try again.');
+    } finally {
+      setResetting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen p-6 max-w-4xl mx-auto">
       {/* Header */}
@@ -231,6 +275,22 @@ export function UserProfile() {
                 </a>
               </p>
             </div>
+
+            {resetSuccess && (
+              <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <p className="text-sm text-green-300">
+                  ✅ Wallet reset successful! Creating new wallet...
+                </p>
+              </div>
+            )}
+
+            <button
+              onClick={resetWallet}
+              disabled={resetting}
+              className="w-full px-4 py-3 bg-red-500/20 hover:bg-red-500/30 disabled:bg-gray-500/20 border border-red-500/30 disabled:border-gray-500/30 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed"
+            >
+              {resetting ? '🔄 Resetting Wallet...' : '🔧 Reset Wallet (Fix Wrong Balance)'}
+            </button>
           </div>
         </div>
       ) : (
