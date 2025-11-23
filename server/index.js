@@ -554,7 +554,7 @@ app.post('/api/market/create-onchain', async (req, res) => {
         const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
         
         // Initialize contract with updated ABI including initial liquidity support
-        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
+        const contractAddress = '0xda27eAd38F3D4A656Cc64C2D70b6166A7061AD48';
         const contractABI = [
             'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
             'event MarketCreated(uint256 indexed marketId, string title, address indexed creator, uint256 initialYesBnb, uint256 initialNoBnb, uint256 initialYesPred, uint256 initialNoPred)'
@@ -572,7 +572,7 @@ app.post('/api/market/create-onchain', async (req, res) => {
         const halfLiquidityPred = predLiquidityAmount.div(2);
         
         // Approve PRED token spending if we're adding PRED liquidity
-        const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+        const predTokenAddress = '0x3C828678De4F4184952D66f2d0260B5db2e0f522';
         if (predLiquidityAmount.gt(0)) {
             const predTokenAbi = ['function approve(address spender, uint256 amount) external returns (bool)'];
             const predToken = new ethers.Contract(predTokenAddress, predTokenAbi, deployerWallet);
@@ -782,7 +782,7 @@ app.post('/api/faucet/claim-simple', async (req, res) => {
         
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
         const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
-        const predToken = new ethers.Contract('0x45C229bF14A36aD14885148E62058C98284B2ae0', predTokenAbi, deployerWallet);
+        const predToken = new ethers.Contract('0x3C828678De4F4184952D66f2d0260B5db2e0f522', predTokenAbi, deployerWallet);
         
         // Check if user can claim
         const canClaim = await predToken.canClaimFaucet(walletAddress);
@@ -1010,7 +1010,7 @@ app.post('/api/custodial-wallet/balance', async (req, res) => {
 });
 
 // ✅ PRED Token Address (BSC Testnet)
-const PRED_TOKEN_ADDRESS = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+const PRED_TOKEN_ADDRESS = '0x3C828678De4F4184952D66f2d0260B5db2e0f522';
 
 // ✅ Send BNB from custodial wallet (SECURED V4 - Fixed Authorization Bypass)
 app.post('/api/custodial-wallet/send-bnb', async (req, res) => {
@@ -1328,8 +1328,8 @@ app.post('/api/custodial/place-bet', async (req, res) => {
         const signer = await custodialWalletService.loadWalletSigner(userId);
         
         // PredictionMarketV2 contract (V4 with initial liquidity + oracle evidence hash)
-        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
-        const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+        const contractAddress = '0xda27eAd38F3D4A656Cc64C2D70b6166A7061AD48';
+        const predTokenAddress = '0x3C828678De4F4184952D66f2d0260B5db2e0f522';
         
         // ✅ FIX: Add 'payable' keyword to ABI so BNB bets don't revert
         const abi = [
@@ -1413,8 +1413,8 @@ app.post('/api/custodial/place-batch-bets', async (req, res) => {
         const signer = await custodialWalletService.loadWalletSigner(userId);
         
         // PredictionMarketV2 contract (V4 with initial liquidity + oracle evidence hash)
-        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
-        const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+        const contractAddress = '0xda27eAd38F3D4A656Cc64C2D70b6166A7061AD48';
+        const predTokenAddress = '0x3C828678De4F4184952D66f2d0260B5db2e0f522';
         
         // ✅ FIX: Correct ABI signature - parameter order is: marketIds, picks, amounts, currencies (not currencies, amounts!)
         const abi = [
@@ -1494,7 +1494,7 @@ app.post('/api/aa/place-bet', async (req, res) => {
         const wallet = await custodialWalletService.loadWalletSigner(userId);
         
         // Updated contract address for BSC Testnet deployment
-        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
+        const contractAddress = '0xda27eAd38F3D4A656Cc64C2D70b6166A7061AD48';
         const abi = [
             'function placeBet(uint256 _marketId, bool _pick) external payable'
         ];
@@ -2079,8 +2079,8 @@ Generate 5 quick, fun YES/NO prediction questions about uncertain events in the 
                     const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
                     const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
                     
-                    const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
-                    const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+                    const contractAddress = '0xda27eAd38F3D4A656Cc64C2D70b6166A7061AD48';
+                    const predTokenAddress = '0x3C828678De4F4184952D66f2d0260B5db2e0f522';
                     
                     // Small initial liquidity for Quick Play (0.01 BNB + 6 PRED = ~$12)
                     const liquidityBNB = 0.01;
