@@ -1519,69 +1519,90 @@ app.post('/api/custodial/place-batch-bets', async (req, res) => {
 // ✅ GET MARKET ODDS: Simple endpoint to get current AMM odds from pool balances
 app.post('/api/get-market-odds', async (req, res) => {
     try {
-        const { marketId } = req.body;
+        const { marketId, currency } = req.body;
         
         if (!marketId) {
             return res.status(400).json({ error: 'Market ID required' });
         }
         
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
+        const contractAddress = '0xda27eAd38F3D4A656Cc64C2D70b6166A7061AD48';
         
-        // Simpler ABI - just read pool balances
+        // ABI - read pool balances for both currencies
         const abi = [
             'function yesPoolBnb(uint256) public view returns (uint256)',
             'function noPoolBnb(uint256) public view returns (uint256)',
+            'function yesPoolPred(uint256) public view returns (uint256)',
+            'function noPoolPred(uint256) public view returns (uint256)',
         ];
         
         const contract = new ethers.Contract(contractAddress, abi, provider);
         
         try {
-            const yesPoolWei = await contract.yesPoolBnb(marketId);
-            const noPoolWei = await contract.noPoolBnb(marketId);
+            let yesPool, noPool;
             
-            const yesPool = parseFloat(ethers.utils.formatEther(yesPoolWei));
-            const noPool = parseFloat(ethers.utils.formatEther(noPoolWei));
+            // Get correct pool based on currency
+            if (currency === 'PRED') {
+                yesPool = await contract.yesPoolPred(marketId);
+                noPool = await contract.noPoolPred(marketId);
+            } else {
+                // Default to BNB
+                yesPool = await contract.yesPoolBnb(marketId);
+                noPool = await contract.noPoolBnb(marketId);
+            }
+            
+            yesPool = parseFloat(ethers.utils.formatEther(yesPool));
+            noPool = parseFloat(ethers.utils.formatEther(noPool));
             
             const totalPool = yesPool + noPool;
             if (totalPool === 0) {
+                console.log(`📊 Market ${marketId} (${currency}) - empty pools, returning 50/50`);
                 return res.json({
                     success: true,
                     yesPercent: 50,
                     noPercent: 50,
                     yesPool: 0,
-                    noPool: 0
+                    noPool: 0,
+                    currency: currency || 'BNB'
                 });
             }
             
             const yesPercent = (yesPool / totalPool) * 100;
             const noPercent = (noPool / totalPool) * 100;
             
-            console.log(`📊 Market ${marketId} AMM Odds: YES ${yesPercent.toFixed(1)}% | NO ${noPercent.toFixed(1)}%`);
+            console.log(`📊 Market ${marketId} (${currency}) AMM Odds: YES ${yesPercent.toFixed(1)}% | NO ${noPercent.toFixed(1)}% (Pools: YES ${yesPool.toFixed(4)} | NO ${noPool.toFixed(4)})`);
             
             res.json({
                 success: true,
                 yesPercent: yesPercent,
                 noPercent: noPercent,
                 yesPool: yesPool,
-                noPool: noPool
+                noPool: noPool,
+                currency: currency || 'BNB'
             });
             
         } catch (contractError) {
-            console.warn('Contract read failed, returning default 50/50:', contractError.message);
+            console.warn(`⚠️ Contract read failed for market ${marketId}: ${contractError.message}`);
+            // Always return 50/50 on error instead of failing
             res.json({
                 success: true,
                 yesPercent: 50,
                 noPercent: 50,
                 yesPool: 0,
                 noPool: 0,
-                fallback: true
+                fallback: true,
+                currency: currency || 'BNB'
             });
         }
         
     } catch (error) {
         console.error('Get market odds error:', error);
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ 
+            success: false, 
+            error: error.message,
+            yesPercent: 50,
+            noPercent: 50
+        });
     }
 });
 

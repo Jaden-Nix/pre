@@ -7853,6 +7853,7 @@
             // Clean up the single-market listener when we leave the detail screen
             if (screenId !== 'market-detail-screen' && detailMarketUnsubscribe) {
                 console.log("Cleaning up detail market listener.");
+                window.stopAMMOddsAutoUpdate();  // Stop AMM odds auto-update
                 detailMarketUnsubscribe();
                 detailMarketUnsubscribe = null;
             }
@@ -9119,6 +9120,12 @@
 
                     populateAssetSelector();
                     showScreen('market-detail-screen');
+                    
+                    // Start auto-updating AMM odds every 3 seconds
+                    if (currentMarket.onChainMarketId) {
+                        const defaultCurrency = dom.stakeAssetSelect?.value || 'BNB';
+                        window.startAMMOddsAutoUpdate(currentMarket.onChainMarketId, defaultCurrency);
+                    }
 
                     // Setup yield calculator for no-loss markets
                     setupYieldCalculator(currentMarket);
@@ -9247,10 +9254,12 @@
             }, 2000);
         }
 
+        let detailMarketOddsInterval = null;  // Auto-update AMM odds while market detail is shown
+        
         /**
          * Fetches and displays real AMM odds for a market from backend
          */
-        window.updateAMModds = async (marketId) => {
+        window.updateAMModds = async (marketId, currency = 'BNB') => {
             if (!marketId) return;
             
             try {
@@ -9258,33 +9267,32 @@
                 const response = await fetch('/api/get-market-odds', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ marketId: marketId })
+                    body: JSON.stringify({ marketId: marketId, currency: currency })
                 });
                 
                 if (!response.ok) {
-                    console.warn('Failed to fetch AMM odds:', response.status);
+                    console.warn('⚠️ Failed to fetch AMM odds:', response.status);
                     return;
                 }
                 
                 const result = await response.json();
                 
-                if (result.success) {
+                if (result && result.success) {
                     const yesOdds = result.yesPercent;
                     const noOdds = result.noPercent;
                     
-                    console.log(`📊 Real AMM Odds: YES ${yesOdds.toFixed(1)}% | NO ${noOdds.toFixed(1)}%`);
-                    console.log(`   YES Pool: ${result.yesPool.toFixed(4)} BNB, NO Pool: ${result.noPool.toFixed(4)} BNB`);
+                    console.log(`📊 Real AMM Odds (${currency}): YES ${yesOdds.toFixed(1)}% | NO ${noOdds.toFixed(1)}%`);
                     
                     // Update DOM with real odds and show pulse animation
                     if (dom.detailYesPercent) {
                         dom.detailYesPercent.innerText = `${yesOdds.toFixed(1)}%`;
-                        dom.detailYesPercent.style.opacity = '0.5';
-                        setTimeout(() => { dom.detailYesPercent.style.opacity = '1'; }, 300);
+                        dom.detailYesPercent.style.opacity = '0.6';
+                        setTimeout(() => { dom.detailYesPercent.style.opacity = '1'; }, 200);
                     }
                     if (dom.detailNoPercent) {
                         dom.detailNoPercent.innerText = `${noOdds.toFixed(1)}%`;
-                        dom.detailNoPercent.style.opacity = '0.5';
-                        setTimeout(() => { dom.detailNoPercent.style.opacity = '1'; }, 300);
+                        dom.detailNoPercent.style.opacity = '0.6';
+                        setTimeout(() => { dom.detailNoPercent.style.opacity = '1'; }, 200);
                     }
                     
                     // Store for future use
@@ -9295,7 +9303,39 @@
                 }
                 
             } catch (error) {
-                console.warn('Error updating AMM odds:', error);
+                console.warn('❌ Error updating AMM odds:', error.message);
+            }
+        };
+        
+        /**
+         * Starts auto-updating AMM odds every 3 seconds
+         */
+        window.startAMMOddsAutoUpdate = (marketId, currency = 'BNB') => {
+            // Clear any existing interval
+            if (detailMarketOddsInterval) {
+                clearInterval(detailMarketOddsInterval);
+                detailMarketOddsInterval = null;
+            }
+            
+            // Fetch immediately
+            window.updateAMModds(marketId, currency);
+            
+            // Then poll every 3 seconds
+            detailMarketOddsInterval = setInterval(() => {
+                window.updateAMModds(marketId, currency);
+            }, 3000);
+            
+            console.log(`🔄 Started auto-updating AMM odds for market ${marketId} every 3 seconds`);
+        };
+        
+        /**
+         * Stops auto-updating AMM odds
+         */
+        window.stopAMMOddsAutoUpdate = () => {
+            if (detailMarketOddsInterval) {
+                clearInterval(detailMarketOddsInterval);
+                detailMarketOddsInterval = null;
+                console.log('⏸️ Stopped auto-updating AMM odds');
             }
         };
 
