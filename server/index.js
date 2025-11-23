@@ -1137,7 +1137,34 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
         const deployerWallet = new ethers.Wallet(DEPLOY_PRIVATE_KEY, provider);
         const predToken = new ethers.Contract(PRED_TOKEN_ADDRESS, predTokenAbi, deployerWallet);
         
-        // Check if user can claim
+        // ✅ SERVER-SIDE COOLDOWN CHECK (24 hours)
+        try {
+            if (db) {
+                const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
+                const userDoc = await userRef.get();
+                if (userDoc.exists) {
+                    const lastClaim = userDoc.data().lastPredClaim;
+                    if (lastClaim) {
+                        const now = Date.now();
+                        const hoursSinceLastClaim = (now - lastClaim) / (1000 * 60 * 60);
+                        if (hoursSinceLastClaim < 24) {
+                            const hoursLeft = Math.ceil(24 - hoursSinceLastClaim);
+                            console.warn(`⏱️ Faucet cooldown: User ${userId} tried to claim after only ${hoursSinceLastClaim.toFixed(1)} hours`);
+                            return res.status(429).json({ 
+                                error: 'Faucet on cooldown',
+                                message: `You can claim again in ${hoursLeft} hour${hoursLeft === 1 ? '' : 's'}`,
+                                timeLeft: hoursLeft
+                            });
+                        }
+                    }
+                }
+            }
+        } catch (cooldownError) {
+            console.warn(`⚠️ Failed to check server cooldown (non-critical):`, cooldownError.message);
+            // Don't fail the request if cooldown check fails - continue to contract check
+        }
+        
+        // Check if user can claim (contract-level check)
         const canClaim = await predToken.canClaimFaucet(walletAddress);
         
         if (!canClaim) {
