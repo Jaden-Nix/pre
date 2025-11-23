@@ -16533,25 +16533,38 @@ ${historyText}`;
                 const noPool = parseFloat(market.noPool) || 0;
                 const totalLiquidity = yesPool + noPool;
                 
+                // Calculate or use stored percentages
+                // If pools exist, calculate from pools; otherwise use stored values or default to 50
+                let displayYesPercent, displayNoPercent;
+                if (totalLiquidity > 0) {
+                    // Calculate from pools
+                    displayYesPercent = (yesPool / totalLiquidity) * 100;
+                    displayNoPercent = (noPool / totalLiquidity) * 100;
+                } else {
+                    // Use stored values or default to 50/50
+                    displayYesPercent = market.yesPercent || 50;
+                    displayNoPercent = market.noPercent || 50;
+                }
+                
                 const optionsHtml = isMultipleChoice 
                     ? renderOptionChips(market.options)
                     : `
                         <div class="flex justify-around mb-5">
                             <div class="text-center">
-                                <div class="text-4xl font-bold text-green-400">${(market.yesPercent || 0).toFixed(1)}%</div>
+                                <div class="text-4xl font-bold text-green-400">${displayYesPercent.toFixed(1)}%</div>
                                 <div class="text-sm text-gray-300">YES</div>
-                                ${market.initialOdds && market.initialOdds.yesPercent && Math.abs((market.yesPercent || 0) - market.initialOdds.yesPercent) > 0.5 ? `
-                                    <div class="text-xs mt-1 ${(market.yesPercent || 0) > market.initialOdds.yesPercent ? 'text-green-400' : 'text-red-400'}">
-                                        ${(market.yesPercent || 0) > market.initialOdds.yesPercent ? '↑' : '↓'} ${Math.abs((market.yesPercent || 0) - market.initialOdds.yesPercent).toFixed(1)}%
+                                ${market.initialOdds && market.initialOdds.yesPercent && Math.abs(displayYesPercent - market.initialOdds.yesPercent) > 0.5 ? `
+                                    <div class="text-xs mt-1 ${displayYesPercent > market.initialOdds.yesPercent ? 'text-green-400' : 'text-red-400'}">
+                                        ${displayYesPercent > market.initialOdds.yesPercent ? '↑' : '↓'} ${Math.abs(displayYesPercent - market.initialOdds.yesPercent).toFixed(1)}%
                                     </div>
                                 ` : ''}
                             </div>
                             <div class="text-center">
-                                <div class="text-4xl font-bold text-red-400">${(market.noPercent || 0).toFixed(1)}%</div>
+                                <div class="text-4xl font-bold text-red-400">${displayNoPercent.toFixed(1)}%</div>
                                 <div class="text-sm text-gray-300">NO</div>
-                                ${market.initialOdds && market.initialOdds.noPercent && Math.abs((market.noPercent || 0) - market.initialOdds.noPercent) > 0.5 ? `
-                                    <div class="text-xs mt-1 ${(market.noPercent || 0) > market.initialOdds.noPercent ? 'text-green-400' : 'text-red-400'}">
-                                        ${(market.noPercent || 0) > market.initialOdds.noPercent ? '↑' : '↓'} ${Math.abs((market.noPercent || 0) - market.initialOdds.noPercent).toFixed(1)}%
+                                ${market.initialOdds && market.initialOdds.noPercent && Math.abs(displayNoPercent - market.initialOdds.noPercent) > 0.5 ? `
+                                    <div class="text-xs mt-1 ${displayNoPercent > market.initialOdds.noPercent ? 'text-green-400' : 'text-red-400'}">
+                                        ${displayNoPercent > market.initialOdds.noPercent ? '↑' : '↓'} ${Math.abs(displayNoPercent - market.initialOdds.noPercent).toFixed(1)}%
                                     </div>
                                 ` : ''}
                             </div>
