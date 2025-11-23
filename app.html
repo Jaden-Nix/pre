@@ -10792,13 +10792,18 @@
                 yesPercent = 50; // Placeholder for validation
                 noPercent = 50;
             } else {
-                yesPercent = parseFloat(dom.marketYesInput.value, 10);
-                noPercent = parseFloat(dom.marketNoInput.value, 10);
+                // For binary markets, try to get YES/NO percentages, or use defaults
+                const yesVal = dom.marketYesInput?.value ? parseFloat(dom.marketYesInput.value, 10) : null;
+                const noVal = dom.marketNoInput?.value ? parseFloat(dom.marketNoInput.value, 10) : null;
+                
+                // Use defaults if not provided (50/50 balanced market)
+                yesPercent = isNaN(yesVal) || yesVal === null ? 50 : yesVal;
+                noPercent = isNaN(noVal) || noVal === null ? 50 : noVal;
             }
 
             // Get the new liquidity info
-            const liquidityAmount = parseFloat(dom.marketLiquidityInput.value);
-            const liquidityAsset = dom.marketLiquidityAsset.value;
+            const liquidityAmount = parseFloat(dom.marketLiquidityInput?.value);
+            const liquidityAsset = dom.marketLiquidityAsset?.value;
             const balanceFieldToUpdate = getBalanceField(liquidityAsset);
             const liquidityAmountInUsd = liquidityAmount * getMockPrice(liquidityAsset);
 
@@ -10807,8 +10812,8 @@
             const yieldProtocolFinal = isFixedPotFinal ? (document.getElementById('yield-protocol-select')?.value || document.getElementById('selected-yield-protocol').value) : null;
 
             // 3. --- NEW, STRICTER VALIDATION ---
-            if (!title || !insight || !resolutionDate || !liquidityAmount || liquidityAmount <= 0) {
-                showToast("❌ Please fill ALL fields: Title, Description, Date, and Liquidity Amount");
+            if (!title || !insight || !resolutionDate || !liquidityAmount || isNaN(liquidityAmount) || liquidityAmount <= 0) {
+                showToast("❌ Please fill ALL required fields: Title, Description, Resolution Date, and Liquidity Amount");
                 return;
             }
 
@@ -10821,11 +10826,11 @@
                 return;
             }
 
-            // For binary markets, validate YES/NO percentages
+            // For binary markets, validate YES/NO percentages  
             if (marketStructure === 'binary') {
                 if (isNaN(yesPercent) || isNaN(noPercent)) {
-                    showToast("Please enter valid YES and NO percentages.");
-                    return;
+                    yesPercent = 50;
+                    noPercent = 50;
                 }
                 if (Math.abs(yesPercent + noPercent - 100) > 0.001) {
                     showToast("Error: Percentages must add up to 100%.");
