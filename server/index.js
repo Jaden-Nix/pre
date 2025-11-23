@@ -318,6 +318,9 @@ app.use((req, res, next) => {
 
 // app.html routes MUST come before static middleware to enable Project ID injection
 app.get('/app.html', (req, res) => {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     const appHtmlPath = path.join(__dirname, '..', 'app.html');
     fs.readFile(appHtmlPath, 'utf8', (err, html) => {
         if (err) {
