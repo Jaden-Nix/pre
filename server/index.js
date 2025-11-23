@@ -566,18 +566,15 @@ app.post('/api/market/create-onchain', async (req, res) => {
         const liquidityBnbWei = ethers.utils.parseEther(liquidityBNB.toString());
         const halfLiquidityBnb = liquidityBnbWei.div(2);
         
-        // Add PRED liquidity (10x the BNB amount for testing)
-        // Example: 0.1 BNB = $60 → 600 PRED tokens
-        const predLiquidityAmount = ethers.utils.parseEther((liquidityBNB * 600).toString());
-        const halfLiquidityPred = predLiquidityAmount.div(2);
+        // Temporarily DISABLED PRED liquidity to test BNB-only market creation
+        // This helps isolate whether the issue is with the PRED transfer or something else
+        const predLiquidityAmount = ethers.BigNumber.from(0);
+        const halfLiquidityPred = ethers.BigNumber.from(0);
         
-        // PRED approval is already set up at startup (unlimited)
-        // So we don't need to approve here - the contract will use transferFrom successfully
-        
-        // Create market on-chain with dual currency initial liquidity
+        // Create market on-chain with BNB-only liquidity (PRED temporarily disabled)
         console.log(`🎯 Creating on-chain market: "${title}"`);
         console.log(`   💰 BNB liquidity: ${liquidityBNB} BNB (${halfLiquidityBnb.toString()} per side)`);
-        console.log(`   🪙 PRED liquidity: ${predLiquidityAmount.toString()} PRED (${halfLiquidityPred.toString()} per side)`);
+        console.log(`   🪙 PRED liquidity: DISABLED FOR TESTING`);
         
         const tx = await predictionMarketContract.createMarket(
             title, 
@@ -585,8 +582,8 @@ app.post('/api/market/create-onchain', async (req, res) => {
             resolutionTime,
             halfLiquidityBnb,   // _initialYesBnb
             halfLiquidityBnb,   // _initialNoBnb
-            halfLiquidityPred,  // _initialYesPred (dual currency support!)
-            halfLiquidityPred,  // _initialNoPred (dual currency support!)
+            halfLiquidityPred,  // _initialYesPred = 0 (disabled)
+            halfLiquidityPred,  // _initialNoPred = 0 (disabled)
             {
                 value: liquidityBnbWei,
                 gasLimit: 500000
