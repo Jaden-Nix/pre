@@ -8,8 +8,10 @@
     "verify": "hardhat verify --network bscTestnet"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^4.0.3",
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
     "dotenv": "^16.0.3",
+    "ethers": "^6.15.0",
     "hardhat": "^2.27.0"
   },
   "dependencies": {
