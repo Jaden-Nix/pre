@@ -803,41 +803,47 @@ app.post('/api/market/create-onchain', async (req, res) => {
         // Create Firestore document
         const firestore = admin.firestore();
         
-        // Ensure profile exists before market creation transaction
+        // Determine the correct userId to use (Firebase UID or mapped ID)
+        let userIdForDeduction = userId; // Default to Firebase UID
+        
+        // Check if there's a walletMapping for this Firebase UID to find the actual user ID
+        try {
+            console.log(`🔍 Checking walletMappings for Firebase UID: ${userId}...`);
+            const walletMappingDoc = await firestore.collection('walletMappings').doc(userId).get();
+            if (walletMappingDoc.exists) {
+                userIdForDeduction = walletMappingDoc.data().userId;
+                console.log(`✅ Found wallet mapping: ${userId} → ${userIdForDeduction}`);
+            }
+        } catch (mappingErr) {
+            console.warn(`⚠️  Failed to check wallet mapping: ${mappingErr.message}`);
+        }
+        
+        // Check if profile exists at the correct location
         const profileRef = firestore
             .collection('artifacts')
             .doc(APP_ID)
             .collection('public')
             .doc('data')
             .collection(USER_PROFILE_COLLECTION)
-            .doc(userId);
+            .doc(userIdForDeduction);
         
         const profileSnap = await profileRef.get();
         if (!profileSnap.exists) {
-            console.log(`⚠️  Profile not found for ${userId}, creating from request data...`);
+            console.log(`⚠️  Profile not found for ${userIdForDeduction}, creating from request data...`);
             
             // Try to get wallet address from request, then from custodial wallet service
             let walletAddressToUse = walletAddress;
-            let userIdForWallet = userId;
             
             if (!walletAddressToUse) {
                 try {
-                    // First, check if there's a walletMapping for this Firebase UID
-                    console.log(`🔍 Checking walletMappings for Firebase UID: ${userId}...`);
-                    const walletMappingDoc = await firestore.collection('walletMappings').doc(userId).get();
-                    if (walletMappingDoc.exists) {
-                        userIdForWallet = walletMappingDoc.data().userId;
-                        console.log(`✅ Found wallet mapping: ${userId} → ${userIdForWallet}`);
-                    }
-                    
-                    // Now fetch the custodial wallet using the mapped userId
-                    console.log(`🔍 Fetching custodial wallet for user ${userIdForWallet}...`);
-                    const custodialWalletDoc = await firestore.collection('custodialWallets').doc(userIdForWallet).get();
+                    // Fetch the custodial wallet using the correct userId
+                    console.log(`🔍 Fetching custodial wallet for user ${userIdForDeduction}...`);
+                    const custodialWalletDoc = await firestore.collection('custodialWallets').doc(userIdForDeduction).get();
                     if (custodialWalletDoc.exists) {
                         walletAddressToUse = custodialWalletDoc.data().address;
                         console.log(`✅ Found custodial wallet: ${walletAddressToUse}`);
                     } else {
-                        console.warn(`⚠️  No custodial wallet found for ${userIdForWallet}`);
+                        console.warn(`⚠️  No custodial wallet found for ${userIdForDeduction}`);
                     }
                 } catch (custodialErr) {
                     console.warn(`⚠️  Failed to fetch custodial wallet: ${custodialErr.message}`);
@@ -851,7 +857,7 @@ app.post('/api/market/create-onchain', async (req, res) => {
                     const bnbBalance = await provider.getBalance(walletAddressToUse);
                     const predBalance = await predContract.balanceOf(walletAddressToUse);
                     await profileRef.set({
-                        userId: userId,
+                        userId: userIdForDeduction,
                         walletAddress: walletAddressToUse,
                         bnbBalance: parseFloat(ethers.utils.formatEther(bnbBalance)),
                         predBalance: parseFloat(ethers.utils.formatEther(predBalance)),
@@ -864,7 +870,7 @@ app.post('/api/market/create-onchain', async (req, res) => {
                         streak: 0,
                         createdAt: new Date().toISOString()
                     });
-                    console.log(`✅ Profile created for ${userId} with wallet ${walletAddressToUse}`);
+                    console.log(`✅ Profile created for ${userIdForDeduction} with wallet ${walletAddressToUse}`);
                 } catch (syncErr) {
                     console.warn(`⚠️  Failed to create profile: ${syncErr.message}`);
                 }
@@ -880,9 +886,9 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 .collection('public')
                 .doc('data')
                 .collection(USER_PROFILE_COLLECTION)
-                .doc(userId);
+                .doc(userIdForDeduction);
             
-            console.log(`🔍 Looking for profile at: artifacts/${APP_ID}/public/data/${USER_PROFILE_COLLECTION}/${userId}`);
+            console.log(`🔍 Looking for profile at: artifacts/${APP_ID}/public/data/${USER_PROFILE_COLLECTION}/${userIdForDeduction}`);
             const profileSnap = await transaction.get(profileRef);
             if (!profileSnap.exists) {
                 console.error(`❌ Profile not found! USER_PROFILE_COLLECTION="${USER_PROFILE_COLLECTION}", userId="${userId}"`);
