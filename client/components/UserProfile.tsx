@@ -39,6 +39,7 @@ export function UserProfile() {
     try {
       setLoading(true);
       
+      // First try to get the wallet address from custodial wallet
       const infoResponse = await fetch('/api/custodial-wallet/info', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -46,8 +47,28 @@ export function UserProfile() {
       });
       
       const infoData = await infoResponse.json();
+      let walletAddress = infoData.success ? infoData.address : null;
       
-      if (infoData.success) {
+      // If custodial wallet fetch failed, try to get from /api/user-profile
+      if (!walletAddress) {
+        try {
+          const profileResponse = await fetch('/api/user-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: uid })
+          });
+          
+          const profileData = await profileResponse.json();
+          if (profileData && profileData.walletAddress) {
+            walletAddress = profileData.walletAddress;
+          }
+        } catch (e) {
+          console.warn('Could not fetch user profile:', e);
+        }
+      }
+      
+      if (walletAddress) {
+        // Now fetch balance for the actual wallet address
         const balanceResponse = await fetch('/api/custodial-wallet/balance', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -56,19 +77,11 @@ export function UserProfile() {
         
         const balanceData = await balanceResponse.json();
         
-        if (balanceData.success) {
-          setWalletInfo({
-            address: infoData.address,
-            balance: balanceData.balance,
-            predBalance: 0
-          });
-        } else {
-          setWalletInfo({
-            address: infoData.address,
-            balance: '0',
-            predBalance: 0
-          });
-        }
+        setWalletInfo({
+          address: walletAddress,
+          balance: balanceData.success ? balanceData.balance : '0',
+          predBalance: 0
+        });
       }
     } catch (error) {
       console.error('Error fetching wallet info:', error);

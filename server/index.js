@@ -110,10 +110,12 @@ async function syncPredBalanceFromBlockchain(userId, walletAddress) {
         const userRef = db.collection('artifacts').doc('predora-hackathon').collection('public').doc('data').collection('user-profiles').doc(userId);
         await userRef.set({
             predBalance: balanceAmount,
+            walletAddress: walletAddress,
             lastBalanceUpdate: Date.now()
         }, { merge: true });
         
         console.log(`🔄 PRED: Synced ${userId} balance from blockchain: ${balanceAmount} PRED`);
+        console.log(`🔄 PRED: Updated wallet address to ${walletAddress}`);
         return true;
     } catch (error) {
         console.warn(`⚠️  Could not sync PRED balance from blockchain: ${error.message}`);
@@ -134,10 +136,12 @@ async function syncBnbBalanceFromBlockchain(userId, walletAddress) {
         const userRef = db.collection('artifacts').doc('predora-hackathon').collection('public').doc('data').collection('user-profiles').doc(userId);
         await userRef.set({
             bnbBalance: balanceAmount,
+            walletAddress: walletAddress,
             lastBalanceUpdate: Date.now()
         }, { merge: true });
         
         console.log(`🔄 BNB: Synced ${userId} balance from blockchain: ${balanceAmount} BNB`);
+        console.log(`🔄 BNB: Updated wallet address to ${walletAddress}`);
         return true;
     } catch (error) {
         console.warn(`⚠️  Could not sync BNB balance from blockchain: ${error.message}`);
