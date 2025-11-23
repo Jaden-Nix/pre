@@ -2026,10 +2026,10 @@
                     <div class="px-4 pb-4 pt-2 space-y-4 bg-black/10">
                         <!-- Initial Liquidity -->
                         <div class="space-y-2">
-                            <label class="text-xs font-medium theme-text-secondary">Initial Liquidity (Min: $100 USD)</label>
+                            <label class="text-xs font-medium theme-text-secondary">Initial Liquidity (Min: $1 USD)</label>
                             <div id="traditional-liquidity-info" class="text-xs theme-text-secondary mb-2">
                                 ⚠️ Traditional markets need liquidity to seed the pool<br>
-                                💡 Example: 0.3 PRED (~$180) or 0.002 BNB (~$1) - just need $100+ USD worth
+                                💡 Example: 0.01 PRED (~$6) or 0.001 BNB (~$0.60) - just need $1+ USD worth
                             </div>
                             <div id="fixed-pot-liquidity-info" class="hidden text-xs theme-text-secondary mb-2">
                                 ✓ Fixed Pot uses DeFi yield vaults
@@ -10817,12 +10817,12 @@
                 return;
             }
 
-            // NEW: Minimum liquidity validation (must be at least $100 USD for testnet)
+            // NEW: Minimum liquidity validation (must be at least $1 USD for testnet)
             // NOTE: This is client-side validation only (appropriate for demo/hackathon)
             // Production apps should enforce this via Firestore security rules or backend validation
-            if (liquidityAmountInUsd < 100) {
+            if (liquidityAmountInUsd < 1) {
                 const usdValue = liquidityAmountInUsd.toFixed(2);
-                showToast(`❌ Minimum liquidity is $100 USD (you provided $${usdValue}). Try 0.3 PRED or more.`, "warning");
+                showToast(`❌ Minimum liquidity is $1 USD (you provided $${usdValue}). Try 0.01 PRED or more.`, "warning");
                 return;
             }
 
