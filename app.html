@@ -5547,68 +5547,49 @@
         async function refreshAllBalances() {
             console.log('🔄 Attempting to refresh balances...');
             
-            // Try to get wallet address from multiple sources
-            let walletAddress = userProfile?.walletAddress || userWalletAddress || window.userWalletAddress;
-            
             // Initialize userProfile if it doesn't exist
             if (!userProfile) {
                 console.log('   Initializing userProfile...');
                 userProfile = {};
             }
             
-            // If still no wallet address, try to get it from localStorage for custodial wallets
-            if (!walletAddress) {
-                const isCustodial = localStorage.getItem('isCustodial') === 'true';
-                if (isCustodial && currentUserId) {
-                    console.log('   Custodial wallet detected, fetching full profile from Firestore...');
-                    // For custodial wallets, fetch full profile from Firestore to get balances
+            // For custodial wallets, ALWAYS use the custodial wallet address from Firestore
+            const isCustodial = localStorage.getItem('isCustodial') === 'true';
+            let walletAddress;
+            
+            if (isCustodial) {
+                // For custodial wallets, fetch wallet address from Firestore
+                if (!userProfile.walletAddress && currentUserId) {
+                    console.log('   Custodial wallet detected, fetching wallet address from Firestore...');
                     try {
                         const { doc, getDoc } = window.firebase.firestore;
                         const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
                         const profileSnap = await getDoc(profileRef);
                         
                         if (profileSnap.exists()) {
-                            const data = profileSnap.data();
-                            
-                            // Merge Firestore data into existing userProfile to preserve all fields
-                            Object.assign(userProfile, {
-                                predBalance: data.predBalance || 0,
-                                bnbBalance: data.bnbBalance || 0,
-                                cakeBalance: data.cakeBalance || 0,
-                                walletAddress: data.walletAddress || userProfile.walletAddress,
-                                lastBalanceUpdate: Date.now()
-                            });
-                            
-                            console.log(`✅ Custodial wallet balances updated from Firestore: BNB=${userProfile.bnbBalance.toFixed(4)}, PRED=${userProfile.predBalance.toFixed(2)}`);
+                            userProfile.walletAddress = profileSnap.data().walletAddress;
+                            userProfile.isCustodial = true;
                         }
-                        
-                        // Use the same UI update pipeline as non-custodial wallets (no conditional checks)
-                        updateProfileUI(userProfile);
-                        
-                        // Update asset selector dropdowns with new balances
-                        if (typeof populateAssetSelector === 'function') {
-                            populateAssetSelector();
-                        }
-                        
-                        console.log('✅ Balances refreshed from Firestore and UI updated');
                     } catch (error) {
-                        console.error('❌ Failed to fetch custodial wallet balance from Firestore:', error);
+                        console.error('❌ Failed to fetch custodial wallet address from Firestore:', error);
+                        return;
                     }
-                    return;
                 }
-                
+                walletAddress = userProfile.walletAddress;
+                console.log('   Using custodial wallet:', walletAddress);
+            } else {
+                // For external wallets, use connected wallet address
+                walletAddress = userWalletAddress || window.userWalletAddress || userProfile.walletAddress;
+                console.log('   Using external wallet:', walletAddress);
+            }
+            
+            if (!walletAddress) {
                 console.log('⚠️ No wallet address found, skipping balance refresh');
-                console.log('   userProfile:', !!userProfile);
-                console.log('   userProfile.walletAddress:', userProfile?.walletAddress);
-                console.log('   userWalletAddress:', userWalletAddress);
-                console.log('   window.userWalletAddress:', window.userWalletAddress);
                 return;
             }
             
-            console.log('   Wallet address:', walletAddress);
-            
             try {
-                // Fetch both BNB and PRED from blockchain
+                // Fetch both BNB and PRED from blockchain (for both custodial and external wallets)
                 const bnb = await getRealBNBBalance();
                 const pred = await getRealCAKEBalance();
                 
@@ -5619,7 +5600,7 @@
                 userProfile.predBalance = pred;
                 userProfile.walletAddress = walletAddress;
                 
-                // Update Firestore with both balances
+                // Update Firestore with both balances (backend will also sync after bets)
                 if (currentUserId) {
                     try {
                         const { doc, updateDoc } = window.firebase.firestore;
@@ -5630,7 +5611,7 @@
                             lastBalanceUpdate: Date.now()
                         });
                     } catch (firestoreError) {
-                        console.warn('Could not update Firestore with BNB balance:', firestoreError);
+                        console.warn('Could not update Firestore with balances:', firestoreError);
                     }
                 }
                 
