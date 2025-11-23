@@ -9100,8 +9100,13 @@
                         // Show binary odds, hide multi-option
                         document.getElementById('binary-odds-display').classList.remove('hidden');
                         document.getElementById('multi-option-display')?.classList.add('hidden');
-                        dom.detailYesPercent.innerText = `${currentMarket.yesPercent.toFixed(1)}%`;
-                        dom.detailNoPercent.innerText = `${currentMarket.noPercent.toFixed(1)}%`;
+                        
+                        // Ensure yesPercent/noPercent exist, default to 50/50 if missing
+                        const yesPercent = currentMarket.yesPercent !== undefined ? currentMarket.yesPercent : 50;
+                        const noPercent = currentMarket.noPercent !== undefined ? currentMarket.noPercent : 50;
+                        
+                        dom.detailYesPercent.innerText = `${yesPercent.toFixed(1)}%`;
+                        dom.detailNoPercent.innerText = `${noPercent.toFixed(1)}%`;
                     }
 
                     dom.aiExplainPanel.classList.add('hidden'); 
@@ -9122,9 +9127,12 @@
                     showScreen('market-detail-screen');
                     
                     // Start auto-updating AMM odds every 3 seconds
-                    if (currentMarket.onChainMarketId) {
-                        const defaultCurrency = dom.stakeAssetSelect?.value || 'BNB';
-                        window.startAMMOddsAutoUpdate(currentMarket.onChainMarketId, defaultCurrency);
+                    const mktId = currentMarket.onChainMarketId || marketId;
+                    if (mktId) {
+                        console.log(`🚀 Starting AMM odds auto-update for market ID: ${mktId}`);
+                        window.startAMMOddsAutoUpdate(mktId, 'BNB');
+                    } else {
+                        console.log('⚠️ Could not start AMM odds update - no market ID found');
                     }
 
                     // Setup yield calculator for no-loss markets
@@ -9171,8 +9179,10 @@
                             if (currentMarket.marketStructure === 'multi-option' && currentMarket.options) {
                                 renderMultiOptionDisplay(currentMarket.options);
                             } else {
-                                dom.detailYesPercent.innerText = `${currentMarket.yesPercent.toFixed(1)}%`;
-                                dom.detailNoPercent.innerText = `${currentMarket.noPercent.toFixed(1)}%`;
+                                const yesPercent = currentMarket.yesPercent !== undefined ? currentMarket.yesPercent : 50;
+                                const noPercent = currentMarket.noPercent !== undefined ? currentMarket.noPercent : 50;
+                                dom.detailYesPercent.innerText = `${yesPercent.toFixed(1)}%`;
+                                dom.detailNoPercent.innerText = `${noPercent.toFixed(1)}%`;
                             }
                             dom.marketTvlText.innerText = `$${(currentMarket.totalStakeVolume || 0).toFixed(2)}`;
 
