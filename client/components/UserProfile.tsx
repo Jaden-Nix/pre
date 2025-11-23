@@ -96,10 +96,27 @@ export function UserProfile() {
         
         const balanceData = await balanceResponse.json();
         
+        // Fetch PRED balance from blockchain
+        let predBalance = 0;
+        try {
+          const predResponse = await fetch('/api/blockchain/get-pred-balance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ walletAddress })
+          });
+          
+          const predData = await predResponse.json();
+          if (predData.success) {
+            predBalance = predData.balance;
+          }
+        } catch (e) {
+          console.warn('Could not fetch PRED balance:', e);
+        }
+        
         setWalletInfo({
           address: walletAddress,
           balance: balanceData.success ? balanceData.balance : '0',
-          predBalance: 0
+          predBalance: predBalance || 0
         });
       }
     } catch (error) {
@@ -175,11 +192,17 @@ export function UserProfile() {
               )}
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <p className="text-sm text-gray-400 mb-2">BNB Balance</p>
                 <p className="text-2xl font-bold text-sky-400">
                   {parseFloat(walletInfo.balance).toFixed(4)} BNB
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-400 mb-2">PRED Balance</p>
+                <p className="text-2xl font-bold text-purple-400">
+                  {walletInfo.predBalance?.toFixed(0) || '0'} PRED
                 </p>
               </div>
               <div>

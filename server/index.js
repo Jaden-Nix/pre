@@ -1219,6 +1219,44 @@ app.post('/api/custodial-wallet/balance', async (req, res) => {
     }
 });
 
+// ✅ Get PRED balance from blockchain
+app.post('/api/blockchain/get-pred-balance', async (req, res) => {
+    const { walletAddress } = req.body;
+    
+    if (!walletAddress) {
+        return res.status(400).json({ error: 'Wallet address is required' });
+    }
+    
+    try {
+        const provider = new ethers.providers.JsonRpcProvider('https://bsc-testnet-dataseed.bnbchain.org');
+        const PRED_TOKEN_ADDRESS = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+        
+        const erc20Abi = [
+            "function balanceOf(address owner) view returns (uint256)",
+            "function decimals() view returns (uint8)"
+        ];
+        
+        const tokenContract = new ethers.Contract(PRED_TOKEN_ADDRESS, erc20Abi, provider);
+        const balance = await tokenContract.balanceOf(walletAddress);
+        const decimals = await tokenContract.decimals();
+        
+        const balanceFormatted = ethers.utils.formatUnits(balance, decimals);
+        
+        res.status(200).json({
+            success: true,
+            balance: parseFloat(balanceFormatted),
+            raw: balance.toString()
+        });
+    } catch (error) {
+        console.error('Error fetching PRED balance:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            balance: 0
+        });
+    }
+});
+
 // ✅ PRED Token Address (BSC Testnet)
 const PRED_TOKEN_ADDRESS = '0x45C229bF14A36aD14885148E62058C98284B2ae0'; // Updated to match v2-deployment.json
 
