@@ -4263,18 +4263,8 @@
         let currentFeedFilter = 'all';
 
         // --- Mock Data ---
-        const MOCK_ETH_MARKET = {
-            id: 'mock-eth-1',
-            title: 'Will ETH reach $5,000 by the end of the year?',
-            insight: 'This is a mock market to demonstrate the app\'s functionality. Staking on this market will use your real mock balance!',
-            yesPercent: 65,
-            noPercent: 35,
-            isNoLoss: true,
-            stakeDuration: '7 days',
-            yieldProtocol: 'aave',
-            createdByDisplayName: 'PredoraBot',
-            isMock: true
-        };
+        // DEPRECATED: Mock markets removed - all markets must be created in Firestore
+        const MOCK_ETH_MARKET = null;
 
         // === THEME MANAGEMENT ===
         function toggleThemeWithFlip() {
@@ -6302,11 +6292,14 @@
 
         // --- INITIALIZATION ---
         document.addEventListener("DOMContentLoaded", () => {
+            // Clear any cached pledge pool on page load
+            localStorage.removeItem('pledgePool');
+            
             // Initialize theme immediately when DOM is ready
             initTheme();
 
-            // Load the pledge pool from storage
-            const savedPledgePool = localStorage.getItem('pledgePool');
+            // Pledge pool will be loaded fresh from Firestore
+            let pledgePoolItems = [];
             if (savedPledgePool) {
                 try {
                     pledgePoolItems = JSON.parse(savedPledgePool);
@@ -8574,12 +8567,7 @@
                         markets.push({ id: doc.id, ...doc.data() });
                     });
 
-                    // Add the hardcoded mock market to the top
-                    if (!markets.find(m => m.id === MOCK_ETH_MARKET.id)) {
-                        markets.unshift(MOCK_ETH_MARKET);
-                    }
-
-                    console.log('📊 Total markets after adding mock:', markets.length);
+                    console.log('📊 Total markets:', markets.length);
                     
                     // 1. Cache the full list for searching
                     allStandardMarkets = markets; 
@@ -9461,30 +9449,22 @@
                 currentMarketId = marketId;
 
                 try {
-                    // --- THIS BLOCK IS NOW CORRECTED ---
-                    if (marketId === MOCK_ETH_MARKET.id) {
-                        currentMarket = MOCK_ETH_MARKET;
-                        // Give the mock market a creation date for the chart
-                        currentMarket.createdAt = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
-                    } else {
-                        const marketRef = doc(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION, marketId);
-                        const docSnap = await getDoc(marketRef);
-                        if (!docSnap.exists()) {
-                            showToast("Error: Market not found.", "error");
-                            return;
-                        }
-
-                        currentMarket = { id: docSnap.id, ...docSnap.data() };
-
-                        // Convert Firestore timestamp to JS Date
-                        if (currentMarket.createdAt && currentMarket.createdAt.toDate) {
-                            currentMarket.createdAt = currentMarket.createdAt.toDate();
-                        } else {
-                            // Fallback if createdAt is missing (for older markets)
-                            currentMarket.createdAt = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
-                        }
+                    const marketRef = doc(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION, marketId);
+                    const docSnap = await getDoc(marketRef);
+                    if (!docSnap.exists()) {
+                        showToast("Error: Market not found.", "error");
+                        return;
                     }
-                    // --- END CORRECTION ---
+
+                    currentMarket = { id: docSnap.id, ...docSnap.data() };
+
+                    // Convert Firestore timestamp to JS Date
+                    if (currentMarket.createdAt && currentMarket.createdAt.toDate) {
+                        currentMarket.createdAt = currentMarket.createdAt.toDate();
+                    } else {
+                        // Fallback if createdAt is missing (for older markets)
+                        currentMarket.createdAt = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
+                    }
 
                     // Populate the UI
                     dom.detailTitle.innerText = currentMarket.title;
@@ -9568,70 +9548,61 @@
                     loadAndDrawChart(currentMarketId, currentMarket.createdAt);
                     // --- END CHART & TVL BLOCK ---
 
-                    // --- RACE CONDITION FIX (STILL NEEDED) ---
-                    if (marketId !== MOCK_ETH_MARKET.id) {
-                        const marketRef = doc(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION, marketId);
+                    // --- REAL-TIME LISTENER FOR MARKET UPDATES ---
+                    const marketRef = doc(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION, marketId);
 
-                        if(detailMarketUnsubscribe) detailMarketUnsubscribe();
+                    if(detailMarketUnsubscribe) detailMarketUnsubscribe();
 
-                        // THIS IS THE NEW, UPGRADED LISTENER
-                        detailMarketUnsubscribe = onSnapshot(marketRef, (docSnap) => {
-                            if (!docSnap.exists()) {
-                                showToast("Error: This market no longer exists.", "error");
-                                goBack();
-                                return;
-                            }
+                    detailMarketUnsubscribe = onSnapshot(marketRef, (docSnap) => {
+                        if (!docSnap.exists()) {
+                            showToast("Error: This market no longer exists.", "error");
+                            goBack();
+                            return;
+                        }
 
-                            // 1. Get the new data
-                            const newData = docSnap.data();
+                        // 1. Get the new data
+                        const newData = docSnap.data();
 
-                            // 2. Update the global currentMarket object
-                            // We must convert the timestamp, just like we did when we first loaded it
-                            let creationDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // Default
-                            if (newData.createdAt && newData.createdAt.toDate) {
-                                creationDate = newData.createdAt.toDate();
-                            }
-                            currentMarket = { id: docSnap.id, ...newData, createdAt: creationDate };
+                        // 2. Update the global currentMarket object
+                        let creationDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+                        if (newData.createdAt && newData.createdAt.toDate) {
+                            creationDate = newData.createdAt.toDate();
+                        }
+                        currentMarket = { id: docSnap.id, ...newData, createdAt: creationDate };
 
-                            // 3. Update the UI elements IN REAL TIME
-                            if (currentMarket.marketStructure === 'multi-option' && currentMarket.options) {
-                                renderMultiOptionDisplay(currentMarket.options);
+                        // 3. Update the UI elements IN REAL TIME
+                        if (currentMarket.marketStructure === 'multi-option' && currentMarket.options) {
+                            renderMultiOptionDisplay(currentMarket.options);
+                        } else {
+                            const yesPercent = currentMarket.yesPercent !== undefined ? currentMarket.yesPercent : 50;
+                            const noPercent = currentMarket.noPercent !== undefined ? currentMarket.noPercent : 50;
+                            dom.detailYesPercent.innerText = `${yesPercent.toFixed(1)}%`;
+                            dom.detailNoPercent.innerText = `${noPercent.toFixed(1)}%`;
+                        }
+                        dom.marketTvlText.innerText = `$${(currentMarket.totalStakeVolume || 0).toFixed(2)}`;
+
+                        // Update disputed banner in real-time
+                        const disputedBanner = document.getElementById('disputed-banner');
+                        if (disputedBanner) {
+                            if (currentMarket.status === 'disputed') {
+                                disputedBanner.classList.remove('hidden');
                             } else {
-                                const yesPercent = currentMarket.yesPercent !== undefined ? currentMarket.yesPercent : 50;
-                                const noPercent = currentMarket.noPercent !== undefined ? currentMarket.noPercent : 50;
-                                dom.detailYesPercent.innerText = `${yesPercent.toFixed(1)}%`;
-                                dom.detailNoPercent.innerText = `${noPercent.toFixed(1)}%`;
+                                disputedBanner.classList.add('hidden');
                             }
-                            dom.marketTvlText.innerText = `$${(currentMarket.totalStakeVolume || 0).toFixed(2)}`;
+                        }
 
-                            // Update disputed banner in real-time
-                            const disputedBanner = document.getElementById('disputed-banner');
-                            if (disputedBanner) {
-                                if (currentMarket.status === 'disputed') {
-                                    disputedBanner.classList.remove('hidden');
-                                } else {
-                                    disputedBanner.classList.add('hidden');
-                                }
-                            }
+                        loadAndDrawChart(currentMarketId, currentMarket.createdAt);
+                        updateSocialSentiment(marketId);
 
-                            // 4. Reload and draw the chart
-                            loadAndDrawChart(currentMarketId, currentMarket.createdAt);
-
-                            // 4.5 Update social sentiment in real-time
-                            updateSocialSentiment(marketId);
-
-                            // 5. Check if the market was resolved *while* we were watching
-                            if (currentMarket.isResolved) {
-                                console.log("Market resolved while user was viewing.");
-                                showToast("This market has just been resolved! Staking is closed.", "warning");
-                                document.getElementById('stake-yes-btn').disabled = true;
-                                document.getElementById('stake-no-btn').disabled = true;
-                                dom.stakeAmountInput.disabled = true;
-                                dom.stakeAmountInput.placeholder = "Market is closed";
-                            }
-                        });
-                    }
-                    // --- END FIX ---
+                        if (currentMarket.isResolved) {
+                            console.log("Market resolved while user was viewing.");
+                            showToast("This market has just been resolved! Staking is closed.", "warning");
+                            document.getElementById('stake-yes-btn').disabled = true;
+                            document.getElementById('stake-no-btn').disabled = true;
+                            dom.stakeAmountInput.disabled = true;
+                            dom.stakeAmountInput.placeholder = "Market is closed";
+                        }
+                    });
 
                 } catch (error) {
                     console.error("Error fetching market detail:", error);
