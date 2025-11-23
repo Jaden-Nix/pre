@@ -11149,7 +11149,7 @@
                     const tx = await contract.placeBatchBets(marketIds, picks, amounts, { value: totalBNB });
                     
                     showToast('⏳ Waiting for confirmation...', 'info');
-                    await tx.wait(1);
+                    const receipt = await tx.wait(1);
                     
                     showToast(`✅ ${onChainPledges.length} bets confirmed on-chain!`, 'success');
                     
@@ -11164,7 +11164,7 @@
                             pick: pledge.pick,
                             amount: pledge.amount,
                             asset: 'BNB', // On-chain always uses BNB
-                            txHash: tx.hash,
+                            txHash: receipt.transactionHash,
                             isOnChain: true,
                             isResolved: false,
                             createdAt: new Date().toISOString(),
