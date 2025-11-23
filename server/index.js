@@ -1516,6 +1516,87 @@ app.post('/api/custodial/place-batch-bets', async (req, res) => {
     }
 });
 
+// ✅ AMM ODDS CALCULATION: Get estimated payout based on current pool balances
+app.post('/api/calculate-amm-payout', async (req, res) => {
+    try {
+        const { marketId, amount, currency, pick } = req.body;
+        
+        if (!marketId || !amount || !currency || pick === undefined) {
+            return res.status(400).json({ 
+                error: 'Missing required fields: marketId, amount, currency, pick' 
+            });
+        }
+        
+        const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
+        
+        // ABI to read market state
+        const abi = [
+            'function markets(uint256 marketId) public view returns (tuple(string title, string description, uint256 resolutionTime, bool resolved, bool yesPayout, uint256 totalYesBets, uint256 totalNoBets, uint256 yesPoolBnb, uint256 noPoolBnb, uint256 yesPoolPred, uint256 noPoolPred, uint256 createdAt) memory)',
+        ];
+        
+        const contract = new ethers.Contract(contractAddress, abi, provider);
+        
+        // Get current market state
+        const market = await contract.markets(marketId);
+        
+        // Determine which pool to use based on currency
+        let poolYes, poolNo;
+        const amountWei = ethers.utils.parseEther(amount.toString());
+        
+        if (currency === 'BNB') {
+            poolYes = ethers.BigNumber.from(market.yesPoolBnb);
+            poolNo = ethers.BigNumber.from(market.noPoolBnb);
+        } else if (currency === 'PRED') {
+            poolYes = ethers.BigNumber.from(market.yesPoolPred);
+            poolNo = ethers.BigNumber.from(market.noPoolPred);
+        } else {
+            return res.status(400).json({ error: 'Invalid currency. Use BNB or PRED' });
+        }
+        
+        // AMM formula: outputShares = inputAmount * oppositePool / (samePool + inputAmount)
+        // This follows the constant product formula: x * y = k
+        let payout;
+        if (pick === true || pick === 'true' || pick === 'YES') {
+            // Buying YES: spend from pool, get shares from NO pool
+            payout = amountWei.mul(poolNo).div(poolYes.add(amountWei));
+        } else {
+            // Buying NO: spend from pool, get shares from YES pool
+            payout = amountWei.mul(poolYes).div(poolNo.add(amountWei));
+        }
+        
+        // Convert back to human-readable format
+        const payoutAmount = parseFloat(ethers.utils.formatEther(payout));
+        const inputAmount = parseFloat(ethers.utils.formatEther(amountWei));
+        const roi = ((payoutAmount - inputAmount) / inputAmount * 100).toFixed(2);
+        
+        console.log(`📊 AMM Payout Calculation:`);
+        console.log(`   Input: ${inputAmount} ${currency} on ${pick ? 'YES' : 'NO'}`);
+        console.log(`   Payout: ${payoutAmount} ${currency}`);
+        console.log(`   ROI: ${roi}%`);
+        console.log(`   YES Pool: ${ethers.utils.formatEther(poolYes)} ${currency}`);
+        console.log(`   NO Pool: ${ethers.utils.formatEther(poolNo)} ${currency}`);
+        
+        res.json({
+            success: true,
+            inputAmount,
+            payoutAmount,
+            roi: parseFloat(roi),
+            currency,
+            pick: pick ? 'YES' : 'NO',
+            yesPoolBalance: ethers.utils.formatEther(poolYes),
+            noPoolBalance: ethers.utils.formatEther(poolNo)
+        });
+        
+    } catch (error) {
+        console.error('AMM calculation error:', error);
+        res.status(500).json({ 
+            success: false,
+            error: error.message 
+        });
+    }
+});
+
 // Re-enabled for hybrid mode - wallet users get blockchain, email users get Firestore
 app.post('/api/aa/place-bet', async (req, res) => {
     const { userId, marketId, pick, amount } = req.body;

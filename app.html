@@ -2359,7 +2359,7 @@
 
                                 <div class="space-y-2">
                                     <label for="stake-amount-input" class="text-sm font-medium text-gray-300">Amount</label>
-                                    <input type="number" id="stake-amount-input" class="ui-input" placeholder="0.00" oninput="updateYieldCalculator()">
+                                    <input type="number" id="stake-amount-input" class="ui-input" placeholder="0.00" oninput="updateAMMPayout()">
                                 </div>
                                 <!-- Binary YES/NO Buttons -->
                                 <div id="binary-stake-section" class="grid grid-cols-2 gap-4">
@@ -9216,6 +9216,59 @@
         }
 
         /**
+         * Updates potential return in real-time based on AMM calculation
+         */
+        window.updateAMMPayout = async () => {
+            const stakeInput = document.getElementById('stake-amount-input');
+            const stakeAssetSelect = document.getElementById('stake-asset-select');
+            const calcStakeEl = document.getElementById('calc-stake');
+            
+            if (!stakeInput || !stakeAssetSelect) return;
+            
+            const amount = parseFloat(stakeInput.value) || 0;
+            const asset = stakeAssetSelect.value;
+            
+            if (amount <= 0 || !currentMarket || !currentMarket.onChainMarketId) {
+                if (calcStakeEl) calcStakeEl.innerText = '$0.00';
+                return;
+            }
+            
+            try {
+                // Call backend to calculate AMM payout
+                const response = await fetch('/api/calculate-amm-payout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        marketId: currentMarket.onChainMarketId,
+                        amount: amount,
+                        currency: asset,
+                        pick: true  // Simplified: just calculate for YES pick
+                    })
+                });
+                
+                if (!response.ok) {
+                    console.warn('AMM calculation failed:', response.status);
+                    return;
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const potentialReturnUsd = result.payoutAmount * getMockPrice(asset);
+                    
+                    // Update UI with real AMM payout
+                    if (calcStakeEl) {
+                        calcStakeEl.innerText = `$${potentialReturnUsd.toFixed(2)}`;
+                    }
+                    
+                    console.log(`📊 AMM Payout: ${result.payoutAmount} ${asset} (${result.roi.toFixed(2)}% ROI)`);
+                }
+            } catch (error) {
+                console.warn('Error calculating AMM payout:', error);
+            }
+        };
+
+        /**
          * Submits a stake for a standard market.
          */
         //
@@ -9384,13 +9437,36 @@
                             console.log('Transaction hash:', receipt.transactionHash);
                         }
 
-                        // Calculate XP and potential payout
+                        // Calculate XP and real AMM payout
                         const amountInUsd = amount * getMockPrice(selectedAsset);
                         const xpToAward = getRandomXP(10);
                         
-                        // Calculate potential return based on odds (2:1 for even money markets)
-                        // Most binary prediction markets have ~50/50 odds, so potential return ≈ 2x bet amount
-                        const potentialReturnUsd = amountInUsd * 2;
+                        // Calculate potential return based on actual AMM pool balances
+                        let potentialReturnUsd = 0;
+                        try {
+                            const ammResponse = await fetch('/api/calculate-amm-payout', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    marketId: currentMarket.onChainMarketId,
+                                    amount: betAmount,
+                                    currency: betCurrency,
+                                    pick: pickBool
+                                })
+                            });
+                            
+                            if (ammResponse.ok) {
+                                const ammResult = await ammResponse.json();
+                                if (ammResult.success) {
+                                    potentialReturnUsd = ammResult.payoutAmount * getMockPrice(betCurrency);
+                                    console.log(`💰 Real AMM payout: ${ammResult.payoutAmount} ${betCurrency} ($${potentialReturnUsd.toFixed(2)})`);
+                                }
+                            }
+                        } catch (ammError) {
+                            console.warn('AMM calculation skipped, using default', ammError);
+                            // Fallback to approximate 2x if AMM calculation fails
+                            potentialReturnUsd = amountInUsd * 2;
+                        }
 
                         // Store metadata in Firestore for UI purposes only (NO balance mutations)
                         const pledgeData = {
