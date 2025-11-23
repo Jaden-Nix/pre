@@ -5949,6 +5949,11 @@
                 return;
             }
             
+            if (!userProfile?.walletAddress) {
+                showToast('No wallet address found. Please reload and try again.', 'error');
+                return;
+            }
+            
             const claimBtn = document.getElementById('claim-pred-btn');
             const cooldownMsg = document.getElementById('faucet-cooldown-msg');
             const cooldownText = cooldownMsg.querySelector('p');
@@ -5957,25 +5962,13 @@
                 claimBtn.disabled = true;
                 claimBtn.innerHTML = '⏳ Claiming...';
                 
-                // Get Firebase ID token for authentication
-                const currentAuth = getAuth();
-                const firebaseUser = currentAuth.currentUser;
+                console.log(`🪙 Claiming from faucet for wallet: ${userProfile.walletAddress}`);
                 
-                if (!firebaseUser) {
-                    showToast('Please sign in to claim tokens', 'error');
-                    claimBtn.disabled = false;
-                    claimBtn.innerHTML = '💰 Claim 50 $PRED';
-                    return;
-                }
-                
-                const idToken = await firebaseUser.getIdToken();
-                
-                const response = await fetch('/api/faucet/claim-pred', {
+                const response = await fetch('/api/faucet/claim-simple', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        userId: currentUserId,
-                        idToken: idToken
+                        walletAddress: userProfile.walletAddress
                     })
                 });
                 
