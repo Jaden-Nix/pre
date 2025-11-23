@@ -2359,14 +2359,14 @@
 
                                 <div class="space-y-2">
                                     <label for="stake-amount-input" class="text-sm font-medium text-gray-300">Amount</label>
-                                    <input type="number" id="stake-amount-input" class="ui-input" placeholder="0.00" oninput="updateAMMPayout()">
+                                    <input type="number" id="stake-amount-input" class="ui-input" placeholder="0.00" oninput="updateAMMPayout()" onfocus="if (!currentPickSelection || currentPickSelection === null) updateAMMPayout('YES')">
                                 </div>
                                 <!-- Binary YES/NO Buttons -->
                                 <div id="binary-stake-section" class="grid grid-cols-2 gap-4">
-                                    <button id="stake-yes-btn" onclick="stakeMarket('YES')" class="btn btn-stake-yes">
+                                    <button id="stake-yes-btn" onclick="stakeMarket('YES')" onmouseover="updateAMMPayout('YES')" onfocus="updateAMMPayout('YES')" ontouchstart="updateAMMPayout('YES')" onmousedown="updateAMMPayout('YES')" class="btn btn-stake-yes">
                                         Stake YES
                                     </button>
-                                    <button id="stake-no-btn" onclick="stakeMarket('NO')" class="btn btn-stake-no">
+                                    <button id="stake-no-btn" onclick="stakeMarket('NO')" onmouseover="updateAMMPayout('NO')" onfocus="updateAMMPayout('NO')" ontouchstart="updateAMMPayout('NO')" onmousedown="updateAMMPayout('NO')" class="btn btn-stake-no">
                                         Stake NO
                                     </button>
                                 </div>
@@ -5457,14 +5457,36 @@
          * Refreshes all token balances from blockchain
          */
         async function refreshAllBalances() {
-            const walletAddress = userProfile.walletAddress || userWalletAddress;
+            console.log('🔄 Attempting to refresh balances...');
             
+            // Try to get wallet address from multiple sources
+            let walletAddress = userProfile?.walletAddress || userWalletAddress || window.userWalletAddress;
+            
+            // Initialize userProfile if it doesn't exist
+            if (!userProfile) {
+                console.log('   Initializing userProfile...');
+                userProfile = {};
+            }
+            
+            // If still no wallet address, try to get it from localStorage for custodial wallets
             if (!walletAddress) {
-                console.log('⚠️ No wallet address, skipping balance refresh');
+                const isCustodial = localStorage.getItem('isCustodial') === 'true';
+                if (isCustodial && currentUserId) {
+                    console.log('   Custodial wallet detected, wallet address may be managed server-side');
+                    // For custodial wallets, we might not have a wallet address client-side
+                    // Skip blockchain balance refresh but return success
+                    return;
+                }
+                
+                console.log('⚠️ No wallet address found, skipping balance refresh');
+                console.log('   userProfile:', !!userProfile);
+                console.log('   userProfile.walletAddress:', userProfile?.walletAddress);
+                console.log('   userWalletAddress:', userWalletAddress);
+                console.log('   window.userWalletAddress:', window.userWalletAddress);
                 return;
             }
             
-            console.log('🔄 Refreshing all balances from blockchain...');
+            console.log('   Wallet address:', walletAddress);
             
             try {
                 // Fetch real balances in parallel
@@ -5473,9 +5495,12 @@
                     getRealCAKEBalance()  // This fetches PRED tokens (CAKE_CONTRACT_ADDRESS is actually PRED contract)
                 ]);
                 
+                console.log(`✅ Fetched: ${bnb} BNB, ${pred} PRED`);
+                
                 // Update userProfile with blockchain balances (source of truth)
                 userProfile.bnbBalance = bnb;
-                userProfile.predBalance = pred;  // ✅ FIXED: Update predBalance, not cakeBalance
+                userProfile.predBalance = pred;
+                userProfile.walletAddress = walletAddress;
                 
                 // Update Firestore (for caching purposes only)
                 if (currentUserId) {
@@ -5483,7 +5508,8 @@
                         const { doc, updateDoc } = window.firebase.firestore;
                         await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId), {
                             bnbBalance: bnb,
-                            predBalance: pred,  // ✅ FIXED: Save as predBalance
+                            predBalance: pred,
+                            walletAddress: walletAddress,
                             lastBalanceUpdate: Date.now()
                         });
                     } catch (firestoreError) {
@@ -5501,9 +5527,10 @@
                     populateAssetSelector();
                 }
                 
-                console.log('✅ Balances refreshed from blockchain');
+                console.log('✅ Balances refreshed from blockchain and UI updated');
             } catch (error) {
                 console.error('❌ Failed to refresh balances:', error);
+                console.error('   Error details:', error.message);
             }
         }
 
@@ -9273,9 +9300,14 @@
         };
 
         /**
+         * Tracks the currently selected pick for AMM payout calculation
+         */
+        let currentPickSelection = 'YES';  // Default to YES
+        
+        /**
          * Updates potential return in real-time based on AMM calculation
          */
-        window.updateAMMPayout = async () => {
+        window.updateAMMPayout = async (pick = null) => {
             const stakeInput = document.getElementById('stake-amount-input');
             const stakeAssetSelect = document.getElementById('stake-asset-select');
             const calcStakeEl = document.getElementById('calc-stake');
@@ -9285,13 +9317,21 @@
             const amount = parseFloat(stakeInput.value) || 0;
             const asset = stakeAssetSelect.value;
             
+            // Update pick selection if provided
+            if (pick) {
+                currentPickSelection = pick;
+            }
+            
             if (amount <= 0 || !currentMarket || !currentMarket.onChainMarketId) {
                 if (calcStakeEl) calcStakeEl.innerText = '$0.00';
                 return;
             }
             
             try {
-                // Call backend to calculate AMM payout
+                // Determine the pick to use (YES = true, NO = false)
+                const pickBool = (currentPickSelection === 'YES' || currentPickSelection === 'yes' || currentPickSelection === true);
+                
+                // Call backend to calculate AMM payout for the selected pick
                 const response = await fetch('/api/calculate-amm-payout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -9299,7 +9339,7 @@
                         marketId: currentMarket.onChainMarketId,
                         amount: amount,
                         currency: asset,
-                        pick: true  // Simplified: just calculate for YES pick
+                        pick: pickBool  // Use actual pick selection
                     })
                 });
                 
@@ -9318,7 +9358,7 @@
                         calcStakeEl.innerText = `$${potentialReturnUsd.toFixed(2)}`;
                     }
                     
-                    console.log(`📊 AMM Payout: ${result.payoutAmount} ${asset} (${result.roi.toFixed(2)}% ROI)`);
+                    console.log(`📊 AMM Payout for ${currentPickSelection}: ${result.payoutAmount} ${asset} ($${potentialReturnUsd.toFixed(2)}) - ${result.roi.toFixed(2)}% ROI`);
                 }
             } catch (error) {
                 console.warn('Error calculating AMM payout:', error);
@@ -9580,14 +9620,22 @@
                         showLoadingOverlay(false);
                         showToast(`Bet placed on-chain! TX: ${receipt.transactionHash.slice(0, 10)}...`, "success");
                         
-                        // Refresh AMM odds to show updated pool state
+                        // Refresh AMM odds IMMEDIATELY to show updated pool state
                         if (currentMarket && currentMarket.onChainMarketId) {
+                            await updateAMModds(currentMarket.onChainMarketId);
+                            // Also schedule a delayed refresh to ensure blockchain state is settled
                             setTimeout(() => {
                                 updateAMModds(currentMarket.onChainMarketId);
-                            }, 2000); // Wait 2 seconds for blockchain to settle
+                            }, 3000); // Wait 3 seconds for blockchain to fully settle
                         }
                         
-                        showScreen('home-screen');
+                        // Don't navigate away immediately - let user see updated odds
+                        // showScreen('home-screen');
+                        
+                        // Clear the stake input
+                        if (dom.stakeAmountInput) {
+                            dom.stakeAmountInput.value = '';
+                        }
 
                     } catch (error) {
                         console.error("❌ On-chain betting failed:", error);
@@ -9819,6 +9867,54 @@
 
                 showLoadingOverlay(false);
                 showToast(`Stake Confirmed!`, "success");
+                
+                // 🔄 Refresh balance immediately after bet placed
+                try {
+                    await refreshAllBalances();
+                } catch (refreshError) {
+                    console.warn('Balance refresh after bet failed (non-critical):', refreshError);
+                }
+                
+                // 📊 Refresh market odds to show updated pool state
+                if (currentMarket && currentMarket.onChainMarketId) {
+                    // On-chain market: refresh from blockchain
+                    await updateAMModds(currentMarket.onChainMarketId);
+                    setTimeout(() => {
+                        updateAMModds(currentMarket.onChainMarketId);
+                    }, 3000);
+                } else if (currentMarketId && !currentMarket.isMock) {
+                    // Firestore-only market: reload market data from Firestore to get updated percentages
+                    try {
+                        const { doc, getDoc } = window.firebase.firestore;
+                        const marketRef = doc(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION, currentMarketId);
+                        const marketSnap = await getDoc(marketRef);
+                        if (marketSnap.exists()) {
+                            const updatedMarket = marketSnap.data();
+                            // Update current market data
+                            currentMarket.yesPool = updatedMarket.yesPool;
+                            currentMarket.noPool = updatedMarket.noPool;
+                            currentMarket.yesPercent = updatedMarket.yesPercent;
+                            currentMarket.noPercent = updatedMarket.noPercent;
+                            // Update UI display
+                            if (dom.detailYesPercent) {
+                                dom.detailYesPercent.innerText = `${updatedMarket.yesPercent.toFixed(1)}%`;
+                            }
+                            if (dom.detailNoPercent) {
+                                dom.detailNoPercent.innerText = `${updatedMarket.noPercent.toFixed(1)}%`;
+                            }
+                            console.log(`✅ Firestore market odds updated: YES ${updatedMarket.yesPercent.toFixed(1)}% | NO ${updatedMarket.noPercent.toFixed(1)}%`);
+                        }
+                    } catch (firestoreError) {
+                        console.warn('Failed to refresh Firestore market odds:', firestoreError);
+                    }
+                }
+                
+                // Clear the stake input
+                if (dom.stakeAmountInput) {
+                    dom.stakeAmountInput.value = '';
+                    // Reset potential payout display
+                    updateAMMPayout();
+                }
 
             } catch (error) {
                 console.error("Staking failed:", error);
