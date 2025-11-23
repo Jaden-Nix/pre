@@ -13,6 +13,10 @@ Predora is an AI-native prediction market platform built on BNB Chain, featuring
 - Jury-based dispute resolution system
 - Multi-option markets (3-6 choices)
 
+## Known Issues (Nov 23, 2025)
+- **PRED Balance Refresh**: Previously stuck at 250 due to fetching from Firestore instead of blockchain. Fixed in current build - now fetches real on-chain balance.
+- **AMM Live Calculator**: Falls back to estimation when contract pool reads fail. May show approximate payouts during network issues.
+
 ## System Architecture
 
 ### UI/UX
@@ -29,7 +33,7 @@ Predora employs a hybrid architecture where markets can be either fully on-chain
 - **Frontend**: Vanilla JavaScript (`app.html`) integrating Firebase Client SDK, Ethers.js, and Chart.js.
 - **Backend**: Express.js server (`/server`) handles AI proxying, market generation, oracle resolution, jury system endpoints, and serves the frontend. It includes an automated payout job.
 - **Data Storage**: Firebase Firestore for real-time data synchronization of markets, pledges, users, and votes.
-- **Web3 Integration**: Ethers.js for blockchain interaction, supporting BSC Testnet. The PredictionMarketV2 smart contract (deployed at `0xda27eAd38F3D4A656Cc64C2D70b6166A7061AD48`) and PredToken (deployed at `0x3C828678De4F4184952D66f2d0260B5db2e0f522`) were deployed on Nov 23, 2025. The contracts handle on-chain betting and payouts, including dual currency support (BNB and $PRED), initial liquidity provisioning, and oracle evidence hash storage for verifiable AI resolution data.
+- **Web3 Integration**: Ethers.js for blockchain interaction, supporting BSC Testnet. The PredictionMarketV2 smart contract (deployed at `0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB`) and PredToken (deployed at `0x45C229bF14A36aD14885148E62058C98284B2ae0`) were deployed on Nov 23, 2025. The contracts handle on-chain betting and payouts, including dual currency support (BNB and $PRED), initial liquidity provisioning, and oracle evidence hash storage for verifiable AI resolution data.
 - **Custodial Wallets**: Automatic server-side wallet creation on user signup, with private keys encrypted using AES-256-GCM. Firebase handles authentication, and a strict UID-to-userId mapping ensures secure transactions and withdrawals. All transactions are signed by the backend.
 - **AI Features**: An enhanced 3-Tier Swarm-Verify Oracle system (GPT-4o, DuckDuckGo, Gemini) with multi-model scoring (factual, consistency, timestamp, sentiment) is used for market resolution. It routes resolutions based on confidence levels: auto-resolve, extended AI review, or escalation to manual jury review. Cryptographic evidence hashing (SHA-256) is used for auditability. Google Gemini AI also powers market generation and Quick Play content.
 - **Jury System**: A community-driven jury voting system resolves disputed markets, complemented by an admin dashboard for oversight.

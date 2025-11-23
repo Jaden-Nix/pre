@@ -5577,26 +5577,24 @@
             console.log('   Wallet address:', walletAddress);
             
             try {
-                // Fetch BNB from blockchain, but PRED from Firestore (virtual balance)
+                // Fetch both BNB and PRED from blockchain
                 const bnb = await getRealBNBBalance();
+                const pred = await getRealCAKEBalance();
                 
-                // PRED is managed as virtual balance in Firestore (not on-chain)
-                // Get it from the current userProfile if available
-                const pred = userProfile?.predBalance ?? 0;
-                
-                console.log(`✅ Fetched: ${bnb} BNB, ${pred} PRED (from Firestore)`);
+                console.log(`✅ Fetched: ${bnb} BNB, ${pred} PRED (from blockchain)`);
                 
                 // Update userProfile
                 userProfile.bnbBalance = bnb;
+                userProfile.predBalance = pred;
                 userProfile.walletAddress = walletAddress;
-                // predBalance comes from Firestore subscription, don't override here
                 
-                // Update Firestore with BNB balance only (PRED managed server-side)
+                // Update Firestore with both balances
                 if (currentUserId) {
                     try {
                         const { doc, updateDoc } = window.firebase.firestore;
                         await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId), {
                             bnbBalance: bnb,
+                            predBalance: pred,
                             walletAddress: walletAddress,
                             lastBalanceUpdate: Date.now()
                         });
