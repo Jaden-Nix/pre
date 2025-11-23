@@ -39,7 +39,26 @@ export function UserProfile() {
     try {
       setLoading(true);
       
-      // First try to get the wallet address from custodial wallet
+      // Step 1: Sync the custodial wallet address to Firebase
+      try {
+        const idToken = await auth.currentUser?.getIdToken();
+        if (idToken) {
+          const syncResponse = await fetch('/api/profile/sync-wallet-address', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: uid, idToken })
+          });
+          
+          const syncData = await syncResponse.json();
+          if (syncData.success) {
+            console.log('✅ Wallet address synced to Firebase:', syncData.walletAddress);
+          }
+        }
+      } catch (e) {
+        console.warn('Could not sync wallet address:', e);
+      }
+      
+      // Step 2: Fetch the wallet address from custodial wallet
       const infoResponse = await fetch('/api/custodial-wallet/info', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
