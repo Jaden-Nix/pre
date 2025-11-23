@@ -1516,6 +1516,75 @@ app.post('/api/custodial/place-batch-bets', async (req, res) => {
     }
 });
 
+// ✅ GET MARKET ODDS: Simple endpoint to get current AMM odds from pool balances
+app.post('/api/get-market-odds', async (req, res) => {
+    try {
+        const { marketId } = req.body;
+        
+        if (!marketId) {
+            return res.status(400).json({ error: 'Market ID required' });
+        }
+        
+        const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
+        
+        // Simpler ABI - just read pool balances
+        const abi = [
+            'function yesPoolBnb(uint256) public view returns (uint256)',
+            'function noPoolBnb(uint256) public view returns (uint256)',
+        ];
+        
+        const contract = new ethers.Contract(contractAddress, abi, provider);
+        
+        try {
+            const yesPoolWei = await contract.yesPoolBnb(marketId);
+            const noPoolWei = await contract.noPoolBnb(marketId);
+            
+            const yesPool = parseFloat(ethers.utils.formatEther(yesPoolWei));
+            const noPool = parseFloat(ethers.utils.formatEther(noPoolWei));
+            
+            const totalPool = yesPool + noPool;
+            if (totalPool === 0) {
+                return res.json({
+                    success: true,
+                    yesPercent: 50,
+                    noPercent: 50,
+                    yesPool: 0,
+                    noPool: 0
+                });
+            }
+            
+            const yesPercent = (yesPool / totalPool) * 100;
+            const noPercent = (noPool / totalPool) * 100;
+            
+            console.log(`📊 Market ${marketId} AMM Odds: YES ${yesPercent.toFixed(1)}% | NO ${noPercent.toFixed(1)}%`);
+            
+            res.json({
+                success: true,
+                yesPercent: yesPercent,
+                noPercent: noPercent,
+                yesPool: yesPool,
+                noPool: noPool
+            });
+            
+        } catch (contractError) {
+            console.warn('Contract read failed, returning default 50/50:', contractError.message);
+            res.json({
+                success: true,
+                yesPercent: 50,
+                noPercent: 50,
+                yesPool: 0,
+                noPool: 0,
+                fallback: true
+            });
+        }
+        
+    } catch (error) {
+        console.error('Get market odds error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ✅ AMM ODDS CALCULATION: Get estimated payout based on current pool balances
 app.post('/api/calculate-amm-payout', async (req, res) => {
     try {

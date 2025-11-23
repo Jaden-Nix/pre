@@ -9221,54 +9221,50 @@
         }
 
         /**
-         * Fetches and displays real AMM odds for a market
+         * Fetches and displays real AMM odds for a market from backend
          */
         window.updateAMModds = async (marketId) => {
             if (!marketId) return;
             
             try {
-                // Get market state from backend
-                const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-                const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
+                // Get AMM odds from backend endpoint
+                const response = await fetch('/api/get-market-odds', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ marketId: marketId })
+                });
                 
-                // Simple ABI to read market pools
-                const abi = [
-                    'function markets(uint256 marketId) public view returns (tuple(string title, string description, uint256 resolutionTime, bool resolved, bool yesPayout, uint256 totalYesBets, uint256 totalNoBets, uint256 yesPoolBnb, uint256 noPoolBnb, uint256 yesPoolPred, uint256 noPoolPred, uint256 createdAt) memory)',
-                ];
-                
-                const contract = new ethers.Contract(contractAddress, abi, provider);
-                const market = await contract.markets(marketId);
-                
-                // Calculate odds from BNB pools (or PRED if preferred)
-                const yesPoolBnb = parseFloat(ethers.utils.formatEther(market.yesPoolBnb));
-                const noPoolBnb = parseFloat(ethers.utils.formatEther(market.noPoolBnb));
-                
-                const totalPool = yesPoolBnb + noPoolBnb;
-                if (totalPool === 0) {
-                    console.warn('Market pools are empty');
+                if (!response.ok) {
+                    console.warn('Failed to fetch AMM odds:', response.status);
                     return;
                 }
                 
-                const yesOdds = (yesPoolBnb / totalPool) * 100;
-                const noOdds = (noPoolBnb / totalPool) * 100;
+                const result = await response.json();
                 
-                console.log(`📊 Real AMM Odds: YES ${yesOdds.toFixed(1)}% | NO ${noOdds.toFixed(1)}%`);
-                console.log(`   YES Pool: ${yesPoolBnb} BNB, NO Pool: ${noPoolBnb} BNB`);
-                
-                // Update DOM with real odds
-                if (dom.detailYesPercent) {
-                    dom.detailYesPercent.innerText = `${yesOdds.toFixed(1)}%`;
-                    dom.detailYesPercent.style.animation = 'pulse 0.5s';
-                }
-                if (dom.detailNoPercent) {
-                    dom.detailNoPercent.innerText = `${noOdds.toFixed(1)}%`;
-                    dom.detailNoPercent.style.animation = 'pulse 0.5s';
-                }
-                
-                // Store for future use
-                if (currentMarket) {
-                    currentMarket.yesPercent = yesOdds;
-                    currentMarket.noPercent = noOdds;
+                if (result.success) {
+                    const yesOdds = result.yesPercent;
+                    const noOdds = result.noPercent;
+                    
+                    console.log(`📊 Real AMM Odds: YES ${yesOdds.toFixed(1)}% | NO ${noOdds.toFixed(1)}%`);
+                    console.log(`   YES Pool: ${result.yesPool.toFixed(4)} BNB, NO Pool: ${result.noPool.toFixed(4)} BNB`);
+                    
+                    // Update DOM with real odds and show pulse animation
+                    if (dom.detailYesPercent) {
+                        dom.detailYesPercent.innerText = `${yesOdds.toFixed(1)}%`;
+                        dom.detailYesPercent.style.opacity = '0.5';
+                        setTimeout(() => { dom.detailYesPercent.style.opacity = '1'; }, 300);
+                    }
+                    if (dom.detailNoPercent) {
+                        dom.detailNoPercent.innerText = `${noOdds.toFixed(1)}%`;
+                        dom.detailNoPercent.style.opacity = '0.5';
+                        setTimeout(() => { dom.detailNoPercent.style.opacity = '1'; }, 300);
+                    }
+                    
+                    // Store for future use
+                    if (currentMarket) {
+                        currentMarket.yesPercent = yesOdds;
+                        currentMarket.noPercent = noOdds;
+                    }
                 }
                 
             } catch (error) {
@@ -9583,6 +9579,14 @@
 
                         showLoadingOverlay(false);
                         showToast(`Bet placed on-chain! TX: ${receipt.transactionHash.slice(0, 10)}...`, "success");
+                        
+                        // Refresh AMM odds to show updated pool state
+                        if (currentMarket && currentMarket.onChainMarketId) {
+                            setTimeout(() => {
+                                updateAMModds(currentMarket.onChainMarketId);
+                            }, 2000); // Wait 2 seconds for blockchain to settle
+                        }
+                        
                         showScreen('home-screen');
 
                     } catch (error) {
