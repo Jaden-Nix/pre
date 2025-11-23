@@ -743,6 +743,9 @@ app.post('/api/market/create-onchain', async (req, res) => {
             'function balanceOf(address account) external view returns (uint256)'
         ];
         
+        // Create predContract with provider for read-only operations (balance checking)
+        const predContract = new ethers.Contract(PRED_TOKEN_ADDRESS, erc20Abi, provider);
+        
         const predTokenContract = new ethers.Contract(PRED_TOKEN_ADDRESS, erc20Abi, deployerWallet);
         
         // Approve market contract to spend PRED
