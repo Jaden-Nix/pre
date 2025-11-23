@@ -571,30 +571,8 @@ app.post('/api/market/create-onchain', async (req, res) => {
         const predLiquidityAmount = ethers.utils.parseEther((liquidityBNB * 600).toString());
         const halfLiquidityPred = predLiquidityAmount.div(2);
         
-        // Approve PRED token spending if we're adding PRED liquidity
-        const predTokenAddress = '0x3C828678De4F4184952D66f2d0260B5db2e0f522';
-        if (predLiquidityAmount.gt(0)) {
-            const predTokenAbi = [
-                'function approve(address spender, uint256 amount) external returns (bool)',
-                'function allowance(address owner, address spender) view returns (uint256)'
-            ];
-            const predToken = new ethers.Contract(predTokenAddress, predTokenAbi, deployerWallet);
-            
-            // Check current allowance
-            const currentAllowance = await predToken.allowance(deployerWallet.address, contractAddress);
-            console.log(`🔍 Current PRED allowance: ${ethers.utils.formatEther(currentAllowance)} PRED`);
-            
-            // If allowance is insufficient, approve max uint256 (unlimited, industry standard)
-            if (currentAllowance.lt(predLiquidityAmount)) {
-                const MAX_UINT256 = ethers.constants.MaxUint256;
-                console.log(`⚠️  Insufficient allowance. Approving unlimited PRED...`);
-                const approveTx = await predToken.approve(contractAddress, MAX_UINT256, { gasLimit: 100000 });
-                await approveTx.wait();
-                console.log(`✅ PRED unlimited approval granted: ${approveTx.hash}`);
-            } else {
-                console.log(`✅ Sufficient PRED allowance already exists`);
-            }
-        }
+        // PRED approval is already set up at startup (unlimited)
+        // So we don't need to approve here - the contract will use transferFrom successfully
         
         // Create market on-chain with dual currency initial liquidity
         console.log(`🎯 Creating on-chain market: "${title}"`);
@@ -3699,8 +3677,57 @@ if (db && process.env.DEPLOYER_PRIVATE_KEY) {
     console.warn('⚠️  Auto-payout job not started (missing database or private key)');
 }
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`✅ Predora Backend Server is live on port ${PORT}`);
-    console.log(`🌐 Landing page: http://localhost:${PORT}/`);
-    console.log(`🎮 App: http://localhost:${PORT}/app.html`);
+// --- Setup unlimited PRED approval at startup ---
+async function setupUnlimitedPredApproval() {
+    if (!process.env.DEPLOYER_PRIVATE_KEY) {
+        console.warn('⚠️  Cannot setup PRED approval (missing DEPLOYER_PRIVATE_KEY)');
+        return;
+    }
+    
+    try {
+        const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+        const deployerWallet = new ethers.Wallet(process.env.DEPLOYER_PRIVATE_KEY, provider);
+        const contractAddress = '0xda27eAd38F3D4A656Cc64C2D70b6166A7061AD48';
+        const predTokenAddress = '0x3C828678De4F4184952D66f2d0260B5db2e0f522';
+        
+        const predTokenAbi = [
+            'function approve(address spender, uint256 amount) external returns (bool)',
+            'function allowance(address owner, address spender) view returns (uint256)'
+        ];
+        const predToken = new ethers.Contract(predTokenAddress, predTokenAbi, deployerWallet);
+        
+        // Check current allowance
+        const currentAllowance = await predToken.allowance(deployerWallet.address, contractAddress);
+        const allownaceFormatted = ethers.utils.formatEther(currentAllowance);
+        console.log(`🔍 Current PRED allowance for market contract: ${allownaceFormatted} PRED`);
+        
+        // Always approve unlimited (max uint256) to avoid future issues
+        if (currentAllowance.lt(ethers.utils.parseEther('1000'))) {
+            console.log('⏳ Setting up unlimited PRED approval for market contract...');
+            const MAX_UINT256 = ethers.constants.MaxUint256;
+            const approveTx = await predToken.approve(contractAddress, MAX_UINT256, { gasLimit: 100000 });
+            const approveReceipt = await approveTx.wait();
+            console.log(`✅ Unlimited PRED approval granted: ${approveTx.hash}`);
+        } else {
+            console.log(`✅ Sufficient PRED allowance already set (${allownaceFormatted} PRED)`);
+        }
+    } catch (error) {
+        console.warn(`⚠️  Could not setup PRED approval: ${error.message}`);
+    }
+}
+
+// Setup PRED approval and then start the server
+setupUnlimitedPredApproval().then(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`✅ Predora Backend Server is live on port ${PORT}`);
+        console.log(`🌐 Landing page: http://localhost:${PORT}/`);
+        console.log(`🎮 App: http://localhost:${PORT}/app.html`);
+    });
+}).catch((error) => {
+    console.error('Failed to setup PRED approval, but starting server anyway:', error.message);
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`✅ Predora Backend Server is live on port ${PORT}`);
+        console.log(`🌐 Landing page: http://localhost:${PORT}/`);
+        console.log(`🎮 App: http://localhost:${PORT}/app.html`);
+    });
 });
