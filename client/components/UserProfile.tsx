@@ -39,6 +39,10 @@ export function UserProfile() {
     try {
       setLoading(true);
       
+      // Clear any cached wallet addresses to get fresh data
+      localStorage.removeItem('custodialWalletAddress');
+      localStorage.removeItem('cachedWalletAddress');
+      
       // Step 1: Sync the custodial wallet address to Firebase
       try {
         const idToken = await auth.currentUser?.getIdToken();
@@ -58,28 +62,31 @@ export function UserProfile() {
         console.warn('Could not sync wallet address:', e);
       }
       
-      // Step 2: Fetch the wallet address from custodial wallet
+      // Step 2: Fetch the wallet address from custodial wallet (bypassing cache)
       const infoResponse = await fetch('/api/custodial-wallet/info', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
         body: JSON.stringify({ userId: uid })
       });
       
       const infoData = await infoResponse.json();
       let walletAddress = infoData.success ? infoData.address : null;
       
+      console.log('🔍 Fetched wallet from backend:', walletAddress);
+      
       // If custodial wallet fetch failed, try to get from /api/user-profile
       if (!walletAddress) {
         try {
           const profileResponse = await fetch('/api/user-profile', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
             body: JSON.stringify({ userId: uid })
           });
           
           const profileData = await profileResponse.json();
           if (profileData && profileData.walletAddress) {
             walletAddress = profileData.walletAddress;
+            console.log('🔍 Fetched wallet from profile:', walletAddress);
           }
         } catch (e) {
           console.warn('Could not fetch user profile:', e);
