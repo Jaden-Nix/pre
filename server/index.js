@@ -1199,8 +1199,11 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
         const addResult = await addPredBalance(userId, faucetAmount);
         
         // Also update claim timestamp
+        console.log(`📝 Attempting to update claim timestamp... (db exists: ${!!db})`);
         try {
-            if (db) {
+            if (!db) {
+                console.warn(`⚠️ Firestore db not initialized, skipping timestamp update`);
+            } else {
                 const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
                 const timestamp = Date.now();
                 console.log(`⏱️ Updating lastPredClaim timestamp for ${userId}: ${new Date(timestamp).toISOString()}`);
