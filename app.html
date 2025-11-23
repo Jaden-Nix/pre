@@ -5559,18 +5559,36 @@
             
             if (currentUserId) {
                 try {
-                    const { doc, getDoc } = window.firebase.firestore;
-                    const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
-                    const profileSnap = await getDoc(profileRef);
+                    // Bypass Firestore SDK cache by using REST API directly
+                    const projectId = 'predora-app';
+                    const token = await db.app.auth().currentUser.getIdToken();
+                    const restUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/artifacts/${APP_ID}/public/data/${USER_PROFILE_COLLECTION}/${currentUserId}`;
                     
-                    if (profileSnap.exists()) {
-                        walletAddress = profileSnap.data().walletAddress;
-                        userProfile.walletAddress = walletAddress;
-                        console.log('   Fetched wallet address from Firestore:', walletAddress);
+                    const response = await fetch(restUrl, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.fields && data.fields.walletAddress) {
+                            walletAddress = data.fields.walletAddress.stringValue;
+                            userProfile.walletAddress = walletAddress;
+                            console.log('   Fetched wallet address from Firestore REST:', walletAddress);
+                        }
+                    } else {
+                        // Fallback to SDK if REST API fails
+                        const { doc, getDoc } = window.firebase.firestore;
+                        const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
+                        const profileSnap = await getDoc(profileRef);
+                        if (profileSnap.exists()) {
+                            walletAddress = profileSnap.data().walletAddress;
+                            userProfile.walletAddress = walletAddress;
+                            console.log('   Fetched wallet address from Firestore SDK:', walletAddress);
+                        }
                     }
                 } catch (error) {
                     console.error('❌ Failed to fetch wallet address from Firestore:', error);
-                    // Fallback to cached value if Firestore fails
+                    // Fallback to cached value if both REST API and SDK fail
                     walletAddress = userProfile.walletAddress || userWalletAddress || window.userWalletAddress;
                 }
             } else {
