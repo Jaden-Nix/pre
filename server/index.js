@@ -604,7 +604,7 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 halfLiquidityPred,  // _initialNoPred = 0 (disabled)
                 {
                     value: liquidityBnbWei,
-                    gasLimit: 500000
+                    gasLimit: 600000  // Increased from 500000 to 600000 to prevent out-of-gas errors
                 }
             );
         } catch (createError) {
