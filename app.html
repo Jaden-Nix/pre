@@ -10812,8 +10812,8 @@
             const yieldProtocolFinal = isFixedPotFinal ? (document.getElementById('yield-protocol-select')?.value || document.getElementById('selected-yield-protocol').value) : null;
 
             // 3. --- NEW, STRICTER VALIDATION ---
-            if (!title || !insight || !resolutionDate || !liquidityAmount || isNaN(liquidityAmount) || liquidityAmount <= 0) {
-                showToast("❌ Please fill ALL required fields: Title, Description, Resolution Date, and Liquidity Amount");
+            if (!title || !resolutionDate || !liquidityAmount || isNaN(liquidityAmount) || liquidityAmount <= 0) {
+                showToast("❌ Please fill ALL required fields: Title, Resolution Date, and Liquidity Amount");
                 return;
             }
 
