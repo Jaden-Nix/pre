@@ -71,17 +71,33 @@ let db = null;
 try {
     const serviceAccountString = process.env.GOOGLE_APPLICATION_CREDENTIALS;
     if (serviceAccountString) {
-        // Parse JSON - at this point private_key has literal \n in it
+        // Parse JSON to verify it's valid
         const serviceAccount = JSON.parse(serviceAccountString);
         
-        // The private_key from JSON.parse will have actual newline characters already
-        // No need to replace anything - Firebase Admin SDK should handle it
+        // Write service account JSON to a temp file for Application Default Credentials
+        // This is needed because some Google Cloud SDKs expect a file path
+        const tmpDir = '/tmp';
+        const credFilePath = path.join(tmpDir, 'firebase-service-account.json');
+        
+        fs.writeFileSync(credFilePath, serviceAccountString);
+        console.log(`📁 Service account credentials written to ${credFilePath}`);
+        
+        // Set the environment variable to point to the file
+        // This ensures Application Default Credentials work correctly
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = credFilePath;
         
         admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
+            credential: admin.credential.cert(serviceAccount),
+            projectId: serviceAccount.project_id
         });
         console.log("✅ Firebase Admin SDK initialized successfully.");
+        console.log(`   Project ID: ${serviceAccount.project_id}`);
         db = admin.firestore();
+        
+        // Test connection asynchronously
+        db.collection('_test').limit(1).get()
+            .then(() => console.log("✅ Firestore connection verified"))
+            .catch(testError => console.error("⚠️  Firestore connection warning:", testError.message));
     } else {
         console.warn("⚠️  Firebase Admin SDK not initialized (missing GOOGLE_APPLICATION_CREDENTIALS).");
         console.log("   App will work with client-side Firebase only.");
@@ -91,6 +107,7 @@ try {
     // The private key might be malformed - let's try to work without Firebase
     console.warn("⚠️  Continuing without Firebase Admin SDK");
     console.warn("   Custodial wallet features will be unavailable");
+    db = null;  // Ensure db is null on failure
 }
 
 // --- SendGrid Initialization ---
