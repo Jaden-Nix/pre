@@ -949,6 +949,47 @@ app.post('/api/faucet/claim-simple', async (req, res) => {
     }
 });
 
+// 🪙 CHECK FAUCET COOLDOWN - Returns whether user can claim and time remaining
+app.post('/api/faucet/check-cooldown', async (req, res) => {
+    const { walletAddress } = req.body;
+    
+    if (!walletAddress) {
+        return res.status(400).json({ error: 'Wallet address is required' });
+    }
+    
+    if (!ethers.utils.isAddress(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+    }
+    
+    try {
+        const predTokenAbi = [
+            'function canClaimFaucet(address user) external view returns (bool)',
+            'function timeUntilNextClaim(address user) external view returns (uint256)'
+        ];
+        
+        const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+        const predToken = new ethers.Contract('0x45C229bF14A36aD14885148E62058C98284B2ae0', predTokenAbi, provider);
+        
+        const canClaim = await predToken.canClaimFaucet(walletAddress);
+        const timeLeft = await predToken.timeUntilNextClaim(walletAddress);
+        const timeLeftSeconds = Number(timeLeft);
+        
+        // Calculate hours and minutes remaining
+        const hoursLeft = Math.floor(timeLeftSeconds / 3600);
+        const minutesLeft = Math.floor((timeLeftSeconds % 3600) / 60);
+        
+        res.json({
+            canClaim,
+            timeLeft: timeLeftSeconds,
+            hoursLeft,
+            minutesLeft
+        });
+    } catch (error) {
+        console.error('Error checking faucet cooldown:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // 🪙 $PRED Token Faucet - NOW MINTS REAL ERC20 TOKENS ON-CHAIN
 app.post('/api/faucet/claim-pred', async (req, res) => {
     const { userId, idToken } = req.body;
