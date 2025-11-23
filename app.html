@@ -5553,34 +5553,29 @@
                 userProfile = {};
             }
             
-            // For custodial wallets, ALWAYS use the custodial wallet address from Firestore
-            const isCustodial = localStorage.getItem('isCustodial') === 'true';
+            // ALWAYS fetch the latest wallet address from Firestore to support wallet updates
+            // (when backend syncs after a bet, the wallet address might change from custodial to external)
             let walletAddress;
             
-            if (isCustodial) {
-                // For custodial wallets, fetch wallet address from Firestore
-                if (!userProfile.walletAddress && currentUserId) {
-                    console.log('   Custodial wallet detected, fetching wallet address from Firestore...');
-                    try {
-                        const { doc, getDoc } = window.firebase.firestore;
-                        const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
-                        const profileSnap = await getDoc(profileRef);
-                        
-                        if (profileSnap.exists()) {
-                            userProfile.walletAddress = profileSnap.data().walletAddress;
-                            userProfile.isCustodial = true;
-                        }
-                    } catch (error) {
-                        console.error('❌ Failed to fetch custodial wallet address from Firestore:', error);
-                        return;
+            if (currentUserId) {
+                try {
+                    const { doc, getDoc } = window.firebase.firestore;
+                    const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
+                    const profileSnap = await getDoc(profileRef);
+                    
+                    if (profileSnap.exists()) {
+                        walletAddress = profileSnap.data().walletAddress;
+                        userProfile.walletAddress = walletAddress;
+                        console.log('   Fetched wallet address from Firestore:', walletAddress);
                     }
+                } catch (error) {
+                    console.error('❌ Failed to fetch wallet address from Firestore:', error);
+                    // Fallback to cached value if Firestore fails
+                    walletAddress = userProfile.walletAddress || userWalletAddress || window.userWalletAddress;
                 }
-                walletAddress = userProfile.walletAddress;
-                console.log('   Using custodial wallet:', walletAddress);
             } else {
-                // For external wallets, use connected wallet address
-                walletAddress = userWalletAddress || window.userWalletAddress || userProfile.walletAddress;
-                console.log('   Using external wallet:', walletAddress);
+                // Fallback if no currentUserId
+                walletAddress = userProfile.walletAddress || userWalletAddress || window.userWalletAddress;
             }
             
             if (!walletAddress) {
