@@ -195,7 +195,21 @@ export class CustodialWalletService {
             }
 
             const walletData = walletDoc.data();
-            const privateKey = this.decrypt(walletData.encryptedPrivateKey);
+            let privateKey;
+            
+            try {
+                privateKey = this.decrypt(walletData.encryptedPrivateKey);
+            } catch (decryptError) {
+                console.warn(`⚠️  Failed to decrypt wallet (may be corrupted). Recreating...`);
+                // If decryption fails, delete old wallet and create new one
+                await this.db.collection('custodialWallets').doc(userId).delete();
+                const newWallet = await this.createWallet(userId, walletData.firebaseUid);
+                if (!newWallet.success) {
+                    throw new Error('Failed to recreate wallet: ' + newWallet.error);
+                }
+                // Load the newly created wallet
+                return this.loadWalletSigner(userId);
+            }
             
             const wallet = new ethers.Wallet(privateKey, this.provider);
             
