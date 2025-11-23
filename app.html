@@ -6703,14 +6703,23 @@
          * ✅ Reset Custodial Wallet - Delete old wallet and create new one
          */
         async function resetCustodialWallet() {
+            console.log('🔧 resetCustodialWallet function called');
+            console.log('   currentUser:', currentUser);
+            console.log('   currentUserId:', currentUserId);
+            
             if (!currentUser) {
+                console.log('❌ No currentUser - showing toast');
                 showToast('Please log in first', 'error');
                 return;
             }
 
+            console.log('✅ User is logged in, showing confirmation dialog');
             if (!confirm('Are you sure you want to reset your wallet? This will delete the old wallet and create a new one.')) {
+                console.log('User cancelled reset');
                 return;
             }
+            
+            console.log('User confirmed reset, proceeding...');
 
             try {
                 const resetBtn = document.getElementById('reset-wallet-btn');
@@ -6760,6 +6769,9 @@
         // Simple wrapper for onclick handler
         window.handleResetWallet = () => {
             console.log('🔧 Reset wallet button clicked');
+            console.log('currentUser:', currentUser);
+            console.log('currentUserId:', currentUserId);
+            console.log('typeof resetCustodialWallet:', typeof window.resetCustodialWallet);
             window.resetCustodialWallet();
         };
 
