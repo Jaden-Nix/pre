@@ -545,7 +545,7 @@ app.post('/api/market/create-onchain', async (req, res) => {
         const resolutionTime = Math.floor(new Date(endDate).getTime() / 1000);
         
         // Get deployer wallet to create market
-        const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY_V2;
+        const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
         if (!DEPLOYER_PRIVATE_KEY) {
             return res.status(503).json({ error: 'Market creation service unavailable - missing deployer key' });
         }
