@@ -6542,6 +6542,25 @@
 
                 // Initialize user profile in Firestore
                 await initializeUserProfile();
+                
+                // ✅ Sync custodial wallet address to Firebase to ensure correct wallet is displayed
+                try {
+                    const idToken = await firebaseUser.getIdToken();
+                    const syncResponse = await fetch('/api/profile/sync-wallet-address', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId, idToken })
+                    });
+                    
+                    const syncData = await syncResponse.json();
+                    if (syncData.success) {
+                        console.log('✅ Wallet address synced to Firebase:', syncData.walletAddress);
+                    } else {
+                        console.warn('⚠️ Wallet sync warning:', syncData.error);
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Could not sync wallet address to Firebase:', e);
+                }
 
                 // Check if user needs onboarding
                 const { getDoc, doc } = window.firebase.firestore;
