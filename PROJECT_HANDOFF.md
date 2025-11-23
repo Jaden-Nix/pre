@@ -295,17 +295,33 @@ User → app.html → Firebase Auth
 
 ---
 
-## 🐛 Critical Bugs & Security Issues (November 23, 2025)
+## 🐛 Critical Bugs & Security Issues (November 23, 2025 - UPDATED)
 
 ### CRITICAL - Must Fix Before Production
 
-#### 1. **Contract Deployment Missing** ❌
+#### 1. **Wallet Encryption/Decryption Failure** ❌ (FIXED Nov 23)
+- **Issue:** When decrypting stored wallet private keys, `Unsupported state or unable to authenticate data` error occurs
+- **Root Cause:** Encrypted wallet data became corrupted or encryption key changed
+- **Impact:** Users cannot place on-chain bets; betting fails with authentication error
+- **Status:** ✅ FIXED - Added graceful fallback in `server/custodial-wallet-service.js` line 188-224
+- **Fix Applied:** If decryption fails, system automatically deletes corrupted wallet and creates new one
+- **Testing Required:** Restart backend and attempt to place a bet to verify fix
+
+#### 2. **Fake Transaction Hashes in Betting** ✅ (FIXED Nov 23)
+- **Issue:** Betting system was generating fake transaction hashes that don't exist on BSC Testnet
+- **Root Cause:** Firestore-only betting path used `generateFakeTxHash()` instead of calling backend API
+- **Impact:** Users see fake transaction hashes that can't be verified on BSCScan
+- **Status:** ✅ FIXED - Replaced with real on-chain transaction via `/api/custodial/place-bet` endpoint
+- **Fix Applied:** Line 9467-9496 in `app.html` now calls backend API for real on-chain bets
+- **Verification:** Transaction hashes from `betResult.txHash` are real and appear on BSCScan Testnet
+
+#### 3. **Contract Deployment Missing** ❌
 - **Issue:** PredictionMarketV2 contract not deployed on BSC Testnet. Address in `server/index.js` line 1331 is incorrect.
 - **Impact:** PRED balance resets to 100 on every login; 24-hour faucet cooldown doesn't enforce; all on-chain transactions fail silently.
 - **Status:** CREATE deployment script ready (`server/quick-deploy.js`) - needs `viaIR: true` compiler flag
 - **Fix Required:** Deploy contract via Remix IDE or enable `viaIR` flag in `server/quick-deploy.js` and run
 
-#### 2. **Private Key Exposure Points** 🔑
+#### 4. **Private Key Exposure Points** 🔑
 **Code locations that hold private keys:**
 - `server/custodial-wallet-service.js` line 4: `WALLET_ENCRYPTION_KEY` (must be 32+ chars)
 - `server/custodial-wallet-service.js` line 129: `DEPLOYER_PRIVATE_KEY` used for gas-sponsored transactions
