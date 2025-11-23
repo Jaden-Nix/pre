@@ -679,10 +679,10 @@ app.post('/api/market/create-onchain', async (req, res) => {
     const { title, description, category, endDate, liquidityPRED, marketStructure, initialOdds, options, walletAddress } = req.body;
     
     // Accept both liquidityBNB (legacy) and liquidityPRED (new PRED-based)
-    const liquidityAmount = liquidityPRED || req.body.liquidityBNB;
+    const liquidityAmount = parseFloat(liquidityPRED || req.body.liquidityBNB);
     
-    if (!title || !description || !category || !endDate || !liquidityAmount) {
-        return res.status(400).json({ error: 'Missing required fields' });
+    if (!title || !description || !category || !endDate || !liquidityAmount || isNaN(liquidityAmount)) {
+        return res.status(400).json({ error: 'Missing required fields or invalid liquidity amount' });
     }
     
     // Get idToken from Authorization header
