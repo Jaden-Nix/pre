@@ -12388,13 +12388,14 @@ ${historyText}`;
 
         /**
          * Publishes a new "real" Quick Play market from the admin panel.
+         * First creates it on-chain, then saves to Firestore with onChainMarketId
          */
         async function adminPublishQuickPlay() {
             const { addDoc, collection, serverTimestamp } = window.firebase.firestore;
 
             const title = dom.adminQpTitle.value;
             const duration = dom.adminQpDuration.value;
-            const yesPercent = parseFloat(dom.adminQpYes.value); // Use parseFloat for decimals
+            const yesPercent = parseFloat(dom.adminQpYes.value);
             const noPercent = parseFloat(dom.adminQpNo.value);
 
             // Validate
@@ -12403,30 +12404,63 @@ ${historyText}`;
                 return;
             }
 
-            showLoadingOverlay(true, "Publishing Quick Play...");
+            showLoadingOverlay(true, "⛓️ Creating market on-chain...");
 
             try {
-                // Add to the quick_play_markets collection
+                // 1. GET ADMIN TOKEN FOR API CALL
+                const user = window.firebase.auth().currentUser;
+                if (!user) {
+                    throw new Error('Not authenticated');
+                }
+                const adminToken = await user.getIdToken();
+
+                // 2. CREATE MARKET ON-CHAIN FIRST
+                console.log('🎯 Calling backend to create on-chain quick play market...');
+                const blockchainResponse = await fetch('/api/admin/create-quick-play-market', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${adminToken}`
+                    },
+                    body: JSON.stringify({
+                        title,
+                        durationMinutes: parseInt(duration),
+                        yesPercent,
+                        noPercent
+                    })
+                });
+
+                if (!blockchainResponse.ok) {
+                    const errorData = await blockchainResponse.json();
+                    throw new Error(`Blockchain creation failed: ${errorData.error}`);
+                }
+
+                const blockchainData = await blockchainResponse.json();
+                const onChainMarketId = blockchainData.onChainMarketId;
+                const txHash = blockchainData.txHash;
+
+                console.log(`✅ On-chain market created with ID ${onChainMarketId}, TX: ${txHash}`);
+                showLoadingOverlay(true, "💾 Saving to Firestore...");
+
+                // 3. NOW SAVE TO FIRESTORE WITH ON-CHAIN MARKET ID
                 await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', QUICK_PLAY_MARKETS_COLLECTION), {
                     title,
                     duration,
                     yesPercent,
                     noPercent,
-
-                    // --- ADD THESE LINES FOR AMM ---
-                    // We'll add $50000 of virtual liquidity for stable odds
                     yesPool: 50000 * (yesPercent / 100),
                     noPool: 50000 * (noPercent / 100),
                     totalStakeVolume: 0,
-                    // --- END OF NEW LINES ---
-
                     isResolved: false,
-                    isMock: false, // All admin-created markets are REAL
-                    createdAt: serverTimestamp()
+                    isMock: false,
+                    createdAt: serverTimestamp(),
+                    // ⛓️ ADD ON-CHAIN REFERENCE
+                    onChainMarketId: onChainMarketId,
+                    onChainTxHash: txHash
                 });
 
                 showLoadingOverlay(false);
-                showToast("Quick Play published successfully!");
+                showToast("✅ Quick Play published on-chain successfully!");
                 // Clear the form
                 dom.adminQpTitle.value = '';
                 dom.adminQpDuration.value = '';
@@ -12436,7 +12470,8 @@ ${historyText}`;
 
             } catch (error) {
                 showLoadingOverlay(false);
-                showToast("AI Quick Play publish failed. Check console.");
+                console.error('❌ Quick Play publish failed:', error);
+                showToast("Quick Play publish failed: " + error.message);
             }
         }
 

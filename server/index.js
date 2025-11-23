@@ -3250,6 +3250,72 @@ app.post('/api/admin/quick-plays', requireAdmin, async (req, res) => {
     }
 });
 
+// ⛓️ Create Quick Play Market On-Chain
+app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) => {
+    const { title, durationMinutes, yesPercent, noPercent } = req.body;
+    
+    if (!title || !durationMinutes || yesPercent === undefined || noPercent === undefined) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    try {
+        const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
+        if (!DEPLOYER_PRIVATE_KEY) {
+            return res.status(503).json({ error: 'Quick play market creation service unavailable' });
+        }
+        
+        const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+        const deployerWallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
+        
+        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
+        const contractABI = [
+            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
+        ];
+        const predictionMarketContract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
+        
+        // Set resolution time (duration from now)
+        const resolutionTime = Math.floor(Date.now() / 1000) + (durationMinutes * 60);
+        
+        // Quick play markets use minimal liquidity (1 BNB split equally)
+        const totalBnb = ethers.utils.parseEther('1');
+        const bnbPerSide = totalBnb.div(2);
+        
+        console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min)`);
+        
+        const tx = await predictionMarketContract.createMarket(
+            title,
+            `Quick Play: ${title}`,
+            resolutionTime,
+            bnbPerSide,
+            bnbPerSide,
+            ethers.BigNumber.from(0),
+            ethers.BigNumber.from(0),
+            { value: totalBnb, gasLimit: 600000 }
+        );
+        
+        const receipt = await tx.wait();
+        
+        // Extract market ID from event
+        const marketCreatedEvent = receipt.events?.find(e => e.event === 'MarketCreated');
+        const onChainMarketId = marketCreatedEvent?.args?.marketId?.toNumber();
+        
+        if (onChainMarketId === undefined) {
+            return res.status(500).json({ error: 'Failed to extract market ID from blockchain' });
+        }
+        
+        console.log(`✅ On-chain quick play market created: ID ${onChainMarketId}`);
+        
+        res.status(200).json({
+            success: true,
+            onChainMarketId: onChainMarketId,
+            txHash: tx.hash
+        });
+    } catch (error) {
+        console.error('❌ Error creating on-chain quick play market:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/admin/resolve-quick-play', requireAdmin, async (req, res) => {
     
     if (!db) {
