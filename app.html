@@ -9232,11 +9232,20 @@
                     populateAssetSelector();
                     showScreen('market-detail-screen');
                     
-                    // Start auto-updating AMM odds every 3 seconds
+                    // Start auto-updating AMM odds every 3 seconds (detect currency first)
                     const mktId = currentMarket.onChainMarketId || marketId;
                     if (mktId) {
                         console.log(`🚀 Starting AMM odds auto-update for market ID: ${mktId}`);
-                        window.startAMMOddsAutoUpdate(mktId, 'BNB');
+                        // Detect which currency the market is using (BNB or PRED)
+                        detectMarketCurrency(mktId).then(detectedCurrency => {
+                            // Ensure we have a valid currency (fallback to BNB if undefined)
+                            const safeCurrency = detectedCurrency || 'BNB';
+                            window.startAMMOddsAutoUpdate(mktId, safeCurrency);
+                        }).catch(err => {
+                            // If detection fails completely, default to BNB and log error
+                            console.error('⚠️ Currency detection failed:', err);
+                            window.startAMMOddsAutoUpdate(mktId, 'BNB');
+                        });
                     } else {
                         console.log('⚠️ Could not start AMM odds update - no market ID found');
                     }
@@ -9372,6 +9381,104 @@
 
         let detailMarketOddsInterval = null;  // Auto-update AMM odds while market detail is shown
         
+        // Cache detected currency per market to avoid repeated API calls
+        const marketCurrencyCache = new Map();
+        
+        /**
+         * Determines which currency (BNB or PRED) a market is actively using based on pool liquidity
+         * GUARANTEED to return a valid currency string ('BNB' or 'PRED')
+         * Persists last known good currency to avoid regression during API failures
+         */
+        async function detectMarketCurrency(marketId) {
+            // Guard clause: return default if no market ID
+            if (!marketId) {
+                console.log('⚠️ No market ID provided, defaulting to BNB');
+                return 'BNB';
+            }
+            
+            // Check cache first - this is the last known good currency
+            const lastKnownCurrency = marketCurrencyCache.has(marketId) ? marketCurrencyCache.get(marketId) : null;
+            
+            if (lastKnownCurrency) {
+                console.log(`✅ Using cached currency for market ${marketId}: ${lastKnownCurrency}`);
+                return lastKnownCurrency;
+            }
+            
+            // No cache - attempt fresh detection
+            let detectedCurrency = null;  // null means detection failed
+            
+            try {
+                // Fetch both BNB and PRED pool data with error handling
+                const fetchPromises = [
+                    fetch('/api/get-market-odds', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ marketId: marketId, currency: 'BNB' })
+                    }).catch(err => {
+                        console.warn(`⚠️ BNB fetch failed for market ${marketId}:`, err.message);
+                        return null;
+                    }),
+                    fetch('/api/get-market-odds', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ marketId: marketId, currency: 'PRED' })
+                    }).catch(err => {
+                        console.warn(`⚠️ PRED fetch failed for market ${marketId}:`, err.message);
+                        return null;
+                    })
+                ];
+                
+                const [bnbResponse, predResponse] = await Promise.all(fetchPromises);
+                
+                // Parse responses safely
+                let bnbLiquidity = 0;
+                let predLiquidity = 0;
+                
+                if (bnbResponse && bnbResponse.ok) {
+                    try {
+                        const bnbData = await bnbResponse.json();
+                        if (bnbData.success && bnbData.yesPool !== undefined && bnbData.noPool !== undefined) {
+                            bnbLiquidity = bnbData.yesPool + bnbData.noPool;
+                        }
+                    } catch (parseErr) {
+                        console.warn('⚠️ Failed to parse BNB response');
+                    }
+                }
+                
+                if (predResponse && predResponse.ok) {
+                    try {
+                        const predData = await predResponse.json();
+                        if (predData.success && predData.yesPool !== undefined && predData.noPool !== undefined) {
+                            predLiquidity = predData.yesPool + predData.noPool;
+                        }
+                    } catch (parseErr) {
+                        console.warn('⚠️ Failed to parse PRED response');
+                    }
+                }
+                
+                // Determine currency based on liquidity
+                if (predLiquidity > bnbLiquidity && predLiquidity > 0) {
+                    detectedCurrency = 'PRED';
+                } else if (bnbLiquidity > 0) {
+                    detectedCurrency = 'BNB';
+                }
+                
+                if (detectedCurrency) {
+                    console.log(`🔍 Market ${marketId} currency detected: ${detectedCurrency} (BNB: ${bnbLiquidity.toFixed(4)}, PRED: ${predLiquidity.toFixed(4)})`);
+                    // Cache successful detection
+                    marketCurrencyCache.set(marketId, detectedCurrency);
+                    return detectedCurrency;
+                }
+                
+            } catch (error) {
+                console.error('⚠️ Exception in detectMarketCurrency:', error.message);
+            }
+            
+            // Detection failed AND no cache - use default but DON'T cache it
+            console.warn(`⚠️ Currency detection failed for market ${marketId}, defaulting to BNB (will retry next interval)`);
+            return 'BNB';
+        }
+        
         /**
          * Fetches and displays real AMM odds for a market from backend
          */
@@ -9425,23 +9532,29 @@
         
         /**
          * Starts auto-updating AMM odds every 3 seconds
+         * Re-detects currency on each interval to adapt to bets and API recovery
          */
-        window.startAMMOddsAutoUpdate = (marketId, currency = 'BNB') => {
+        window.startAMMOddsAutoUpdate = (marketId, initialCurrency = 'BNB') => {
             // Clear any existing interval
             if (detailMarketOddsInterval) {
                 clearInterval(detailMarketOddsInterval);
                 detailMarketOddsInterval = null;
             }
             
-            // Fetch immediately
-            window.updateAMModds(marketId, currency);
+            // Fetch immediately with initial currency
+            window.updateAMModds(marketId, initialCurrency);
             
-            // Then poll every 3 seconds
-            detailMarketOddsInterval = setInterval(() => {
-                window.updateAMModds(marketId, currency);
+            // Then poll every 3 seconds, re-detecting currency each time
+            detailMarketOddsInterval = setInterval(async () => {
+                // Re-run detection to pick up new bets or API recovery
+                const detectedCurrency = await detectMarketCurrency(marketId);
+                const currencyToUse = detectedCurrency || initialCurrency;
+                
+                console.log(`🔄 Auto-update tick using ${currencyToUse}`);
+                window.updateAMModds(marketId, currencyToUse);
             }, 3000);
             
-            console.log(`🔄 Started auto-updating AMM odds for market ${marketId} every 3 seconds`);
+            console.log(`🔄 Started auto-updating AMM odds for market ${marketId} every 3 seconds (initial: ${initialCurrency})`);
         };
         
         /**
@@ -9755,9 +9868,9 @@
                             betCurrency = 'PRED';
                             betAmount = amount;
                             
-                            // Validate PRED amount
-                            if (betAmount < 1) {
-                                showToast("Minimum bet: 1 PRED", "warning");
+                            // Validate PRED amount (0.01 PRED = ~$6)
+                            if (betAmount < 0.01) {
+                                showToast("Minimum bet: 0.01 PRED", "warning");
                                 showLoadingOverlay(false);
                                 return;
                             }
@@ -9943,14 +10056,17 @@
                             console.warn('Balance refresh after bet failed (non-critical):', refreshError);
                         }
 
-                        // 📊 Update Firestore market pools with fresh on-chain values
+                        // 📊 Update Firestore market pools with fresh on-chain values (CORRECTED: use betCurrency)
                         if (currentMarket && currentMarket.onChainMarketId) {
                             try {
-                                // Fetch current AMM odds from backend (which reads from blockchain)
+                                // Update currency cache so auto-refresh uses the correct currency
+                                marketCurrencyCache.set(currentMarket.onChainMarketId, betCurrency);
+                                
+                                // Fetch current AMM odds from backend using the correct currency
                                 const oddsResponse = await fetch('/api/get-market-odds', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ marketId: currentMarket.onChainMarketId, currency: 'BNB' })
+                                    body: JSON.stringify({ marketId: currentMarket.onChainMarketId, currency: betCurrency })
                                 });
                                 
                                 if (oddsResponse.ok) {
@@ -9965,7 +10081,7 @@
                                             yesPercent: oddsData.yesPercent,
                                             noPercent: oddsData.noPercent
                                         });
-                                        console.log(`✅ Updated Firestore pools: YES $${oddsData.yesPool.toFixed(2)} | NO $${oddsData.noPool.toFixed(2)}`);
+                                        console.log(`✅ Updated Firestore pools (${betCurrency}): YES $${oddsData.yesPool.toFixed(2)} | NO $${oddsData.noPool.toFixed(2)}`);
                                     }
                                 }
                             } catch (poolUpdateError) {
@@ -9976,12 +10092,12 @@
                         showLoadingOverlay(false);
                         showToast(`Bet placed on-chain! TX: ${receipt.transactionHash.slice(0, 10)}...`, "success");
                         
-                        // Refresh AMM odds IMMEDIATELY to show updated pool state
+                        // Refresh AMM odds IMMEDIATELY to show updated pool state (CORRECTED: pass betCurrency)
                         if (currentMarket && currentMarket.onChainMarketId) {
-                            await updateAMModds(currentMarket.onChainMarketId);
+                            await updateAMModds(currentMarket.onChainMarketId, betCurrency);
                             // Also schedule a delayed refresh to ensure blockchain state is settled
                             setTimeout(() => {
-                                updateAMModds(currentMarket.onChainMarketId);
+                                updateAMModds(currentMarket.onChainMarketId, betCurrency);
                             }, 3000); // Wait 3 seconds for blockchain to fully settle
                         }
                         
