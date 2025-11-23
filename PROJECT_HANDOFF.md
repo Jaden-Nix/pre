@@ -295,14 +295,118 @@ User → app.html → Firebase Auth
 
 ---
 
-## 🐛 Known Issues & TODOs
+## 🐛 Critical Bugs & Security Issues (November 23, 2025)
 
-1. **Blockchain Disabled** - All Web3 code commented out (search for `// TODO: BLOCKCHAIN TEMPORARILY DISABLED`)
-2. ✅ **RESOLVED: Mock BUSD Replaced** - Now uses $PRED token ($600 per token valuation)
-3. ✅ **RESOLVED: Notification System** - Jury alerts with direct links implemented
-4. **Mock Balances Only** - No real on-chain betting (by design for demo)
-5. **Limited Jury UI** - Backend ready, frontend needs work
-6. **Auto-payout Disabled** - Requires database/private key configuration
+### CRITICAL - Must Fix Before Production
+
+#### 1. **Contract Deployment Missing** ❌
+- **Issue:** PredictionMarketV2 contract not deployed on BSC Testnet. Address in `server/index.js` line 1331 is incorrect.
+- **Impact:** PRED balance resets to 100 on every login; 24-hour faucet cooldown doesn't enforce; all on-chain transactions fail silently.
+- **Status:** CREATE deployment script ready (`server/quick-deploy.js`) - needs `viaIR: true` compiler flag
+- **Fix Required:** Deploy contract via Remix IDE or enable `viaIR` flag in `server/quick-deploy.js` and run
+
+#### 2. **Private Key Exposure Points** 🔑
+**Code locations that hold private keys:**
+- `server/custodial-wallet-service.js` line 4: `WALLET_ENCRYPTION_KEY` (must be 32+ chars)
+- `server/custodial-wallet-service.js` line 129: `DEPLOYER_PRIVATE_KEY` used for gas-sponsored transactions
+- `server/index.js` line 910, 920: `DEPLOYER_PRIVATE_KEY` for faucet claims
+- `server/index.js` line 1331: Contract address reference (currently wrong/not deployed)
+- `server/deploy-contract.js` line 5: `DEPLOYER_PRIVATE_KEY` for contract deployment
+
+**REQUIRED SECRETS (set in Replit):**
+```
+WALLET_ENCRYPTION_KEY = <secure_32+_char_key>  # Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+DEPLOYER_PRIVATE_KEY = <bsc_testnet_account>   # Private key of account with ~0.3+ BNB for gas
+GOOGLE_APPLICATION_CREDENTIALS = <firebase_json> # For Firestore access
+```
+
+**⚠️ Security:** Never log these keys. Currently console.log statements are safe but logs should never be exposed publicly.
+
+#### 3. **PRED Balance Reset on Login** 🔄
+- **Root Cause:** Contract not deployed, so real on-chain balance can't be fetched. Frontend/backend falls back to mock 100 PRED.
+- **Affected Files:** `server/index.js` line 956-962 (faucet balance update), `app.html` balance initialization
+- **Fix:** Deploy contract first, then update address in `server/index.js` line 1331
+
+#### 4. **Faucet 24-Hour Cooldown Not Enforcing** ⏰
+- **Root Cause:** Smart contract checks `canClaimFaucet()` (line 923) but contract doesn't exist on-chain.
+- **Current Behavior:** Users can claim unlimited times despite cooldown check in code.
+- **Status:** Code is correct; contract deployment will fix this automatically
+- **Affected:** `server/index.js` lines 839-990 (`/api/faucet/claim-pred` endpoint)
+
+#### 5. **Smart Contract Critical Vulnerabilities** (in contracts/contracts/PredictionMarketV2.sol)
+- **Unbounded Loops (Gas Limit Attack):** `_distributeWinnings()`, `claimWinnings()`, `cancelMarket()` iterate through ALL bets without limit → Can fail on high-volume markets
+- **Missing Minimum Bet Validation:** No check for dust bets → Could cause payout calculation issues
+- **Dispute Mechanism Broken:** Stakes accepted but never refunded/tracked → Funds locked in contract
+- **Reentrancy Risk:** Fee transfers occur before payout (LINE 347-354) → Vulnerable to reentrancy if fee recipient is malicious contract
+- **Fix Required:** Add pagination to payout loops, validate minimum bet (1 wei minimum), track dispute stakes, use checks-effects-interactions pattern
+
+#### 6. **Admin Authentication Gaps** 🔐
+- **Issue:** Some endpoints check `ADMIN_SECRET` (e.g., `/api/admin/verify` at line 2685) but not all admin operations require it
+- **Risk:** Anyone knowing marketId could potentially trigger admin functions
+- **Affected Endpoints:** 
+  - `/api/admin/override-market` (line 2611) - Has `requireAdmin` middleware ✅
+  - `/api/admin/stats` (line 2650) - Has `requireAdmin` middleware ✅
+  - Market resolution endpoints need UID verification (mostly done)
+
+#### 7. **Firebase Credentials Exposure Risk** 🔐
+- **Issue:** `GOOGLE_APPLICATION_CREDENTIALS` is stored as environment variable
+- **File:** `server/index.js` lines 72-82 writes credentials to `/tmp/firebase-service-account.json`
+- **Risk:** Temp file accessible if someone compromises server
+- **Note:** Current approach is acceptable for Replit; use `admin.credential.cert()` directly if possible
+
+### HIGH PRIORITY
+
+#### 8. **Inconsistent On-Chain vs Off-Chain Logic** 💾
+- **Issue:** Bets stored in Firestore (off-chain) but contract expects on-chain storage
+- **Locations:** 
+  - `server/index.js` line 1312-1390: Bet placement checks balances in Firestore, not contract
+  - Market resolution: Uses Swarm Oracle output, not on-chain voting
+  - Payouts: Simulated in Firestore, not sent from contract
+- **Fix:** Complete on-chain integration for all bet/payout operations or document off-chain design clearly
+
+#### 9. **Missing Input Validation**
+- **Bet Amount:** No minimum bet check in `app.html` betting UI
+- **Market Title:** No length/character restrictions
+- **Outcome:** No validation that outcome is boolean for binary markets
+- **Recommendation:** Add frontend validation + backend validation for security
+
+#### 10. **Auto-Payout Job Requires Configuration**
+- **File:** `server/auto-payout-job.js` line 33
+- **Status:** Disabled - requires DEPLOYER_PRIVATE_KEY to function
+- **Fix:** Once contract deployed, enable with: `new AutoPayoutJob(db, DEPLOYER_PRIVATE_KEY).start()`
+
+### MEDIUM PRIORITY
+
+#### 11. **Logging Sensitive Data** 📝
+- **Safe:** Console logs of wallet addresses, transaction hashes, PRED amounts (public data)
+- **Careful:** Ensure error logs don't expose full error traces to clients
+
+#### 12. **Hardhat Compilation Failed** 
+- **Issue:** `server/quick-deploy.js` needs `viaIR: true` flag (currently disabled)
+- **File:** `server/quick-deploy.js` line 23
+- **Fix:** Enable `viaIR: true` in compiler settings
+- **Workaround:** Use Remix IDE to deploy instead
+
+---
+
+## ✅ What Works Correctly
+
+✅ Custodial wallets encrypted with WALLET_ENCRYPTION_KEY  
+✅ Firebase UID-based authorization (wallet access denied if UID mismatch)  
+✅ Admin endpoints protected with requireAdmin middleware  
+✅ Withdrawal logging for audit trail  
+✅ Email OTP authentication secure  
+✅ AI Guardrails (duplicate detection, quality checks, sybil detection)  
+
+---
+
+## 🐛 Known Issues & TODOs (LEGACY)
+
+1. ✅ **RESOLVED:** Mock BUSD Replaced - Now uses $PRED token ($600 per token valuation)
+2. ✅ **RESOLVED:** Notification System - Jury alerts with direct links implemented
+3. **Contract Not Deployed** ❌ - See "CRITICAL - Must Fix Before Production" above
+4. **Limited Jury UI** - Backend ready, frontend needs work
+5. **Auto-payout Disabled** - Requires database/private key configuration
 
 ---
 
