@@ -4440,7 +4440,7 @@
                 updateNavBar(false);
                 
                 // Show login screen
-                showScreen('login-screen');
+                window.showScreen('login-screen');
                 showToast('✅ Signed out successfully', 'success');
                 
                 console.log('✅ User signed out');
@@ -6298,23 +6298,6 @@
             // Initialize theme immediately when DOM is ready
             initTheme();
 
-            // Pledge pool will be loaded fresh from Firestore
-            let pledgePoolItems = [];
-            if (savedPledgePool) {
-                try {
-                    pledgePoolItems = JSON.parse(savedPledgePool);
-                } catch (e) {
-                    console.error("Could not parse pledge pool:", e);
-                    pledgePoolItems = []; // Start fresh if data is corrupt
-                }
-            }
-
-            // Render pledge pool to show empty state on initial load
-            if (typeof renderPledgePool === 'function') {
-                renderPledgePool();
-            }
-            // ---- END ADD ----
-
             if (window.firebase) {
                 startApp();
             } else {
@@ -6364,7 +6347,7 @@
                     
                     // Restore user session
                     initializeUserProfile().then(() => {
-                        showScreen('home-screen');
+                        window.showScreen('home-screen');
                         console.log('Session resumed successfully');
                     }).catch(err => {
                         console.error('Error resuming session:', err);
@@ -6554,7 +6537,7 @@
             updateNavBar(false);
             
             // Show home screen with markets (no login required)
-            showScreen('home-screen');
+            window.showScreen('home-screen');
             
             // Load markets without auth requirement
             console.log('Guest mode enabled - users can browse markets without login');
@@ -6574,7 +6557,7 @@
                 
                 // Show login prompt
                 showToast("Please sign in to continue", "info");
-                showScreen('login-screen');
+                window.showScreen('login-screen');
                 
                 console.log(`Authentication required for: ${actionName}`);
             }
@@ -8246,7 +8229,7 @@
         /**
          * Alias for returning to the home screen.
          */
-        window.goBack = () => showScreen('home-screen');
+        window.goBack = () => window.showScreen('home-screen');
 
         /**
          * Updates the bottom nav bar icon colors to reflect the active screen.
@@ -9549,8 +9532,6 @@
                     // --- END CHART & TVL BLOCK ---
 
                     // --- REAL-TIME LISTENER FOR MARKET UPDATES ---
-                    const marketRef = doc(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION, marketId);
-
                     if(detailMarketUnsubscribe) detailMarketUnsubscribe();
 
                     detailMarketUnsubscribe = onSnapshot(marketRef, (docSnap) => {
