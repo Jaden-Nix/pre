@@ -1327,6 +1327,12 @@ app.post('/api/custodial/place-bet', async (req, res) => {
         // ✅ FIX: Use loadWalletSigner() which returns decrypted signer
         const signer = await custodialWalletService.loadWalletSigner(userId);
         
+        console.log(`🔐 Place-bet: User ${userId} using wallet: ${signer.address}`);
+        
+        // Check wallet BNB balance for gas
+        const walletBalance = await signer.provider.getBalance(signer.address);
+        console.log(`💰 Wallet BNB balance: ${ethers.utils.formatEther(walletBalance)} BNB`);
+        
         // PredictionMarketV2 contract (V4 with initial liquidity + oracle evidence hash)
         const contractAddress = '0xda27eAd38F3D4A656Cc64C2D70b6166A7061AD48';
         const predTokenAddress = '0x3C828678De4F4184952D66f2d0260B5db2e0f522';
