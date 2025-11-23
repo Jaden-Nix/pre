@@ -1,8 +1,94 @@
 'use client';
 
-import { Trophy, TrendingUp, Target, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Trophy, TrendingUp, Target, Zap, Wallet, Copy, ExternalLink } from 'lucide-react';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+
+interface WalletInfo {
+  address: string;
+  balance: string;
+  predBalance?: number;
+}
 
 export function UserProfile() {
+  const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setUserId(user.uid);
+        await fetchWalletInfo(user.uid);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const fetchWalletInfo = async (uid: string) => {
+    try {
+      setLoading(true);
+      
+      const infoResponse = await fetch('/api/custodial-wallet/info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: uid })
+      });
+      
+      const infoData = await infoResponse.json();
+      
+      if (infoData.success) {
+        const balanceResponse = await fetch('/api/custodial-wallet/balance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: uid })
+        });
+        
+        const balanceData = await balanceResponse.json();
+        
+        if (balanceData.success) {
+          setWalletInfo({
+            address: infoData.address,
+            balance: balanceData.balance,
+            predBalance: 0
+          });
+        } else {
+          setWalletInfo({
+            address: infoData.address,
+            balance: '0',
+            predBalance: 0
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching wallet info:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyAddress = () => {
+    if (walletInfo?.address) {
+      navigator.clipboard.writeText(walletInfo.address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
   return (
     <div className="min-h-screen p-6 max-w-4xl mx-auto">
       {/* Header */}
@@ -13,6 +99,85 @@ export function UserProfile() {
         <h1 className="text-3xl font-bold gradient-text mb-2">Your Profile</h1>
         <p className="text-gray-400">Track your predictions and earnings</p>
       </div>
+
+      {/* Wallet Info Section */}
+      {loading ? (
+        <div className="glass-card p-6 rounded-2xl mb-8">
+          <div className="animate-pulse flex items-center justify-center py-8">
+            <p className="text-gray-400">Loading wallet information...</p>
+          </div>
+        </div>
+      ) : walletInfo ? (
+        <div className="glass-card p-6 rounded-2xl mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <Wallet className="w-6 h-6 text-sky-400" />
+            <h2 className="text-xl font-bold">Custodial Wallet</h2>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-gray-400 mb-2">Wallet Address</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 px-4 py-2 bg-white/5 rounded-lg font-mono text-sm">
+                  {formatAddress(walletInfo.address)}
+                </code>
+                <button
+                  onClick={copyAddress}
+                  className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                  title="Copy address"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+                <a
+                  href={`https://testnet.bscscan.com/address/${walletInfo.address}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                  title="View on BSCScan"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </div>
+              {copied && (
+                <p className="text-green-400 text-sm mt-2">Address copied!</p>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-400 mb-2">BNB Balance</p>
+                <p className="text-2xl font-bold text-sky-400">
+                  {parseFloat(walletInfo.balance).toFixed(4)} BNB
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-400 mb-2">Network</p>
+                <p className="text-lg font-semibold">BSC Testnet</p>
+              </div>
+            </div>
+            
+            <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <p className="text-sm text-blue-300">
+                💡 <strong>Tip:</strong> Get free testnet BNB from the{' '}
+                <a
+                  href="https://testnet.bnbchain.org/faucet-smart"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-blue-200"
+                >
+                  BSC Faucet
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="glass-card p-6 rounded-2xl mb-8">
+          <p className="text-center text-gray-400">
+            No wallet found. Please sign in to view your wallet.
+          </p>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
