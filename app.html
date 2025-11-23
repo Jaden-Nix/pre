@@ -6746,14 +6746,12 @@
                     console.log('SUCCESS! Resetting...');
                     showToast('✅ Wallet reset successfully! Reloading...', 'success');
                     
-                    // Clear ALL local caches
-                    localStorage.clear();
-                    sessionStorage.clear();
-                    
-                    // Force hard reload bypassing cache
-                    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-                        navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
-                    }
+                    // Clear only wallet-related caches, keep faucet and other app state
+                    localStorage.removeItem('custodialWalletAddress');
+                    localStorage.removeItem('cachedWalletAddress');
+                    localStorage.removeItem('walletAddress');
+                    localStorage.removeItem('walletPrivateKey');
+                    sessionStorage.removeItem('currentWallet');
                     
                     // Force reload with cache busting
                     setTimeout(() => {
