@@ -108,7 +108,7 @@ async function syncPredBalanceFromBlockchain(userId, walletAddress) {
         const balanceAmount = parseFloat(ethers.utils.formatEther(balance));
         
         // Use hardcoded path since constants may not be in scope
-        const userRef = db.collection('artifacts').doc('predora-hackathon').collection('public').doc('data').collection('user-profiles').doc(userId);
+        const userRef = db.collection('artifacts').doc('predora-hackathon').collection('public').doc('data').collection('profile').doc(userId);
         await userRef.set({
             predBalance: balanceAmount,
             walletAddress: walletAddress,
@@ -134,7 +134,7 @@ async function syncBnbBalanceFromBlockchain(userId, walletAddress) {
         const balanceAmount = parseFloat(ethers.utils.formatEther(balance));
         
         // Use hardcoded path since constants may not be in scope
-        const userRef = db.collection('artifacts').doc('predora-hackathon').collection('public').doc('data').collection('user-profiles').doc(userId);
+        const userRef = db.collection('artifacts').doc('predora-hackathon').collection('public').doc('data').collection('profile').doc(userId);
         await userRef.set({
             bnbBalance: balanceAmount,
             walletAddress: walletAddress,
@@ -800,6 +800,46 @@ app.post('/api/market/create-onchain', async (req, res) => {
         // Create Firestore document
         const firestore = admin.firestore();
         
+        // Ensure profile exists before market creation transaction
+        const profileRef = firestore
+            .collection('artifacts')
+            .doc(APP_ID)
+            .collection('public')
+            .doc('data')
+            .collection(USER_PROFILE_COLLECTION)
+            .doc(userId);
+        
+        const profileSnap = await profileRef.get();
+        if (!profileSnap.exists) {
+            console.log(`⚠️  Profile not found for ${userId}, syncing from blockchain...`);
+            // Try to sync from blockchain before proceeding
+            const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+            const userAddr = decodedToken.wallet || decodedToken.walletAddress;
+            if (userAddr) {
+                try {
+                    const bnbBalance = await provider.getBalance(userAddr);
+                    const predBalance = await predContract.balanceOf(userAddr);
+                    await profileRef.set({
+                        userId: userId,
+                        walletAddress: userAddr,
+                        bnbBalance: parseFloat(ethers.utils.formatEther(bnbBalance)),
+                        predBalance: parseFloat(ethers.utils.formatEther(predBalance)),
+                        lastBalanceUpdate: Date.now(),
+                        displayName: 'User',
+                        xp: 0,
+                        balance: 0,
+                        cakeBalance: 0,
+                        avatar: '😀',
+                        streak: 0,
+                        createdAt: new Date().toISOString()
+                    });
+                    console.log(`✅ Profile created for ${userId}`);
+                } catch (syncErr) {
+                    console.warn(`⚠️  Failed to sync profile: ${syncErr.message}`);
+                }
+            }
+        }
+        
         const marketId = await firestore.runTransaction(async (transaction) => {
             const profileRef = firestore
                 .collection('artifacts')
@@ -809,10 +849,13 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 .collection(USER_PROFILE_COLLECTION)
                 .doc(userId);
             
+            console.log(`🔍 Looking for profile at: artifacts/${APP_ID}/public/data/${USER_PROFILE_COLLECTION}/${userId}`);
             const profileSnap = await transaction.get(profileRef);
             if (!profileSnap.exists) {
+                console.error(`❌ Profile not found! USER_PROFILE_COLLECTION="${USER_PROFILE_COLLECTION}", userId="${userId}"`);
                 throw new Error('User profile not found in Firestore');
             }
+            console.log(`✅ Profile found for user ${userId}`);
             
             const profileData = profileSnap.data();
             const displayName = profileData.displayName || 'Anonymous';
