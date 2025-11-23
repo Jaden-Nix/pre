@@ -3653,8 +3653,8 @@ app.post('/api/indexer/markets/:marketId/odds-snapshot', requireAdmin, async (re
 
 // --- Initialize Auto-Payout Job ---
 const autoPayoutJob = new AutoPayoutJob();
-if (db && process.env.DEPLOY_PRIVATE_KEY) {
-    const initialized = autoPayoutJob.initialize(process.env.DEPLOY_PRIVATE_KEY, db);
+if (db && process.env.DEPLOYER_PRIVATE_KEY) {
+    const initialized = autoPayoutJob.initialize(process.env.DEPLOYER_PRIVATE_KEY, db);
     if (initialized) {
         autoPayoutJob.start(5); // Check every 5 minutes
         console.log('✅ Auto-payout job started (checks every 5 minutes)');
