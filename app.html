@@ -9387,6 +9387,10 @@
                         // Calculate XP and potential payout
                         const amountInUsd = amount * getMockPrice(selectedAsset);
                         const xpToAward = getRandomXP(10);
+                        
+                        // Calculate potential return based on odds (2:1 for even money markets)
+                        // Most binary prediction markets have ~50/50 odds, so potential return ≈ 2x bet amount
+                        const potentialReturnUsd = amountInUsd * 2;
 
                         // Store metadata in Firestore for UI purposes only (NO balance mutations)
                         const pledgeData = {
@@ -9397,7 +9401,7 @@
                             amount: betAmount,
                             asset: betCurrency,
                             amountUsd: amountInUsd,
-                            potentialReturn: 0, // Calculate from contract later
+                            potentialReturn: potentialReturnUsd,
                             txHash: receipt.transactionHash,
                             blockNumber: receipt.blockNumber,
                             isResolved: false,
