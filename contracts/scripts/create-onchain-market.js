@@ -9,7 +9,7 @@ async function main() {
   console.log("🚀 Creating on-chain market on BSC Testnet...");
 
   // Contract address (update if you redeploy)
-  const CONTRACT_ADDRESS = "0xdaAf91610e33355c9Cd9258219C6A4822E693f55";
+  const CONTRACT_ADDRESS = "0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB";
 
   // Market details - CUSTOMIZE THESE
   const marketTitle = "Will BTC break $100k in December 2025?";

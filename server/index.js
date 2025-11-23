@@ -1494,7 +1494,7 @@ app.post('/api/aa/place-bet', async (req, res) => {
         const wallet = await custodialWalletService.loadWalletSigner(userId);
         
         // Updated contract address for BSC Testnet deployment
-        const contractAddress = '0xdaAf91610e33355c9Cd9258219C6A4822E693f55';
+        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
         const abi = [
             'function placeBet(uint256 _marketId, bool _pick) external payable'
         ];

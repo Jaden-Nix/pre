@@ -6,7 +6,7 @@
 import { ethers } from 'ethers';
 import admin from 'firebase-admin';
 
-const CONTRACT_ADDRESS = '0xdaAf91610e33355c9Cd9258219C6A4822E693f55';
+const CONTRACT_ADDRESS = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
 const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
 
 const CONTRACT_ABI = [
