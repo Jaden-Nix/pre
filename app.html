@@ -6093,6 +6093,7 @@
         
         // Track cooldown timer interval globally
         let faucetCooldownInterval = null;
+        let faucetIsOnCooldown = false;
         
         /**
          * Start a continuous timer for faucet cooldown
@@ -6101,6 +6102,8 @@
             if (faucetCooldownInterval) {
                 clearInterval(faucetCooldownInterval);
             }
+            
+            faucetIsOnCooldown = true;
             
             faucetCooldownInterval = setInterval(async () => {
                 if (!userProfile?.walletAddress) return;
@@ -6129,6 +6132,7 @@
                     } else if (data.canClaim === true || data.timeLeft <= 0) {
                         clearInterval(faucetCooldownInterval);
                         faucetCooldownInterval = null;
+                        faucetIsOnCooldown = false;
                         claimBtn.disabled = false;
                         claimBtn.innerHTML = '💰 Claim 50 $PRED';
                         cooldownMsg.classList.add('hidden');
@@ -6240,6 +6244,12 @@
          * Check faucet cooldown on page load and disable button if needed
          */
         async function checkFaucetCooldown() {
+            // Skip check if we're already tracking an active cooldown
+            if (faucetIsOnCooldown) {
+                console.log('⏱️  Faucet cooldown already active, skipping check');
+                return;
+            }
+            
             if (!userProfile?.walletAddress) return;
             
             const claimBtn = document.getElementById('claim-pred-btn');
@@ -6275,6 +6285,7 @@
                     claimBtn.disabled = false;
                     claimBtn.innerHTML = '💰 Claim 50 $PRED';
                     cooldownMsg.classList.add('hidden');
+                    faucetIsOnCooldown = false;
                 }
             } catch (error) {
                 console.warn('Could not check faucet cooldown:', error);
