@@ -1202,9 +1202,12 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
         try {
             if (db) {
                 const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
-                await userRef.set({
-                    lastPredClaim: Date.now()
-                }, { merge: true });
+                const timestamp = Date.now();
+                console.log(`⏱️ Updating lastPredClaim timestamp for ${userId}: ${new Date(timestamp).toISOString()}`);
+                await userRef.update({
+                    lastPredClaim: timestamp
+                });
+                console.log(`✅ Claim timestamp updated successfully for ${userId}`);
             }
         } catch (dbError) {
             console.warn(`⚠️  Could not update claim timestamp: ${dbError.message}`);
