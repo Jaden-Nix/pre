@@ -9577,7 +9577,8 @@
                 }
                 
                 // Only show for markets with pools (AMM markets)
-                if (!currentMarket.yesPool || !currentMarket.noPool) {
+                // Check if pools exist as properties (even if 0)
+                if (currentMarket.yesPool === undefined || currentMarket.noPool === undefined) {
                     ammPanel.classList.add('hidden');
                     return;
                 }
