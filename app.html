@@ -8666,10 +8666,10 @@
                     totalPrincipal += pledge.amountUsd; 
                     const pickClass = pledge.pick === 'YES' ? 'text-green-400' : 'text-red-400';
 
-                    // Display the mock transaction hash
+                    // Display real transaction hash with link to BSCScan
                     const txHashHtml = pledge.txHash 
                         ? `<div class="text-xs text-gray-500 mt-2">
-                            TX: <span class="text-sky-400 cursor-pointer" onclick="showTxToast('${pledge.txHash}')">${truncateAddress(pledge.txHash)}</span>
+                            TX: <a href="https://testnet.bscscan.com/tx/${pledge.txHash}" target="_blank" class="text-sky-400 hover:text-sky-300 underline cursor-pointer">${truncateAddress(pledge.txHash)}</a>
                           </div>`
                         : '';
 
