@@ -10092,8 +10092,16 @@
                                 });
                             } else {
                                 // BINARY AMM: YES/NO constant product formula
-                                let yesPool = market.yesPool;
-                                let noPool = market.noPool;
+                                let yesPool = parseFloat(market.yesPool) || 0;
+                                let noPool = parseFloat(market.noPool) || 0;
+                                
+                                // Initialize pools if they don't exist (first bet)
+                                if (yesPool === 0 && noPool === 0) {
+                                    yesPool = 1000; // Default initial pool for new markets
+                                    noPool = 1000;
+                                    console.log('📊 First bet on market - initializing pools to 1000 each');
+                                }
+                                
                                 const k = yesPool * noPool;
 
                                 if (pick === 'YES') {
