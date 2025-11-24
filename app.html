@@ -12159,7 +12159,41 @@
             }
             // --- END NEW VALIDATION ---
 
-            // === ON-CHAIN MARKET CREATION (ALL MARKETS) ===
+            // === HANDLE NO-LOSS MARKETS (FIXED-POT) - MOCKED FOR NOW ===
+            if (isFixedPotFinal) {
+                console.log('🛡️ Creating NO-LOSS market (MOCKED - NOT on-chain):', {
+                    title,
+                    description: insight || "No description",
+                    category,
+                    resolutionDate,
+                    liquidityAmount,
+                    liquidityAsset,
+                    yieldProtocol: yieldProtocolFinal
+                });
+                
+                showLoadingOverlay(true, "Creating no-loss market...");
+                
+                // Mock no-loss market creation
+                setTimeout(() => {
+                    showLoadingOverlay(false);
+                    showToast(`🛡️ No-Loss market created! Deposit will be locked in ${yieldProtocolFinal}.`, "success");
+                    
+                    // Clear the form
+                    document.getElementById('market-title-input').value = '';
+                    document.getElementById('market-insight-input').value = '';
+                    dom.marketYesInput.value = '';
+                    dom.marketNoInput.value = '';
+                    document.getElementById('staking-deadline-input').value = '';
+                    document.getElementById('market-resolution-date').value = '';
+                    dom.marketLiquidityInput.value = '';
+                    
+                    showScreen('home-screen');
+                }, 1500);
+                
+                return;
+            }
+
+            // === ON-CHAIN MARKET CREATION (TRADITIONAL MARKETS ONLY) ===
             showLoadingOverlay(true, "Creating market on-chain...");
 
             try {
