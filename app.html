@@ -11463,21 +11463,35 @@
                             const market = marketSnap.data();
                             const marketRef = marketSnap.ref;
                             
-                            // Use ACTUAL stored pools (they produce the percentages)
-                            // Don't derive from percentages - use the real pool values
+                            // Smart pool calculation: ensure pools match the percentages
                             let yesPool = market.yesPool || market.yesPoolBusd || 0;
                             let noPool = market.noPool || market.noPoolBusd || 0;
                             
-                            // If pools don't exist, fall back to deriving from percentages
-                            if (yesPool === 0 && noPool === 0) {
-                                if (market.yesPercent !== undefined && market.noPercent !== undefined) {
-                                    const basePool = 1000;
-                                    yesPool = (market.yesPercent / 100) * basePool;
-                                    noPool = (market.noPercent / 100) * basePool;
-                                } else {
-                                    yesPool = 50;
-                                    noPool = 50;
+                            // If we have percentages, derive pools from them to ensure accuracy
+                            if (market.yesPercent !== undefined && market.noPercent !== undefined) {
+                                const basePool = 1000; // Use consistent base for all markets
+                                const calculatedYesPool = (market.yesPercent / 100) * basePool;
+                                const calculatedNoPool = (market.noPercent / 100) * basePool;
+                                
+                                // Use calculated pools if stored pools don't exist or are suspiciously small
+                                if (yesPool === 0 || noPool === 0 || (yesPool + noPool < 10)) {
+                                    yesPool = calculatedYesPool;
+                                    noPool = calculatedNoPool;
                                 }
+                                // If stored pools exist but don't match percentages, recalculate
+                                else {
+                                    const storedTotal = yesPool + noPool;
+                                    const yesPercentFromPools = (yesPool / storedTotal) * 100;
+                                    // If percentages don't match pools (>5% variance), use percentages
+                                    if (Math.abs(yesPercentFromPools - market.yesPercent) > 5) {
+                                        yesPool = calculatedYesPool;
+                                        noPool = calculatedNoPool;
+                                    }
+                                }
+                            } else if (yesPool === 0 || noPool === 0) {
+                                // No percentages and no stored pools - use defaults
+                                yesPool = 500;
+                                noPool = 500;
                             }
                             
                             // Ensure pools are never zero
