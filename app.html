@@ -12159,84 +12159,89 @@
             }
             // --- END NEW VALIDATION ---
 
-            // === HANDLE NO-LOSS MARKETS (FIXED-POT) - MOCKED FOR NOW ===
+            // === HANDLE NO-LOSS MARKETS (FIXED-POT) - ON-CHAIN WITH YIELD TRACKING ===
             if (isFixedPotFinal) {
-                // Force BUSD for no-loss markets
+                // Force BUSD for display, but convert to PRED for on-chain
                 const noLossLiquidityAsset = 'BUSD';
-                const noLossLiquidityAmountUsd = liquidityAmount * getMockPrice(noLossLiquidityAsset);
+                const busdAmount = liquidityAmount;
                 
-                console.log('🛡️ Creating NO-LOSS market (MOCKED - NOT on-chain):', {
+                // Convert BUSD to PRED for on-chain creation (like traditional markets)
+                const busdPrice = getMockPrice('BUSD');
+                const predPrice = getMockPrice('PRED');
+                const liquidityPRED = (busdAmount * busdPrice) / predPrice;
+                
+                console.log('🛡️ Creating NO-LOSS market ON-CHAIN (with yield tracking):', {
                     title,
                     description: insight || "No description",
                     category,
                     resolutionDate,
-                    liquidityAmount: noLossLiquidityAmountUsd,
-                    liquidityAsset: noLossLiquidityAsset,
-                    yieldProtocol: yieldProtocolFinal
+                    busdAmount,
+                    liquidityPRED,
+                    yieldProtocol: yieldProtocolFinal,
+                    initialOdds: { yesPercent, noPercent }
                 });
                 
-                showLoadingOverlay(true, "Creating no-loss market...");
+                showLoadingOverlay(true, "Creating no-loss market on-chain...");
                 
-                // Mock no-loss market creation with Firestore persistence
-                setTimeout(async () => {
-                    try {
-                        // Use the global Firestore instance (db) and functions that are already loaded
-                        const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'predora-hackathon';
-                        const STANDARD_MARKETS_COLLECTION = 'standard_markets';
-                        
-                        // Get Firestore functions from the global scope (already imported in the app)
-                        const { addDoc, collection, serverTimestamp } = window.firebase.firestore;
-                        
-                        // Create market document for no-loss market
-                        // NOTE: No-loss markets don't have yes/no odds (fixed-pot with principal protection)
-                        const marketData = {
+                try {
+                    // Get Firebase ID token for authentication
+                    const idToken = await auth.currentUser.getIdToken();
+                    
+                    // Call backend to create ON-CHAIN market (same as traditional, but marked as fixed-pot)
+                    const response = await fetch('/api/market/create-onchain', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${idToken}`
+                        },
+                        body: JSON.stringify({
                             title,
                             description: insight || "No description",
-                            category,
-                            resolutionDate: new Date(resolutionDate),
-                            createdAt: serverTimestamp(),
-                            creator: userWalletAddress,
-                            creatorUID: auth.currentUser.uid,
-                            marketType: 'fixed-pot',
+                            category: category,
+                            endDate: resolutionDate,
+                            liquidityPRED: liquidityPRED.toString(),
+                            walletAddress: userWalletAddress,
+                            marketStructure: marketStructure,
+                            initialOdds: marketStructure === 'binary' ? { yesPercent, noPercent } : null,
+                            options: marketStructure === 'multi-option' ? multiOptions : null,
+                            // MARK THIS AS A NO-LOSS MARKET
+                            isNoLossMarket: true,
                             yieldProtocol: yieldProtocolFinal,
-                            liquidityAmount: noLossLiquidityAmountUsd,
-                            liquidityAsset: noLossLiquidityAsset,
-                            liquidityAmountUSD: noLossLiquidityAmountUsd,
-                            status: 'active',
-                            marketStructure,
-                            totalVolume: noLossLiquidityAmountUsd,
-                            yesShares: null,
-                            noShares: null,
-                            onChainMarketId: null,
-                            txHash: null,
-                            isResolved: false
-                        };
-                        
-                        // Add to Firestore using the same path as traditional markets
-                        // db is a global variable initialized during Firebase setup
-                        const marketRef = collection(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION);
-                        const docRef = await addDoc(marketRef, marketData);
-                        console.log('💾 No-loss market saved to Firestore:', docRef.id);
-                        
-                        showLoadingOverlay(false);
-                        showToast(`🛡️ No-Loss market created! Deposit will be locked in ${yieldProtocolFinal}.`, "success");
-                        
-                        // Clear the form
-                        document.getElementById('market-title-input').value = '';
-                        document.getElementById('market-insight-input').value = '';
-                        dom.marketYesInput.value = '';
-                        dom.marketNoInput.value = '';
-                        document.getElementById('staking-deadline-input').value = '';
-                        document.getElementById('market-resolution-date').value = '';
-                        dom.marketLiquidityInput.value = '';
-                        
-                        showScreen('home-screen');
-                    } catch (error) {
-                        console.error('❌ Error saving no-loss market to Firestore:', error);
-                        showLoadingOverlay(false);
-                        showToast(`Error saving market: ${error.message}`, "error");
+                            liquidityAssetUSD: noLossLiquidityAsset,
+                            liquidityAmountUSD: busdAmount
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (!result.success) {
+                        throw new Error(result.error || 'Failed to create no-loss market');
                     }
-                }, 1500);
+
+                    console.log('✅ No-Loss market created on-chain!');
+                    console.log(`   Firestore ID: ${result.marketId}`);
+                    console.log(`   On-chain ID: ${result.onChainMarketId}`);
+                    console.log(`   TX: ${result.txHash}`);
+                    
+                    showLoadingOverlay(false);
+                    showToast(`🛡️ No-Loss market created! Principal protected in ${yieldProtocolFinal}. TX: ${result.txHash.slice(0, 10)}...`, "success");
+                    
+                    // Clear the form
+                    document.getElementById('market-title-input').value = '';
+                    document.getElementById('market-insight-input').value = '';
+                    dom.marketYesInput.value = '';
+                    dom.marketNoInput.value = '';
+                    document.getElementById('staking-deadline-input').value = '';
+                    document.getElementById('market-resolution-date').value = '';
+                    dom.marketLiquidityInput.value = '';
+                    
+                    showScreen('home-screen');
+
+                } catch (error) {
+                    console.error("❌ No-loss market creation failed:", error);
+                    showLoadingOverlay(false);
+                    showToast(`Market creation failed: ${error.message}`, "error");
+                }
                 
                 return;
             }
