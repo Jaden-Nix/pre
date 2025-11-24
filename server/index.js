@@ -732,8 +732,8 @@ app.post('/api/market/create-onchain', async (req, res) => {
         // Initialize contracts
         const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
         const contractABI = [
-            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
-            'event MarketCreated(uint256 indexed marketId, string title, address indexed creator, uint256 initialYesBnb, uint256 initialNoBnb, uint256 initialYesPred, uint256 initialNoPred)'
+            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime) external returns (uint256)',
+            'event MarketCreated(uint256 indexed marketId, string title, address indexed creator)'
         ];
         
         const PRED_TOKEN_ADDRESS = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
@@ -770,10 +770,6 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 title, 
                 description, 
                 resolutionTime,
-                0,                  // _initialYesBnb = 0 (PRED only)
-                0,                  // _initialNoBnb = 0 (PRED only)
-                halfLiquidityPred,  // _initialYesPred
-                halfLiquidityPred,  // _initialNoPred
                 { gasLimit: 600000 }
             );
         } catch (createError) {
@@ -2893,8 +2889,8 @@ Generate 5 quick, fun YES/NO prediction questions about uncertain events in the 
                     }
                     
                     const contractABI = [
-                        'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
-                        'event MarketCreated(uint256 indexed marketId, string title, address indexed creator, uint256 initialYesBnb, uint256 initialNoBnb, uint256 initialYesPred, uint256 initialNoPred)'
+                        'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime) external returns (uint256)',
+                        'event MarketCreated(uint256 indexed marketId, string title, address indexed creator)'
                     ];
                     const contract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
                     
@@ -2905,11 +2901,7 @@ Generate 5 quick, fun YES/NO prediction questions about uncertain events in the 
                         item.question,
                         "Quick Play market - fast resolution",
                         resolutionTime,
-                        halfLiquidityBnb,
-                        halfLiquidityBnb,
-                        halfLiquidityPred,
-                        halfLiquidityPred,
-                        { value: liquidityBnbWei, gasLimit: 600000 }  // Increased from 500000
+                        { gasLimit: 600000 }
                     );
                     
                     const receipt = await tx.wait();
