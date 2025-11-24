@@ -11397,22 +11397,24 @@
                                 // User adds to YES pool
                                 const newYesPool = yesPool + amountInUsdPerPledge;
                                 const newNoPool = k / newYesPool;
+                                const totalPool = newYesPool + newNoPool;
                                 
                                 // User's share of YES side = their stake / new YES pool
-                                const userSharePercent = (amountInUsdPerPledge / newYesPool) * 100;
+                                const userShare = amountInUsdPerPledge / newYesPool;
                                 
-                                // If they win: they get their share of the COMBINED pool
-                                potentialPayoutUsd = amountInUsdPerPledge + (newNoPool * userSharePercent / 100);
+                                // If YES wins: they get their proportional share of the entire pool
+                                potentialPayoutUsd = userShare * totalPool;
                             } else { // pick === 'NO'
                                 // User adds to NO pool
                                 const newNoPool = noPool + amountInUsdPerPledge;
                                 const newYesPool = k / newNoPool;
+                                const totalPool = newYesPool + newNoPool;
                                 
                                 // User's share of NO side = their stake / new NO pool
-                                const userSharePercent = (amountInUsdPerPledge / newNoPool) * 100;
+                                const userShare = amountInUsdPerPledge / newNoPool;
                                 
-                                // If they win: they get their share of the COMBINED pool
-                                potentialPayoutUsd = amountInUsdPerPledge + (newYesPool * userSharePercent / 100);
+                                // If NO wins: they get their proportional share of the entire pool
+                                potentialPayoutUsd = userShare * totalPool;
                             }
 
                             const pledgeRef = doc(pledgeCollection);
@@ -11452,15 +11454,14 @@
                                 // User adds to YES pool
                                 const newYesPool = yesPool + amountInUsdPerPledge;
                                 const newNoPool = k / newYesPool;
+                                const totalPoolAfter = newYesPool + newNoPool;
                                 
                                 // User's share of YES side = their stake / new YES pool
-                                userSharePercent = (amountInUsdPerPledge / newYesPool) * 100;
+                                const userShare = amountInUsdPerPledge / newYesPool;
+                                userSharePercent = userShare * 100;
                                 
-                                // If they win: they get their share of the COMBINED pool
-                                // potentialPayout = (stake + losingPool)
-                                // Simpler: stake + amount from price movement
-                                const priceMovement = yesPool - newYesPool + (newNoPool - noPool);
-                                potentialPayoutUsd = amountInUsdPerPledge + (newNoPool * userSharePercent / 100);
+                                // If YES wins: they get their proportional share of the entire pool
+                                potentialPayoutUsd = userShare * totalPoolAfter;
                                 
                                 yesPool = newYesPool;
                                 noPool = newNoPool;
@@ -11468,13 +11469,14 @@
                                 // User adds to NO pool
                                 const newNoPool = noPool + amountInUsdPerPledge;
                                 const newYesPool = k / newNoPool;
+                                const totalPoolAfter = newYesPool + newNoPool;
                                 
                                 // User's share of NO side = their stake / new NO pool
-                                userSharePercent = (amountInUsdPerPledge / newNoPool) * 100;
+                                const userShare = amountInUsdPerPledge / newNoPool;
+                                userSharePercent = userShare * 100;
                                 
-                                // If they win: they get their share of the COMBINED pool
-                                const priceMovement = noPool - newNoPool + (newYesPool - yesPool);
-                                potentialPayoutUsd = amountInUsdPerPledge + (newYesPool * userSharePercent / 100);
+                                // If NO wins: they get their proportional share of the entire pool
+                                potentialPayoutUsd = userShare * totalPoolAfter;
                                 
                                 yesPool = newYesPool;
                                 noPool = newNoPool;
