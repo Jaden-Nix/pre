@@ -7,7 +7,7 @@ const ethers = require('ethers');
 
 // Contract ABI (will be auto-generated after deployment)
 const PREDICTION_MARKET_ABI = [
-    "function createMarket(string memory _title, string memory _description, uint256 _resolutionTime) external returns (uint256)",
+    "function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)",
     "function placeBet(uint256 _marketId, bool _pick) external payable",
     "function resolveMarket(uint256 _marketId, bool _outcome) external",
     "function claimWinnings(uint256 _betId) external",
@@ -45,11 +45,11 @@ class ContractManager {
     /**
      * Create a new prediction market on-chain
      */
-    async createMarket(title, description, resolutionTime) {
+    async createMarket(title, description, resolutionTime, initialYesBnb, initialNoBnb, initialYesPred, initialNoPred, bnbValue) {
         if (!this.contract) throw new Error('Contract not initialized. Connect wallet first.');
         
         try {
-            const tx = await this.contract.createMarket(title, description, resolutionTime);
+            const tx = await this.contract.createMarket(title, description, resolutionTime, initialYesBnb, initialNoBnb, initialYesPred, initialNoPred, { value: bnbValue });
             const receipt = await tx.wait(1);
             return {
                 success: true,
