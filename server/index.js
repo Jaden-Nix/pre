@@ -766,11 +766,13 @@ app.post('/api/market/create-onchain', async (req, res) => {
         
         let tx;
         try {
+            // Send BNB value for initial liquidity
+            const bnbValue = ethers.utils.parseEther('0.001');
             tx = await predictionMarketContract.createMarket(
                 title, 
                 description, 
                 resolutionTime,
-                { gasLimit: 600000 }
+                { value: bnbValue, gasLimit: 600000 }
             );
         } catch (createError) {
             console.error(`❌ Smart contract call failed:`, createError.message);
@@ -2897,11 +2899,12 @@ Generate 5 quick, fun YES/NO prediction questions about uncertain events in the 
                     const resolutionTime = Math.floor(new Date(item.expiresAt).getTime() / 1000);
                     
                     console.log(`🎮 Creating Quick Play on-chain: "${item.question}"`);
+                    const bnbValue = ethers.utils.parseEther('0.001');
                     const tx = await contract.createMarket(
                         item.question,
                         "Quick Play market - fast resolution",
                         resolutionTime,
-                        { gasLimit: 600000 }
+                        { value: bnbValue, gasLimit: 600000 }
                     );
                     
                     const receipt = await tx.wait();
@@ -3686,11 +3689,13 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         }
         
         // Call createMarket with 3 parameters (as the deployed contract requires)
+        // Send 0.001 BNB as value for initial liquidity
+        const bnbValue = ethers.utils.parseEther('0.001');
         const tx = await predictionMarketContract.createMarket(
             title,
             `Quick Play: ${title}`,
             resolutionTime,
-            { gasLimit: 300000 }
+            { value: bnbValue, gasLimit: 300000 }
         );
         
         const receipt = await tx.wait();
