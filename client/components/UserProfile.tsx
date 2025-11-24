@@ -374,31 +374,37 @@ export function UserProfile() {
         <div className="space-y-4">
           {betActivity.length > 0 ? (
             betActivity.map((bet) => (
-              <div key={bet.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
-                <div className="flex-1">
-                  <p className="font-semibold mb-1">{bet.marketTitle}</p>
-                  <p className="text-sm text-gray-400">
-                    Bet: {bet.choice} • {bet.amount} BUSD
-                    {bet.potentialPayout && (
-                      <span className="ml-2 text-green-400">
-                        → {bet.potentialPayout.toFixed(2)} BUSD ({bet.roi}% ROI)
-                      </span>
-                    )}
-                  </p>
+              <div key={bet.id} className="p-4 bg-white/5 rounded-xl border border-white/10">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="flex-1">
+                    <p className="font-semibold text-white mb-1">{bet.marketTitle}</p>
+                    <p className="text-sm text-gray-400">
+                      Bet: <span className="text-sky-400 font-bold">{bet.choice}</span> • <span className="text-yellow-400">{bet.amount} BUSD</span>
+                    </p>
+                  </div>
+                  <span
+                    className={`px-3 py-1 text-xs font-bold rounded-full whitespace-nowrap ${
+                      bet.status === 'active'
+                        ? 'bg-blue-500/20 text-blue-400'
+                        : bet.status === 'won'
+                        ? 'bg-green-500/20 text-green-400'
+                        : bet.status === 'lost'
+                        ? 'bg-red-500/20 text-red-400'
+                        : 'bg-gray-500/20 text-gray-400'
+                    }`}
+                  >
+                    {bet.status.charAt(0).toUpperCase() + bet.status.slice(1)}
+                  </span>
                 </div>
-                <span
-                  className={`px-3 py-1 text-xs font-bold rounded-full ${
-                    bet.status === 'active'
-                      ? 'bg-blue-500/20 text-blue-400'
-                      : bet.status === 'won'
-                      ? 'bg-green-500/20 text-green-400'
-                      : bet.status === 'lost'
-                      ? 'bg-red-500/20 text-red-400'
-                      : 'bg-gray-500/20 text-gray-400'
-                  }`}
-                >
-                  {bet.status.charAt(0).toUpperCase() + bet.status.slice(1)}
-                </span>
+                {bet.potentialPayout ? (
+                  <div className="text-sm">
+                    <span className="text-gray-400">Payout: </span>
+                    <span className="text-green-400 font-bold">{bet.potentialPayout.toFixed(2)} BUSD</span>
+                    <span className="text-gray-400 mx-2">|</span>
+                    <span className="text-gray-400">ROI: </span>
+                    <span className="text-yellow-400 font-bold text-base">{bet.roi}%</span>
+                  </div>
+                ) : null}
               </div>
             ))
           ) : (
