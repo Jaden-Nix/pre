@@ -3939,32 +3939,26 @@ app.post('/api/quick-play/calculate-payout', async (req, res) => {
         const totalVotes = yesVotes + noVotes;
         const betAmount = parseFloat(amount);
         
-        // Simple odds: split based on votes
+        // AMM Odds: split based on votes (current pools)
         const yesOdds = totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 50;
         const noOdds = totalVotes > 0 ? (noVotes / totalVotes) * 100 : 50;
         
-        // Calculate potential payout based on odds
-        // Better payout = Bet / Odds (in decimal form)
-        // Example: If YES is 99% odds, payout = 5 / 0.99 = 5.05 BUSD
-        // Example: If NO is 1% odds, payout = 5 / 0.01 = 500 BUSD
-        
-        let oddsDecimal;
+        // Use votes as pool representations for AMM calculation
+        let yourPool, oppositePool;
         if (choice.toUpperCase() === 'YES') {
-            oddsDecimal = yesOdds / 100; // Convert percentage to decimal
+            yourPool = yesVotes > 0 ? yesVotes : 1;     // Your side pool
+            oppositePool = noVotes > 0 ? noVotes : 1;   // Opposite side pool
         } else {
-            oddsDecimal = noOdds / 100;
+            yourPool = noVotes > 0 ? noVotes : 1;
+            oppositePool = yesVotes > 0 ? yesVotes : 1;
         }
         
-        // If no odds are available (no votes yet), default to 1:1
-        if (oddsDecimal === 0) {
-            oddsDecimal = 0.5; // 50-50 split for first bets
-        }
-        
-        // Payout = Stake / Odds
-        // This gives better payouts for unpopular choices
-        const potentialPayout = betAmount / oddsDecimal;
+        // AMM Payout Formula: Bet + (Opposite Pool × Bet / Your Pool)
+        // This rewards betting against the crowd with a share of the larger pool
+        const winnerShare = (oppositePool * betAmount) / yourPool;
+        const potentialPayout = betAmount + winnerShare;
         const potentialProfit = potentialPayout - betAmount;
-        const roi = ((potentialPayout - betAmount) / betAmount * 100).toFixed(1);
+        const roi = ((potentialProfit / betAmount) * 100).toFixed(1);
         
         res.status(200).json({
             success: true,
