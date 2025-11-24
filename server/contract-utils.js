@@ -7,7 +7,7 @@ const ethers = require('ethers');
 
 // Contract ABI (will be auto-generated after deployment)
 const PREDICTION_MARKET_ABI = [
-    "function createMarket(string memory _title, string memory _description, uint256 _resolutionTime) external returns (uint256)",
+    "function createMarket(string memory _title, string memory _description, uint256 _resolutionTime) external payable returns (uint256)",
     "function placeBet(uint256 _marketId, bool _pick) external payable",
     "function resolveMarket(uint256 _marketId, bool _outcome) external",
     "function claimWinnings(uint256 _betId) external",
