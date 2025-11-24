@@ -9641,22 +9641,25 @@
                     populateAssetSelector();
                     showScreen('market-detail-screen');
                     
-                    // Start auto-updating AMM odds every 3 seconds (detect currency first)
-                    const mktId = currentMarket.onChainMarketId || marketId;
-                    if (mktId) {
-                        console.log(`🚀 Starting AMM odds auto-update for market ID: ${mktId}`);
+                    // ✅ SKIP AMM UPDATES FOR FIRESTORE-ONLY MARKETS (No-Loss, Quick Play)
+                    // Only call AMM updates for on-chain markets
+                    const isFirestoreOnly = currentMarket.isMock || currentMarket.isNoLoss || !currentMarket.isOnChain;
+                    if (isFirestoreOnly) {
+                        console.log(`🛡️ Firestore-only market (No-Loss/Quick Play) - using fixed odds from Firestore`);
+                    } else if (currentMarket.onChainMarketId) {
+                        console.log(`🚀 Starting AMM odds auto-update for on-chain market ID: ${currentMarket.onChainMarketId}`);
                         // Detect which currency the market is using (BNB or PRED)
-                        detectMarketCurrency(mktId).then(detectedCurrency => {
+                        detectMarketCurrency(currentMarket.onChainMarketId).then(detectedCurrency => {
                             // Ensure we have a valid currency (fallback to BNB if undefined)
                             const safeCurrency = detectedCurrency || 'BNB';
-                            window.startAMMOddsAutoUpdate(mktId, safeCurrency);
+                            window.startAMMOddsAutoUpdate(currentMarket.onChainMarketId, safeCurrency);
                         }).catch(err => {
                             // If detection fails completely, default to BNB and log error
                             console.error('⚠️ Currency detection failed:', err);
-                            window.startAMMOddsAutoUpdate(mktId, 'BNB');
+                            window.startAMMOddsAutoUpdate(currentMarket.onChainMarketId, 'BNB');
                         });
                     } else {
-                        console.log('⚠️ Could not start AMM odds update - no market ID found');
+                        console.log('⚠️ Could not start AMM odds update - no on-chain market ID found');
                     }
 
                     // Setup yield calculator for no-loss markets

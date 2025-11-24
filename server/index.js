@@ -2246,6 +2246,21 @@ app.post('/api/get-market-odds', async (req, res) => {
             return res.status(400).json({ error: 'Market ID required' });
         }
         
+        // 🔍 CHECK: If marketId is NOT numeric, it's a Firestore ID (Firestore-only market)
+        // Firestore-only markets (No-Loss, Quick Play) should not query blockchain
+        if (isNaN(marketId)) {
+            console.log(`🛡️ Firestore-only market detected (marketId: ${marketId}), skipping blockchain query`);
+            return res.json({
+                success: true,
+                yesPercent: 50,
+                noPercent: 50,
+                yesPool: 0,
+                noPool: 0,
+                firestore_only: true,
+                currency: currency || 'BNB'
+            });
+        }
+        
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
         const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
         
@@ -2335,6 +2350,24 @@ app.post('/api/calculate-amm-payout', async (req, res) => {
         if (!marketId || !amount || !currency || pick === undefined) {
             return res.status(400).json({ 
                 error: 'Missing required fields: marketId, amount, currency, pick' 
+            });
+        }
+        
+        // 🔍 CHECK: If marketId is NOT numeric, it's a Firestore ID (Firestore-only market)
+        if (isNaN(marketId)) {
+            console.log(`🛡️ Firestore-only market detected (marketId: ${marketId}), using fallback payout estimation`);
+            const inputAmount = parseFloat(amount);
+            const estimatedPayout = inputAmount * 2; // Standard 2x payout for Firestore markets
+            
+            return res.json({
+                success: true,
+                inputAmount,
+                payoutAmount: estimatedPayout,
+                roi: 100,
+                currency,
+                pick: pick ? 'YES' : 'NO',
+                firestore_only: true,
+                message: 'Firestore-only market (No-Loss/Quick Play)'
             });
         }
         
