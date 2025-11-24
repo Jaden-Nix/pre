@@ -9588,10 +9588,12 @@
              * [CORRECTED VERSION FOR CHARTING]
              */
             window.viewMarketDetail = async (marketId) => {
-                const { doc, getDoc, onSnapshot } = window.firebase.firestore;
+                const { doc, getDoc, onSnapshot, getFirestore } = window.firebase.firestore;
                 currentMarketId = marketId;
 
                 try {
+                    // ✅ Get Firestore instance
+                    const db = getFirestore();
                     const marketRef = doc(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION, marketId);
                     const docSnap = await getDoc(marketRef);
                     if (!docSnap.exists()) {
