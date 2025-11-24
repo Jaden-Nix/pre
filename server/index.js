@@ -3913,6 +3913,69 @@ app.post('/api/admin/create-quick-play-market', async (req, res) => {
     }
 });
 
+// ✅ CALCULATE QUICK PLAY PAYOUT - Show potential return on bet
+app.post('/api/quick-play/calculate-payout', async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    const { quickPlayId, amount, choice } = req.body;
+    
+    if (!quickPlayId || !amount || !choice) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    try {
+        const quickPlayRef = db.collection(`artifacts/${APP_ID}/public/data/quick_plays`).doc(quickPlayId);
+        const quickPlaySnap = await quickPlayRef.get();
+        
+        if (!quickPlaySnap.exists) {
+            return res.status(404).json({ error: 'Quick play not found' });
+        }
+        
+        const market = quickPlaySnap.data();
+        const yesVotes = market.yesVotes || 0;
+        const noVotes = market.noVotes || 0;
+        const totalVotes = yesVotes + noVotes;
+        const betAmount = parseFloat(amount);
+        
+        // Simple odds: split based on votes
+        const yesOdds = totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 50;
+        const noOdds = totalVotes > 0 ? (noVotes / totalVotes) * 100 : 50;
+        
+        // Calculate potential payout based on odds
+        // If betting on YES: potential payout = bet / (yesOdds/100)
+        // If betting on NO: potential payout = bet / (noOdds/100)
+        let odds;
+        if (choice.toUpperCase() === 'YES') {
+            odds = yesOdds / 100;
+        } else {
+            odds = noOdds / 100;
+        }
+        
+        // Payout = bet / odds (if odds are represented as probability)
+        // Or simpler: bet * (1 + (1 - odds)) if odds favor the bet
+        const potentialPayout = odds > 0 ? betAmount / odds : betAmount * 2;
+        const potentialProfit = potentialPayout - betAmount;
+        const roi = odds > 0 ? ((potentialPayout - betAmount) / betAmount * 100).toFixed(1) : 100;
+        
+        res.status(200).json({
+            success: true,
+            inputAmount: betAmount,
+            potentialPayout: parseFloat(potentialPayout.toFixed(2)),
+            potentialProfit: parseFloat(potentialProfit.toFixed(2)),
+            roi: roi,
+            choice: choice.toUpperCase(),
+            odds: parseFloat(odds.toFixed(4)),
+            yesOdds: parseFloat(yesOdds.toFixed(1)),
+            noOdds: parseFloat(noOdds.toFixed(1))
+        });
+    } catch (error) {
+        console.error('Error calculating quick play payout:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ✅ PLACE QUICK PLAY BET - Store user bets with BUSD amounts
 app.post('/api/quick-play/place-bet', async (req, res) => {
     if (!db) {
