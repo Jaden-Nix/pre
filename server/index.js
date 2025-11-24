@@ -230,6 +230,27 @@ try {
         db.collection('_test').limit(1).get()
             .then(() => console.log("✅ Firestore connection verified"))
             .catch(testError => console.error("⚠️  Firestore connection warning:", testError.message));
+        
+        // Fix old quick play markets that don't have pool values initialized
+        db.collection(`artifacts/${APP_ID}/public/data/quick_plays`).get()
+            .then(snapshot => {
+                let fixedCount = 0;
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (!data.yesPoolBusd || !data.noPoolBusd || data.yesPoolBusd <= 0 || data.noPoolBusd <= 0) {
+                        // Fix missing or zero pools
+                        doc.ref.update({
+                            yesPoolBusd: 50,
+                            noPoolBusd: 50
+                        }).catch(err => console.warn(`Could not fix market ${doc.id}:`, err.message));
+                        fixedCount++;
+                    }
+                });
+                if (fixedCount > 0) {
+                    console.log(`🔧 Quick Play: Fixed ${fixedCount} markets with missing/zero pools`);
+                }
+            })
+            .catch(err => console.warn(`Could not check quick play markets: ${err.message}`));
     } else {
         console.warn("⚠️  Firebase Admin SDK not initialized (missing GOOGLE_APPLICATION_CREDENTIALS).");
         console.log("   App will work with client-side Firebase only.");
@@ -3944,6 +3965,12 @@ app.post('/api/quick-play/calculate-payout', async (req, res) => {
         let yesPoolBusd = market.yesPoolBusd || 50;
         let noPoolBusd = market.noPoolBusd || 50;
         
+        // Ensure pools are valid numbers
+        yesPoolBusd = parseFloat(yesPoolBusd) || 50;
+        noPoolBusd = parseFloat(noPoolBusd) || 50;
+        
+        console.log(`💰 Payout calc for ${choice} on ${quickPlayId}: YES pool=${yesPoolBusd}, NO pool=${noPoolBusd}, bet=${betAmount}`);
+        
         // Calculate odds based on current pool balances
         const totalPoolBusd = yesPoolBusd + noPoolBusd;
         const yesOdds = (yesPoolBusd / totalPoolBusd) * 100;
@@ -3965,6 +3992,8 @@ app.post('/api/quick-play/calculate-payout', async (req, res) => {
         const potentialPayout = betAmount + winnerShare;
         const potentialProfit = potentialPayout - betAmount;
         const roi = ((potentialProfit / betAmount) * 100).toFixed(1);
+        
+        console.log(`📊 Calculation: yourPool=${yourPool}, oppositePool=${oppositePool}, winnerShare=${winnerShare}, payout=${potentialPayout}, roi=${roi}`);
         
         // Calculate odds for the chosen option
         const chosenOdds = choice.toUpperCase() === 'YES' ? yesOdds : noOdds;
