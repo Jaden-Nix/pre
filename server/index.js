@@ -3960,6 +3960,10 @@ app.post('/api/quick-play/calculate-payout', async (req, res) => {
         const potentialProfit = potentialPayout - betAmount;
         const roi = ((potentialProfit / betAmount) * 100).toFixed(1);
         
+        // Calculate odds for the chosen option
+        const chosenOdds = choice.toUpperCase() === 'YES' ? yesOdds : noOdds;
+        const oddsDecimal = chosenOdds / 100;
+        
         res.status(200).json({
             success: true,
             inputAmount: betAmount,
