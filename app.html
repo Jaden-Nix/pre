@@ -4237,7 +4237,7 @@
         const USER_PROFILE_COLLECTION = 'profile'; 
         const PUBLIC_LEADERBOARD_COLLECTION = 'leaderboard'; 
         const STANDARD_MARKETS_COLLECTION = 'standard_markets'; 
-        const QUICK_PLAY_MARKETS_COLLECTION = 'quick_plays'; 
+        const QUICK_PLAY_MARKETS_COLLECTION = 'quick_play_markets'; 
         const PLEDGES_COLLECTION = 'pledges'; 
         const STAKE_LOGS_COLLECTION = 'stake_logs';
         const MARKET_COMMENTS_COLLECTION = 'market_comments';
@@ -10237,12 +10237,6 @@
                 console.log(`   Total Return: ${potentialReturn.toFixed(returnDecimals)} ${asset} (~$${potentialReturnUsd.toFixed(2)})`);
                 console.log(`   ROI: ${roi.toFixed(1)}%`);
                 
-                // Update calc-stake display with potential return (for Quick Play payout display)
-                const calcStakeEl = document.getElementById('calc-stake');
-                if (calcStakeEl) {
-                    calcStakeEl.innerText = `$${potentialReturnUsd.toFixed(2)}`;
-                }
-                
             } catch (error) {
                 console.error('❌ Error calculating AMM impact:', error);
                 const ammPanel = document.getElementById('amm-impact-panel');
@@ -10474,16 +10468,6 @@
                             marketStructure: currentMarket.marketStructure || 'binary',
                             onChainBet: true
                         };
-
-                        // 🛡️ FOR NO-LOSS MARKETS: Track entry price and timestamp for yield distribution
-                        if (currentMarket.isFixedPot || currentMarket.marketType === 'fixed-pot') {
-                            pledgeData.isNoLossBet = true;
-                            pledgeData.entryYesPercent = currentMarket.yesPercent;
-                            pledgeData.entryNoPercent = currentMarket.noPercent;
-                            pledgeData.entryTimestamp = Date.now();
-                            pledgeData.entryPrice = pick === 'YES' ? currentMarket.yesPercent : currentMarket.noPercent;
-                            console.log(`🛡️ No-loss bet recorded: Entry price ${pledgeData.entryPrice}% at ${new Date().toISOString()}`);
-                        }
 
                         if (isMultiOption && optionLabel) {
                             pledgeData.optionLabel = optionLabel;
@@ -10769,16 +10753,6 @@
                         createdAt: new Date().toISOString(),
                         marketStructure: market.marketStructure || 'binary'
                     };
-
-                    // 🛡️ FOR NO-LOSS MARKETS: Track entry price and timestamp for yield distribution
-                    if (market.isFixedPot || market.marketType === 'fixed-pot') {
-                        pledgeData.isNoLossBet = true;
-                        pledgeData.entryYesPercent = market.yesPercent;
-                        pledgeData.entryNoPercent = market.noPercent;
-                        pledgeData.entryTimestamp = Date.now();
-                        pledgeData.entryPrice = pick === 'YES' ? market.yesPercent : market.noPercent;
-                        console.log(`🛡️ No-loss bet recorded (custodial): Entry price ${pledgeData.entryPrice}% at ${new Date().toISOString()}`);
-                    }
 
                     // Add option label for multi-option markets
                     if (isMultiOption && optionLabel) {
@@ -11302,10 +11276,6 @@
                     // Store in Firestore for UI tracking (NOT deducting balance - already paid with wallet BNB)
                     for (const pledge of onChainPledges) {
                         const pledgeRef = doc(collection(db, 'artifacts', APP_ID, 'public', 'data', PLEDGES_COLLECTION));
-                        // Calculate potential return for display
-                        const stakeInUsd = pledge.amount * getMockPrice('BUSD');
-                        const potentialReturnUsd = stakeInUsd * 2; // 2x for display (actual payout depends on AMM)
-                        
                         await setDoc(pledgeRef, {
                             marketId: pledge.id,
                             onChainMarketId: pledge.onChainMarketId,
@@ -11314,13 +11284,9 @@
                             pick: pledge.pick,
                             amount: pledge.amount,
                             asset: 'BNB', // On-chain always uses BNB
-                            amountUsd: stakeInUsd,
-                            potentialReturn: potentialReturnUsd,
                             txHash: receipt.transactionHash,
                             isOnChain: true,
                             isResolved: false,
-                            payout: 0,
-                            isWinner: null,
                             createdAt: new Date().toISOString(),
                             isQuickPlay: true
                         });
@@ -11410,53 +11376,11 @@
                         totalXp += getRandomXP(10);
 
                         // Safety check: Does this market have AMM pools?
-                        // Check for either yesPool (standard) or yesPoolBusd (Quick Play)
-                        const marketData = marketSnap.exists() ? marketSnap.data() : null;
-                        const hasRealPools = marketData && (marketData.yesPool || marketData.yesPoolBusd);
-                        
-                        if (!hasRealPools) {
+                        if (!marketSnap.exists() || !marketSnap.data().yesPool) {
                             // This is a MOCK market or an OLD market.
-                            // Use AMM calculation with market's actual YES/NO percentages
-                            const market = marketSnap.exists() ? marketSnap.data() : null;
-                            
-                            // Get market percentages or default to 50/50
-                            const yesPercent = market?.yesPercent || 50;
-                            const noPercent = market?.noPercent || 50;
-                            
-                            // Derive pool sizes from percentages (assume total pool = $1000 for better precision)
-                            const totalPoolUsd = 1000;
-                            let yesPool = (yesPercent / 100) * totalPoolUsd;
-                            let noPool = (noPercent / 100) * totalPoolUsd;
-                            // Ensure pools are never zero (minimum 0.01)
-                            yesPool = Math.max(yesPool, 0.01);
-                            noPool = Math.max(noPool, 0.01);
-                            const k = yesPool * noPool; // Constant product
-                            
-                            let potentialPayoutUsd = 0;
-                            
-                            if (item.pick === 'YES') {
-                                // User adds to YES pool
-                                const newYesPool = yesPool + amountInUsdPerPledge;
-                                const newNoPool = k / newYesPool;
-                                const totalPool = newYesPool + newNoPool;
-                                
-                                // User's share of YES side = their stake / new YES pool
-                                const userShare = amountInUsdPerPledge / newYesPool;
-                                
-                                // If YES wins: they get their proportional share of the entire pool
-                                potentialPayoutUsd = userShare * totalPool;
-                            } else { // pick === 'NO'
-                                // User adds to NO pool
-                                const newNoPool = noPool + amountInUsdPerPledge;
-                                const newYesPool = k / newNoPool;
-                                const totalPool = newYesPool + newNoPool;
-                                
-                                // User's share of NO side = their stake / new NO pool
-                                const userShare = amountInUsdPerPledge / newNoPool;
-                                
-                                // If NO wins: they get their proportional share of the entire pool
-                                potentialPayoutUsd = userShare * totalPool;
-                            }
+                            // We will use the old 60/40 fixed-odds logic for this one.
+                            const odds = 60; 
+                            const potentialReturn = (amountInUsdPerPledge / (odds / 100));
 
                             const pledgeRef = doc(pledgeCollection);
                             transaction.set(pledgeRef, {
@@ -11467,7 +11391,7 @@
                                 amount: item.amount, 
                                 asset: selectedAsset, 
                                 amountUsd: amountInUsdPerPledge, 
-                                potentialReturn: potentialPayoutUsd,
+                                potentialReturn: potentialReturn,
                                 txHash: txHash,
                                 isResolved: false,
                                 isWinner: null,
@@ -11482,41 +11406,8 @@
                             // Proper AMM Payout Calculation
                             const market = marketSnap.data();
                             const marketRef = marketSnap.ref;
-                            
-                            // Smart pool calculation: ensure pools match the percentages
-                            let yesPool = market.yesPool || market.yesPoolBusd || 0;
-                            let noPool = market.noPool || market.noPoolBusd || 0;
-                            
-                            // If we have percentages, derive pools from them to ensure accuracy
-                            if (market.yesPercent !== undefined && market.noPercent !== undefined) {
-                                const basePool = 1000; // Use consistent base for all markets
-                                const calculatedYesPool = (market.yesPercent / 100) * basePool;
-                                const calculatedNoPool = (market.noPercent / 100) * basePool;
-                                
-                                // Use calculated pools if stored pools don't exist or are suspiciously small
-                                if (yesPool === 0 || noPool === 0 || (yesPool + noPool < 10)) {
-                                    yesPool = calculatedYesPool;
-                                    noPool = calculatedNoPool;
-                                }
-                                // If stored pools exist but don't match percentages, recalculate
-                                else {
-                                    const storedTotal = yesPool + noPool;
-                                    const yesPercentFromPools = (yesPool / storedTotal) * 100;
-                                    // If percentages don't match pools (>5% variance), use percentages
-                                    if (Math.abs(yesPercentFromPools - market.yesPercent) > 5) {
-                                        yesPool = calculatedYesPool;
-                                        noPool = calculatedNoPool;
-                                    }
-                                }
-                            } else if (yesPool === 0 || noPool === 0) {
-                                // No percentages and no stored pools - use defaults
-                                yesPool = 500;
-                                noPool = 500;
-                            }
-                            
-                            // Ensure pools are never zero
-                            yesPool = Math.max(yesPool, 0.01);
-                            noPool = Math.max(noPool, 0.01);
+                            let yesPool = market.yesPool;
+                            let noPool = market.noPool;
                             const k = yesPool * noPool; // Constant product
                             
                             // 1. Calculate user's share percentage BEFORE their stake
@@ -11528,14 +11419,15 @@
                                 // User adds to YES pool
                                 const newYesPool = yesPool + amountInUsdPerPledge;
                                 const newNoPool = k / newYesPool;
-                                const totalPoolAfter = newYesPool + newNoPool;
                                 
                                 // User's share of YES side = their stake / new YES pool
-                                const userShare = amountInUsdPerPledge / newYesPool;
-                                userSharePercent = userShare * 100;
+                                userSharePercent = (amountInUsdPerPledge / newYesPool) * 100;
                                 
-                                // If YES wins: they get their proportional share of the entire pool
-                                potentialPayoutUsd = userShare * totalPoolAfter;
+                                // If they win: they get their share of the COMBINED pool
+                                // potentialPayout = (stake + losingPool)
+                                // Simpler: stake + amount from price movement
+                                const priceMovement = yesPool - newYesPool + (newNoPool - noPool);
+                                potentialPayoutUsd = amountInUsdPerPledge + (newNoPool * userSharePercent / 100);
                                 
                                 yesPool = newYesPool;
                                 noPool = newNoPool;
@@ -11543,14 +11435,13 @@
                                 // User adds to NO pool
                                 const newNoPool = noPool + amountInUsdPerPledge;
                                 const newYesPool = k / newNoPool;
-                                const totalPoolAfter = newYesPool + newNoPool;
                                 
                                 // User's share of NO side = their stake / new NO pool
-                                const userShare = amountInUsdPerPledge / newNoPool;
-                                userSharePercent = userShare * 100;
+                                userSharePercent = (amountInUsdPerPledge / newNoPool) * 100;
                                 
-                                // If NO wins: they get their proportional share of the entire pool
-                                potentialPayoutUsd = userShare * totalPoolAfter;
+                                // If they win: they get their share of the COMBINED pool
+                                const priceMovement = noPool - newNoPool + (newYesPool - yesPool);
+                                potentialPayoutUsd = amountInUsdPerPledge + (newYesPool * userSharePercent / 100);
                                 
                                 yesPool = newYesPool;
                                 noPool = newNoPool;
@@ -12179,94 +12070,7 @@
             }
             // --- END NEW VALIDATION ---
 
-            // === HANDLE NO-LOSS MARKETS (FIXED-POT) - ON-CHAIN WITH YIELD TRACKING ===
-            if (isFixedPotFinal) {
-                // Force BUSD for display, but convert to PRED for on-chain
-                const noLossLiquidityAsset = 'BUSD';
-                const busdAmount = liquidityAmount;
-                
-                // Convert BUSD to PRED for on-chain creation (like traditional markets)
-                const busdPrice = getMockPrice('BUSD');
-                const predPrice = getMockPrice('PRED');
-                const liquidityPRED = (busdAmount * busdPrice) / predPrice;
-                
-                console.log('🛡️ Creating NO-LOSS market ON-CHAIN (with yield tracking):', {
-                    title,
-                    description: insight || "No description",
-                    category,
-                    resolutionDate,
-                    busdAmount,
-                    liquidityPRED,
-                    yieldProtocol: yieldProtocolFinal,
-                    initialOdds: { yesPercent, noPercent }
-                });
-                
-                showLoadingOverlay(true, "Creating no-loss market on-chain...");
-                
-                try {
-                    // Get Firebase ID token for authentication
-                    const idToken = await auth.currentUser.getIdToken();
-                    
-                    // Call backend to create ON-CHAIN market (same as traditional, but marked as fixed-pot)
-                    const response = await fetch('/api/market/create-onchain', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${idToken}`
-                        },
-                        body: JSON.stringify({
-                            title,
-                            description: insight || "No description",
-                            category: category,
-                            endDate: resolutionDate,
-                            liquidityPRED: liquidityPRED.toString(),
-                            walletAddress: userWalletAddress,
-                            marketStructure: marketStructure,
-                            initialOdds: marketStructure === 'binary' ? { yesPercent, noPercent } : null,
-                            options: marketStructure === 'multi-option' ? multiOptions : null,
-                            // MARK THIS AS A NO-LOSS MARKET
-                            isNoLossMarket: true,
-                            yieldProtocol: yieldProtocolFinal,
-                            liquidityAssetUSD: noLossLiquidityAsset,
-                            liquidityAmountUSD: busdAmount
-                        })
-                    });
-
-                    const result = await response.json();
-
-                    if (!result.success) {
-                        throw new Error(result.error || 'Failed to create no-loss market');
-                    }
-
-                    console.log('✅ No-Loss market created on-chain!');
-                    console.log(`   Firestore ID: ${result.marketId}`);
-                    console.log(`   On-chain ID: ${result.onChainMarketId}`);
-                    console.log(`   TX: ${result.txHash}`);
-                    
-                    showLoadingOverlay(false);
-                    showToast(`🛡️ No-Loss market created! Principal protected in ${yieldProtocolFinal}. TX: ${result.txHash.slice(0, 10)}...`, "success");
-                    
-                    // Clear the form
-                    document.getElementById('market-title-input').value = '';
-                    document.getElementById('market-insight-input').value = '';
-                    dom.marketYesInput.value = '';
-                    dom.marketNoInput.value = '';
-                    document.getElementById('staking-deadline-input').value = '';
-                    document.getElementById('market-resolution-date').value = '';
-                    dom.marketLiquidityInput.value = '';
-                    
-                    showScreen('home-screen');
-
-                } catch (error) {
-                    console.error("❌ No-loss market creation failed:", error);
-                    showLoadingOverlay(false);
-                    showToast(`Market creation failed: ${error.message}`, "error");
-                }
-                
-                return;
-            }
-
-            // === ON-CHAIN MARKET CREATION (TRADITIONAL MARKETS ONLY) ===
+            // === ON-CHAIN MARKET CREATION (ALL MARKETS) ===
             showLoadingOverlay(true, "Creating market on-chain...");
 
             try {

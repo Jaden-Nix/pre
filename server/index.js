@@ -230,27 +230,6 @@ try {
         db.collection('_test').limit(1).get()
             .then(() => console.log("✅ Firestore connection verified"))
             .catch(testError => console.error("⚠️  Firestore connection warning:", testError.message));
-        
-        // Fix old quick play markets that don't have pool values initialized
-        db.collection(`artifacts/${APP_ID}/public/data/quick_plays`).get()
-            .then(snapshot => {
-                let fixedCount = 0;
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (!data.yesPoolBusd || !data.noPoolBusd || data.yesPoolBusd <= 0 || data.noPoolBusd <= 0) {
-                        // Fix missing or zero pools
-                        doc.ref.update({
-                            yesPoolBusd: 50,
-                            noPoolBusd: 50
-                        }).catch(err => console.warn(`Could not fix market ${doc.id}:`, err.message));
-                        fixedCount++;
-                    }
-                });
-                if (fixedCount > 0) {
-                    console.log(`🔧 Quick Play: Fixed ${fixedCount} markets with missing/zero pools`);
-                }
-            })
-            .catch(err => console.warn(`Could not check quick play markets: ${err.message}`));
     } else {
         console.warn("⚠️  Firebase Admin SDK not initialized (missing GOOGLE_APPLICATION_CREDENTIALS).");
         console.log("   App will work with client-side Firebase only.");
@@ -735,7 +714,7 @@ app.post('/api/profile/sync-wallet-address', async (req, res) => {
 
 // 🎯 On-Chain Market Creation - Creates markets using PRED from user's balance
 app.post('/api/market/create-onchain', async (req, res) => {
-    const { title, description, category, endDate, liquidityPRED, marketStructure, initialOdds, options, walletAddress, isNoLossMarket, yieldProtocol, liquidityAssetUSD, liquidityAmountUSD } = req.body;
+    const { title, description, category, endDate, liquidityPRED, marketStructure, initialOdds, options, walletAddress } = req.body;
     
     // Accept both liquidityBNB (legacy) and liquidityPRED (new PRED-based)
     const liquidityAmount = parseFloat(liquidityPRED || req.body.liquidityBNB);
@@ -791,7 +770,7 @@ app.post('/api/market/create-onchain', async (req, res) => {
         // Initialize contracts
         const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
         const contractABI = [
-            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
+            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime) external returns (uint256)',
             'event MarketCreated(uint256 indexed marketId, string title, address indexed creator)'
         ];
         
@@ -807,47 +786,34 @@ app.post('/api/market/create-onchain', async (req, res) => {
         
         const predTokenContract = new ethers.Contract(PRED_TOKEN_ADDRESS, erc20Abi, deployerWallet);
         
-        console.log(`📋 User providing PRED liquidity for market creation...`);
+        // Approve market contract to spend PRED
+        console.log(`📋 Approving market contract to spend ${liquidityAmount} PRED...`);
+        const approveTx = await predTokenContract.approve(contractAddress, liquidityPredWei);
+        await approveTx.wait();
+        console.log(`✅ Approval successful`);
+        
+        // Create market with PRED
+        const predictionMarketContract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
+        
+        console.log(`📋 Creating market with parameters:`);
         console.log(`   Title: "${title}"`);
-        console.log(`   Total PRED liquidity requested: ${ethers.utils.formatEther(liquidityPredWei)} PRED`);
-        console.log(`   Split: ${ethers.utils.formatEther(halfLiquidityPred)} PRED per side (YES/NO)`);
+        console.log(`   Half liquidity per side: ${ethers.utils.formatEther(halfLiquidityPred)} PRED`);
         
         const currentTime = Math.floor(Date.now() / 1000);
         console.log(`✅ Time check: current=${currentTime}, resolution=${resolutionTime}, future=${resolutionTime > currentTime}`);
         
-        // Step 1: Transfer PRED from deployer wallet to contract
-        // This ensures contract has the PRED before createMarket is called
-        console.log(`💸 Transferring PRED to contract (${ethers.utils.formatEther(liquidityPredWei)} PRED)...`);
-        const transferTx = await predTokenContract.transfer(contractAddress, liquidityPredWei);
-        await transferTx.wait();
-        console.log(`✅ PRED transferred to contract: ${transferTx.hash}`);
-        
-        // Step 2: Create market with PRED amounts (contract now has the PRED)
-        const bnbValueYes = ethers.utils.parseEther('0');  // No BNB pools
-        const bnbValueNo = ethers.utils.parseEther('0');   // No BNB pools
-        const totalBnbValue = ethers.utils.parseEther('0.01');  // Only gas
-        const predValueYes = halfLiquidityPred;  // Half PRED for YES pool
-        const predValueNo = halfLiquidityPred;   // Half PRED for NO pool
-        
-        const predictionMarketContract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
-        
         let tx;
         try {
+            // Send BNB value for initial liquidity
+            const bnbValue = ethers.utils.parseEther('0.001');
             tx = await predictionMarketContract.createMarket(
                 title, 
                 description, 
                 resolutionTime,
-                bnbValueYes,      // initialYesBnb
-                bnbValueNo,        // initialNoBnb
-                predValueYes,      // initialYesPred
-                predValueNo,       // initialNoPred
-                { value: totalBnbValue, gasLimit: 600000 }
+                { value: bnbValue, gasLimit: 600000 }
             );
-            console.log(`✅ Market creation tx sent: ${tx.hash}`);
         } catch (createError) {
             console.error(`❌ Smart contract call failed:`, createError.message);
-            console.error(`   Error code:`, createError.code);
-            console.error(`   Error reason:`, createError.reason);
             throw createError;
         }
         
@@ -863,9 +829,8 @@ app.post('/api/market/create-onchain', async (req, res) => {
         const marketCreatedEvent = receipt.events?.find(e => e.event === 'MarketCreated');
         const onChainMarketId = marketCreatedEvent?.args?.marketId?.toNumber();
         
-        if (onChainMarketId == null || typeof onChainMarketId !== 'number') {
-            console.error('❌ Failed to extract market ID from event');
-            console.error('   MarketCreated event:', marketCreatedEvent);
+        if (onChainMarketId === undefined && onChainMarketId !== 0) {
+            console.error('❌ Failed to extract market ID');
             return res.status(500).json({ error: 'Failed to extract market ID from blockchain transaction' });
         }
         
@@ -1011,20 +976,17 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 initialLiquidityPred: liquidityAmount,
                 initialLiquidityPredUsd: initialLiquidityPredUsd,
                 initialLiquidityTotalUsd: initialLiquidityPredUsd,
-                isFixedPot: isNoLossMarket ? true : false,
-                marketType: isNoLossMarket ? 'fixed-pot' : 'traditional',
-                yieldProtocol: yieldProtocol || null,
+                isFixedPot: false,
+                yieldProtocol: null,
                 protocolApy: 0,
-                totalPrincipalUsd: liquidityAmountUSD || 0,
-                liquidityAssetUSD: liquidityAssetUSD || 'PRED',
+                totalPrincipalUsd: 0,
                 lastAccrualAt: admin.firestore.FieldValue.serverTimestamp(),
                 accruedYieldUsd: 0,
                 disputes: [],
                 resolutionSource: null,
                 adminEvents: [],
                 refundVolumeGoal: 100,
-                refundStakerGoal: 10,
-                userTrades: []
+                refundStakerGoal: 10
             };
             
             if (marketStructure === 'binary') {
@@ -3091,19 +3053,10 @@ Generate 5 quick, fun YES/NO prediction questions about uncertain events in the 
             
             // Store in Firestore with onChainMarketId (if available)
             const quickPlayData = {
-                title: item.question,
                 question: item.question,
                 expiresAt: item.expiresAt,
-                createdAt: admin.firestore.Timestamp.now(),
-                isActive: true,
-                yesPoolBusd: 50,  // Initial mock BUSD liquidity
-                noPoolBusd: 50,   // Initial mock BUSD liquidity
-                yesVotes: 0,
-                noVotes: 0,
-                totalVolumeBusd: 0,
-                yesPercent: 50,
-                noPercent: 50,
-                status: 'active'
+                createdAt: new Date().toISOString(),
+                isActive: true
             };
             
             // Add on-chain fields if market was created
@@ -3112,6 +3065,7 @@ Generate 5 quick, fun YES/NO prediction questions about uncertain events in the 
                 quickPlayData.onChainTxHash = onChainTxHash;
                 quickPlayData.yesPool = 0; // User bets only, initial liquidity tracked separately on-chain
                 quickPlayData.noPool = 0;
+                quickPlayData.totalVolume = 0;
             }
             
             await db.collection(collectionPath).add(quickPlayData);
@@ -3912,29 +3866,25 @@ app.post('/api/admin/create-quick-play-market', async (req, res) => {
             throw new Error('Firebase Admin not initialized');
         }
         
-        // Initialize with mock BUSD liquidity pools (starting amount per side)
-        const initialBusdLiquidity = 50;  // 50 BUSD per side
+        // Use custom percentages from admin or default to 50/50
+        const yesPoolValue = 0.005;
+        const noPoolValue = 0.005;
         
         const quickPlayData = {
             title,
             duration: `${durationMinutes}m`,
-            yesPool: 0.005,  // BNB
-            noPool: 0.005,   // BNB
-            yesPoolBusd: initialBusdLiquidity,  // Mock BUSD pool for YES
-            noPoolBusd: initialBusdLiquidity,   // Mock BUSD pool for NO
-            yesPercent: finalYesPercent,
-            noPercent: finalNoPercent,
+            yesPool: yesPoolValue,  // BNB
+            noPool: noPoolValue,    // BNB
+            yesPercent: finalYesPercent, // Use custom percentage from admin
+            noPercent: finalNoPercent,   // Use custom percentage from admin
             totalStakeVolume: 0,
-            totalVolumeBusd: 0,
             isResolved: false,
             isMock: false,
             createdAt: admin.firestore.Timestamp.now(),
             isOnChain: isOnChain,
             currency: 'BNB',
-            supportedBettingTokens: ['BNB', 'PRED', 'BUSD'],
-            resolutionTime: resolutionTime,
-            yesVotes: 0,
-            noVotes: 0
+            supportedBettingTokens: ['BNB', 'PRED'],
+            resolutionTime: resolutionTime
         };
         
         // Only add these if market was created on-chain
@@ -3943,7 +3893,7 @@ app.post('/api/admin/create-quick-play-market', async (req, res) => {
             quickPlayData.onChainTxHash = txHash;
         }
         
-        const docRef = await db.collection(`artifacts/${APP_ID}/public/data/quick_plays`).add(quickPlayData);
+        const docRef = await db.collection(`artifacts/${APP_ID}/public/data/quick_play_markets`).add(quickPlayData);
         
         const message = isOnChain 
             ? `✅ Quick Play market created on-chain! Market ID: ${onChainMarketId}`
@@ -3963,230 +3913,6 @@ app.post('/api/admin/create-quick-play-market', async (req, res) => {
     }
 });
 
-// ✅ CALCULATE QUICK PLAY PAYOUT - Show potential return on bet
-app.post('/api/quick-play/calculate-payout', async (req, res) => {
-    if (!db) {
-        return res.status(503).json({ error: 'Firebase Admin not initialized' });
-    }
-    
-    const { quickPlayId, amount, choice } = req.body;
-    
-    if (!quickPlayId || !amount || !choice) {
-        return res.status(400).json({ error: 'Missing required fields' });
-    }
-    
-    try {
-        const quickPlayRef = db.collection(`artifacts/${APP_ID}/public/data/quick_plays`).doc(quickPlayId);
-        const quickPlaySnap = await quickPlayRef.get();
-        
-        if (!quickPlaySnap.exists) {
-            return res.status(404).json({ error: 'Quick play not found' });
-        }
-        
-        const market = quickPlaySnap.data();
-        const betAmount = parseFloat(amount);
-        
-        // Log raw market data for debugging
-        console.log(`📋 Market data: yesPoolBusd=${market.yesPoolBusd} (type: ${typeof market.yesPoolBusd}), noPoolBusd=${market.noPoolBusd} (type: ${typeof market.noPoolBusd})`);
-        
-        // Use BUSD liquidity pools for real AMM calculation
-        let yesPoolBusd = market.yesPoolBusd || 50;
-        let noPoolBusd = market.noPoolBusd || 50;
-        
-        console.log(`🔍 After defaults: yesPoolBusd=${yesPoolBusd}, noPoolBusd=${noPoolBusd}`);
-        
-        // Ensure pools are valid numbers
-        yesPoolBusd = parseFloat(yesPoolBusd) || 50;
-        noPoolBusd = parseFloat(noPoolBusd) || 50;
-        
-        console.log(`✅ After parseFloat: yesPoolBusd=${yesPoolBusd}, noPoolBusd=${noPoolBusd}`);
-        console.log(`💰 Payout calc for ${choice} on ${quickPlayId}: YES pool=${yesPoolBusd}, NO pool=${noPoolBusd}, bet=${betAmount}`);
-        
-        // Calculate odds based on current pool balances
-        const totalPoolBusd = yesPoolBusd + noPoolBusd;
-        const yesOdds = (yesPoolBusd / totalPoolBusd) * 100;
-        const noOdds = (noPoolBusd / totalPoolBusd) * 100;
-        
-        // Determine which pool is which based on choice
-        let yourPool, oppositePool;
-        if (choice.toUpperCase() === 'YES') {
-            yourPool = yesPoolBusd;
-            oppositePool = noPoolBusd;
-        } else {
-            yourPool = noPoolBusd;
-            oppositePool = yesPoolBusd;
-        }
-        
-        // Real AMM Payout Formula: Bet + (Opposite Pool × Bet / (Your Pool + Bet))
-        // After user adds bet to their pool, the ratio changes
-        const winnerShare = (oppositePool * betAmount) / (yourPool + betAmount);
-        const potentialPayout = betAmount + winnerShare;
-        const potentialProfit = potentialPayout - betAmount;
-        const roi = ((potentialProfit / betAmount) * 100).toFixed(1);
-        
-        console.log(`📊 Calculation: yourPool=${yourPool}, oppositePool=${oppositePool}, winnerShare=${winnerShare}, payout=${potentialPayout}, roi=${roi}`);
-        
-        // Calculate odds for the chosen option
-        const chosenOdds = choice.toUpperCase() === 'YES' ? yesOdds : noOdds;
-        const oddsDecimal = chosenOdds / 100;
-        
-        res.status(200).json({
-            success: true,
-            inputAmount: betAmount,
-            potentialPayout: parseFloat(potentialPayout.toFixed(2)),
-            potentialProfit: parseFloat(potentialProfit.toFixed(2)),
-            roi: roi,
-            choice: choice.toUpperCase(),
-            odds: parseFloat(oddsDecimal.toFixed(4)),
-            yesOdds: parseFloat(yesOdds.toFixed(1)),
-            noOdds: parseFloat(noOdds.toFixed(1)),
-            yesPoolBusd: parseFloat(yesPoolBusd.toFixed(2)),
-            noPoolBusd: parseFloat(noPoolBusd.toFixed(2))
-        });
-    } catch (error) {
-        console.error('Error calculating quick play payout:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// ✅ PLACE QUICK PLAY BET - Store user bets with BUSD amounts
-app.post('/api/quick-play/place-bet', async (req, res) => {
-    if (!db) {
-        return res.status(503).json({ error: 'Firebase Admin not initialized' });
-    }
-    
-    const { userId, quickPlayId, choice, amount, idToken } = req.body;
-    
-    if (!userId || !quickPlayId || !choice || amount <= 0) {
-        return res.status(400).json({ error: 'Missing required fields' });
-    }
-    
-    try {
-        if (idToken) {
-            const decodedToken = await admin.auth().verifyIdToken(idToken);
-            if (decodedToken.uid !== userId) {
-                return res.status(403).json({ error: 'Unauthorized' });
-            }
-        }
-        
-        const quickPlayRef = db.collection(`artifacts/${APP_ID}/public/data/quick_plays`).doc(quickPlayId);
-        const quickPlaySnap = await quickPlayRef.get();
-        
-        if (!quickPlaySnap.exists) {
-            return res.status(404).json({ error: 'Quick play not found' });
-        }
-        
-        const betDoc = {
-            userId,
-            choice: choice.toUpperCase(),
-            amount: parseFloat(amount),
-            timestamp: Date.now(),
-            status: 'active'
-        };
-        
-        await quickPlayRef.collection('bets').add(betDoc);
-        
-        await deductBusdBalance(userId, amount);
-        
-        // Update liquidity pools with bet amount (adds to the pool for the chosen side)
-        const updateData = {
-            totalVolumeBusd: admin.firestore.FieldValue.increment(amount),
-            yesVotes: choice.toUpperCase() === 'YES' ? admin.firestore.FieldValue.increment(1) : admin.firestore.FieldValue.increment(0),
-            noVotes: choice.toUpperCase() === 'NO' ? admin.firestore.FieldValue.increment(1) : admin.firestore.FieldValue.increment(0)
-        };
-        
-        // Add to the appropriate BUSD liquidity pool
-        if (choice.toUpperCase() === 'YES') {
-            updateData.yesPoolBusd = admin.firestore.FieldValue.increment(amount);
-        } else {
-            updateData.noPoolBusd = admin.firestore.FieldValue.increment(amount);
-        }
-        
-        await quickPlayRef.update(updateData);
-        
-        console.log(`💰 Quick Play bet: ${userId} bet ${amount} BUSD on ${choice} for market ${quickPlayId} (Pool updated)`);
-        res.status(200).json({ success: true, betId: betDoc.userId + '_' + Date.now() });
-    } catch (error) {
-        console.error('Error placing quick play bet:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// ✅ GET USER'S QUICK PLAY BETS - For profile recent activity
-app.post('/api/quick-play/user-bets', async (req, res) => {
-    if (!db) {
-        return res.status(503).json({ error: 'Firebase Admin not initialized' });
-    }
-    
-    const { userId } = req.body;
-    if (!userId) {
-        return res.status(400).json({ error: 'Missing userId' });
-    }
-    
-    try {
-        const allBets = [];
-        const collectionPath = `artifacts/${APP_ID}/public/data/quick_plays`;
-        const quickPlaysSnapshot = await db.collection(collectionPath).get();
-        
-        for (const quickPlayDoc of quickPlaysSnapshot.docs) {
-            const marketData = quickPlayDoc.data();
-            const betsSnapshot = await quickPlayDoc.ref.collection('bets').where('userId', '==', userId).get();
-            
-            betsSnapshot.forEach(betDoc => {
-                const bet = betDoc.data();
-                allBets.push({
-                    id: `${quickPlayDoc.id}-${betDoc.id}`,
-                    marketTitle: marketData.title || 'Unknown Market',
-                    choice: bet.choice,
-                    amount: bet.amount,
-                    timestamp: bet.timestamp,
-                    status: bet.status || 'active',
-                    marketId: quickPlayDoc.id,
-                    yesPoolBusd: marketData.yesPoolBusd || 50,
-                    noPoolBusd: marketData.noPoolBusd || 50
-                });
-            });
-        }
-        
-        // Calculate potential payouts for active bets
-        const betsWithPayouts = allBets.map(bet => {
-            if (bet.status === 'active') {
-                const yesPoolBusd = bet.yesPoolBusd;
-                const noPoolBusd = bet.noPoolBusd;
-                const totalPoolBusd = yesPoolBusd + noPoolBusd;
-                
-                let yourPool, oppositePool;
-                if (bet.choice === 'YES') {
-                    yourPool = yesPoolBusd;
-                    oppositePool = noPoolBusd;
-                } else {
-                    yourPool = noPoolBusd;
-                    oppositePool = yesPoolBusd;
-                }
-                
-                const winnerShare = (oppositePool * bet.amount) / (yourPool + bet.amount);
-                const potentialPayout = bet.amount + winnerShare;
-                const potentialProfit = potentialPayout - bet.amount;
-                const roi = ((potentialProfit / bet.amount) * 100).toFixed(1);
-                
-                return {
-                    ...bet,
-                    potentialPayout: parseFloat(potentialPayout.toFixed(2)),
-                    potentialProfit: parseFloat(potentialProfit.toFixed(2)),
-                    roi: roi
-                };
-            }
-            return bet;
-        });
-        
-        res.status(200).json({ success: true, bets: betsWithPayouts });
-    } catch (error) {
-        console.error('Error fetching user quick play bets:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// ✅ RESOLVE QUICK PLAY WITH PAYOUTS - Calculate and distribute winnings
 app.post('/api/admin/resolve-quick-play', requireAdmin, async (req, res) => {
     
     if (!db) {
@@ -4197,77 +3923,14 @@ app.post('/api/admin/resolve-quick-play', requireAdmin, async (req, res) => {
     
     try {
         const quickPlayRef = db.collection(`artifacts/${APP_ID}/public/data/quick_plays`).doc(quickPlayId);
-        const quickPlaySnap = await quickPlayRef.get();
-        
-        if (!quickPlaySnap.exists) {
-            return res.status(404).json({ error: 'Quick play not found' });
-        }
-        
-        const quickPlayData = quickPlaySnap.data();
-        
-        // Get all bets for this quick play
-        const betsSnapshot = await quickPlayRef.collection('bets').where('status', '==', 'active').get();
-        const bets = [];
-        let totalBets = 0;
-        let winningBets = 0;
-        
-        betsSnapshot.forEach(doc => {
-            const bet = doc.data();
-            bets.push({ id: doc.id, ...bet });
-            totalBets += bet.amount;
-            if (bet.choice === outcome.toUpperCase()) {
-                winningBets += bet.amount;
-            }
-        });
-        
-        const winOutcome = outcome.toUpperCase();
-        const losingBets = totalBets - winningBets;
-        
-        console.log(`🎯 Resolving Quick Play ${quickPlayId}: ${bets.length} bets, ${winningBets} BUSD won, ${losingBets} BUSD lost`);
-        
-        // Distribute payouts to winners
-        const paidOutUsers = {};
-        for (const bet of bets) {
-            if (bet.choice === winOutcome) {
-                // Winner gets: original bet + (share of losing pool)
-                const winnerShare = losingBets > 0 ? (bet.amount / winningBets) * losingBets : 0;
-                const totalPayout = bet.amount + winnerShare;
-                
-                if (!paidOutUsers[bet.userId]) {
-                    paidOutUsers[bet.userId] = 0;
-                }
-                paidOutUsers[bet.userId] += totalPayout;
-                
-                // Mark bet as paid
-                await quickPlayRef.collection('bets').doc(bet.id).update({ status: 'paid', payout: totalPayout });
-            } else {
-                // Loser gets nothing, mark as lost
-                await quickPlayRef.collection('bets').doc(bet.id).update({ status: 'lost' });
-            }
-        }
-        
-        // Add payouts to user BUSD balances
-        for (const [userId, payout] of Object.entries(paidOutUsers)) {
-            await addBusdBalance(userId, payout);
-            console.log(`✅ Paid ${payout} BUSD to ${userId} for Quick Play win`);
-        }
-        
-        // Mark quick play as resolved
         await quickPlayRef.update({
             status: 'resolved',
-            outcome: winOutcome,
+            outcome,
             resolvedAt: new Date().toISOString(),
-            resolvedBy: 'admin',
-            totalBetsSettled: bets.length,
-            totalPayoutDistributed: Object.values(paidOutUsers).reduce((a, b) => a + b, 0)
+            resolvedBy: 'admin'
         });
         
-        res.status(200).json({ 
-            success: true, 
-            message: `Resolved with ${bets.length} bets settled`,
-            totalPayoutDistributed: Object.values(paidOutUsers).reduce((a, b) => a + b, 0),
-            winnersCount: Object.keys(paidOutUsers).length
-        });
+        res.status(200).json({ success: true });
     } catch (error) {
         console.error('Error resolving quick play:', error);
         res.status(500).json({ error: error.message });

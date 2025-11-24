@@ -4,54 +4,25 @@
 
 Predora is a TikTok-style prediction market platform with instant Quick Play markets and custodial wallets. Users can create and bet on predictions in seconds.
 
-## Recent Fixes (Nov 24, 2025 - Latest)
-
-### 🛡️ NO-LOSS MARKETS IMPLEMENTED (Nov 24, Latest)
-1. **Hybrid AMM + Yield Model**
-   - No-loss markets create ON-CHAIN via PredictionMarketV2 (real AMM trading)
-   - Forces BUSD for display, converts to PRED for on-chain creation
-   - Marked as `marketType: 'fixed-pot'` with `isFixedPot: true`
-   - Stores yield protocol info (Aave integration ready for future)
-
-2. **Entry Price Tracking System**
-   - When users trade, their bet is recorded with:
-     - `entryTimestamp`: When they placed the bet
-     - `entryPrice`: The odds they got (e.g., 70/30 split)
-     - `entryYesPercent` & `entryNoPercent`: Full pool breakdown at entry
-   - Enables fair yield distribution based on entry prices
-
-3. **Implementation Details**
-   - Frontend: `app.html` - Lines 12165-12250 (no-loss market creation)
-   - Frontend: `app.html` - Lines 10482-10489 & 10776-10783 (entry price tracking on bets)
-   - Backend: `server/index.js` - Line 741 (accept isNoLossMarket flag)
-   - Backend: `server/index.js` - Lines 1017-1022 (store no-loss fields in Firestore)
-
 ## Current Working Features (Nov 24, 2025)
 
 ### ✅ Quick Play Markets
 - **Endpoint**: `POST /api/admin/create-quick-play-market`
-- **Status**: Fully operational (Firestore-backed with AMM)
+- **Status**: Fully operational (Firestore-backed)
 - **Market Creation**: 
   - Title + Duration → Creates instantly
-  - Liquidity: 50 BUSD YES + 50 BUSD NO (mock BUSD pools)
+  - Liquidity: 0.005 BNB YES + 0.005 BNB NO pools
   - No auth required (public endpoint)
-  - Auto-generates via Gemini AI
 - **Frontend Display**: 
-  - React QuickPlay component with swipeable cards
-  - Real-time market data fetching
+  - Navigate to Quick Play screen (click "Quick Plays" card on home)
+  - Markets display as swipeable cards
   - YES/NO/SKIP buttons for interaction
-- **Data Storage**: Firestore collection `artifacts/predora-hackathon/public/data/quick_plays`
-
-### ✅ AMM Payout Formula
-- **Formula**: `Payout = Bet + (Opposite Pool × Bet / (Your Pool + Bet))`
-- **Example**: Bet 10 BUSD on YES when pools are YES=50, NO=50
-  - Payout = 10 + (50 × 10 / (50 + 10)) = 10 + 8.33 = **18.33 BUSD**
-  - ROI = (18.33 - 10) / 10 × 100 = **83.3%**
+- **Data Storage**: Firestore collection `artifacts/predora-hackathon/public/data/quick_play_markets`
 
 ### ✅ Custodial Wallets
 - Server-side wallet creation on signup
 - AES-256-GCM encryption for private keys
-- Automatic balance syncing (25 BUSD starting)
+- Automatic balance syncing
 - No external wallet needed
 
 ### ✅ User Authentication
@@ -71,13 +42,13 @@ Predora is a TikTok-style prediction market platform with instant Quick Play mar
    ↓
 2. Frontend calls attachQuickPlayListener()
    ↓
-3. Listens to Firestore: artifacts/predora-hackathon/public/data/quick_plays
+3. Listens to Firestore: artifacts/predora-hackathon/public/data/quick_play_markets
    ↓
-4. Removes orderBy constraint, loads all unresolved markets
+4. Filters unresolved markets (isResolved: false)
    ↓
-5. Sorts client-side by creation time
+5. Combines with mock markets for display
    ↓
-6. Displays as swipeable card interface with payout predictions
+6. Displays as swipeable card interface
 ```
 
 ## API Reference
@@ -101,42 +72,22 @@ Response:
 }
 ```
 
-### Market Data Structure
-```json
-{
-  "title": "Market question",
-  "question": "Market question",
-  "yesPoolBusd": 50,
-  "noPoolBusd": 50,
-  "yesVotes": 0,
-  "noVotes": 0,
-  "yesPercent": 50,
-  "noPercent": 50,
-  "createdAt": Timestamp,
-  "expiresAt": Timestamp,
-  "isActive": true,
-  "status": "active"
-}
-```
-
 ## Architecture
 
-**Frontend** → React + Firebase SDK + Ethers.js
-- Real-time Firestore listeners for markets (no orderBy constraints)
-- Swipeable card UI with payout preview
+**Frontend** → Vanilla JavaScript + Firebase SDK + Ethers.js
+- Real-time Firestore listeners for markets
+- Swipeable card UI
 - TikTok-style interaction
-- ROI display in payout cards
 
-**Backend** → Express.js + Gemini AI
+**Backend** → Express.js
 - Quick Play creation endpoint
 - Firestore writes with blockchain fallback
 - Auto-payout job management
 - Custodial wallet service
-- AI-powered market generation via autoGenerateQuickPlays
 
 **Database** → Firestore
-- Collections: `artifacts/{APP_ID}/public/data/quick_plays`
-- Real-time syncing with client-side sorting
+- Collections: `artifacts/{APP_ID}/public/data/quick_play_markets`
+- Real-time syncing
 - Guest-accessible reads
 
 **Blockchain** → BSC Testnet (graceful fallback)
@@ -147,12 +98,11 @@ Response:
 ## Testing
 
 **To see Quick Play markets working:**
-1. Open React app and navigate to Quick Play screen
-2. Markets display as swipeable cards with:
-   - YES/NO/SKIP buttons
-   - Live payout calculations
-   - ROI percentages
-3. User Profile → Recent Activity shows betting history with ROI
+1. Open http://localhost:5000/app.html
+2. Scroll to "Quick Plays" card (blue with lightning bolt)
+3. Click to navigate to Quick Play screen
+4. Markets load and display as cards
+5. Use YES/NO/SKIP buttons
 
 **To create a test market:**
 ```bash
@@ -163,26 +113,17 @@ curl -X POST http://localhost:5000/api/admin/create-quick-play-market \
 
 ## Next Steps to Enhance
 
-1. **Betting UI Integration**: Connect payout preview to actual betting action
+1. **Betting Logic**: Connect Quick Play cards to actual betting backend
 2. **Market Resolution**: Add admin/jury resolution UI
-3. **Real-time Balance Updates**: Show balance changes during betting
-4. **Market Categories**: Add category tags to Quick Play markets
+3. **Balance Updates**: Real-time balance display during betting
+4. **Categories**: Add category tags to Quick Play markets
 5. **Blockchain Debug**: Investigate smart contract revert (status 0)
 6. **PRED Integration**: Add PRED token liquidity (once blockchain fixed)
-7. **Auto-market Generation**: Schedule hourly Gemini API calls for new markets
 
 ## Deployment Status
 - Backend: ✅ Running on port 5000
-- Frontend: ✅ React app with Quick Play component
-- Firestore: ✅ Connected with proper market fields
-- Authentication: ✅ Working (guest mode enabled)
-- Quick Play API: ✅ Operational with BUSD pools
-- Quick Play UI: ✅ Ready with AMM payout display
-- ROI Display: ✅ Visible in payout cards and Recent Activity
-
-## Key Technical Notes
-- Market creation: `server/index.js` lines 3078-3103 (autoGenerateQuickPlays function)
-- Frontend component: `client/components/QuickPlay.tsx`
-- ROI calculation: `calculatePayoutBUSD` function in QuickPlay.tsx
-- Recent Activity: `UserProfile.tsx` shows betting history with ROI
-- Firestore query: No orderBy constraints to avoid failures
+- Frontend: ✅ Accessible at `/app.html`
+- Firestore: ✅ Connected
+- Authentication: ✅ Working
+- Quick Play API: ✅ Operational
+- Quick Play UI: ✅ Ready

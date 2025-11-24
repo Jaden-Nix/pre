@@ -2,125 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ThumbsUp, ThumbsDown, SkipForward, TrendingUp } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-
-interface QuickPlayMarket {
-  id: string;
-  question?: string;
-  title?: string;
-  status?: string;
-  createdAt?: string;
-  expiresAt?: string;
-  yesVotes?: number;
-  noVotes?: number;
-  yesPool?: number;
-  noPool?: number;
-  totalVolume?: number;
-  yesPercent?: number;
-  noPercent?: number;
-}
+import { ThumbsUp, ThumbsDown, SkipForward } from 'lucide-react';
+import { useMarkets } from '@/hooks/useMarkets';
 
 export function QuickPlay() {
-  const [markets, setMarkets] = useState<QuickPlayMarket[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { markets, loading } = useMarkets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
-  const [betAmount, setBetAmount] = useState('10');
-  const [selectedChoice, setSelectedChoice] = useState<'yes' | 'no' | null>(null);
-  const [potentialPayout, setPotentialPayout] = useState<any>(null);
-  const [loadingPayout, setLoadingPayout] = useState(false);
-
-  useEffect(() => {
-    // Fetch quick plays from Firestore
-    const tryFetchQuickPlays = async () => {
-      try {
-        const appId = process.env.NEXT_PUBLIC_APP_ID || 'predora-hackathon';
-        const collectionPath = `artifacts/${appId}/public/data/quick_plays`;
-        
-        // Try without orderBy first to see if data exists
-        const q = query(collection(db, collectionPath));
-        
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-          const data = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          })) as QuickPlayMarket[];
-          
-          console.log(`✅ Loaded ${data.length} Quick Play markets`);
-          
-          // Sort client-side instead to avoid orderBy issues
-          const sorted = data.sort((a, b) => {
-            const timeA = (a.createdAt as any)?.toMillis?.() || new Date(a.createdAt as any).getTime() || 0;
-            const timeB = (b.createdAt as any)?.toMillis?.() || new Date(b.createdAt as any).getTime() || 0;
-            return timeB - timeA;
-          });
-          
-          setMarkets(sorted);
-          setLoading(false);
-        }, (error) => {
-          console.error('❌ Firestore listener error:', error);
-          setLoading(false);
-        });
-        
-        return unsubscribe;
-      } catch (error) {
-        console.warn('Could not fetch quick plays:', error);
-        setLoading(false);
-        return () => {};
-      }
-    };
-
-    const unsubscribePromise = tryFetchQuickPlays();
-    return () => {
-      unsubscribePromise.then(unsub => unsub?.());
-    };
-  }, []);
 
   const handleVote = (vote: 'yes' | 'no' | 'skip') => {
     setDirection(vote === 'yes' ? 1 : vote === 'no' ? -1 : 0);
     setTimeout(() => {
       setCurrentIndex((prev) => (prev + 1) % markets.length);
-      setSelectedChoice(null);
-      setPotentialPayout(null);
-      setBetAmount('10');
     }, 200);
   };
 
-  const calculatePayout = async (choice: 'yes' | 'no') => {
-    if (!currentMarket || !betAmount) return;
-    
-    setSelectedChoice(choice);
-    setLoadingPayout(true);
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${apiUrl}/api/quick-play/calculate-payout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          quickPlayId: currentMarket.id,
-          amount: parseFloat(betAmount),
-          choice: choice.toUpperCase()
-        })
-      });
-      const data = await response.json();
-      setPotentialPayout(data);
-    } catch (error) {
-      console.error('Error calculating payout:', error);
-    } finally {
-      setLoadingPayout(false);
-    }
-  };
-
   const currentMarket = markets[currentIndex];
-  
-  // Calculate odds from votes
-  const yesVotes = currentMarket?.yesVotes || 0;
-  const noVotes = currentMarket?.noVotes || 0;
-  const totalVotes = yesVotes + noVotes;
-  const yesOdds = totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 50;
-  const noOdds = totalVotes > 0 ? (noVotes / totalVotes) * 100 : 50;
 
   if (loading) {
     return (
@@ -160,69 +57,31 @@ export function QuickPlay() {
             >
               <div>
                 <div className="inline-block px-3 py-1 bg-sky-500/20 text-sky-400 text-xs font-bold rounded-full mb-6">
-                  Quick Play
+                  {currentMarket.category}
                 </div>
                 
                 <h2 className="text-3xl font-bold leading-tight mb-4">
-                  {currentMarket.question || currentMarket.title || 'Loading...'}
+                  {currentMarket.title}
                 </h2>
                 
-                {currentMarket.status && (
-                  <p className="text-gray-400 text-sm">Status: {currentMarket.status}</p>
-                )}
+                <p className="text-gray-400 text-sm">Resolves {new Date(currentMarket.resolutionDate).toLocaleDateString()}</p>
               </div>
 
               <div className="space-y-4">
                 <div className="flex justify-between text-sm font-bold text-gray-400 uppercase">
-                  <span>Yes {yesOdds.toFixed(1)}%</span>
-                  <span>No {noOdds.toFixed(1)}%</span>
+                  <span>Yes {currentMarket.yesOdds}%</span>
+                  <span>No {currentMarket.noOdds}%</span>
                 </div>
                 <div className="h-2 bg-gray-800 rounded-full overflow-hidden flex">
                   <div 
                     className="bg-green-500 shadow-[0_0_10px_#22c55e]" 
-                    style={{ width: `${yesOdds}%` }}
+                    style={{ width: `${currentMarket.yesOdds}%` }}
                   />
                   <div 
                     className="bg-red-500" 
-                    style={{ width: `${noOdds}%` }}
+                    style={{ width: `${currentMarket.noOdds}%` }}
                   />
                 </div>
-
-                {/* Bet Input */}
-                <div className="mt-6 pt-4 border-t border-white/10">
-                  <label className="text-xs text-gray-400 mb-2 block">Bet Amount (BUSD)</label>
-                  <input
-                    type="number"
-                    value={betAmount}
-                    onChange={(e) => {
-                      setBetAmount(e.target.value);
-                      setPotentialPayout(null);
-                    }}
-                    placeholder="10"
-                    min="1"
-                    className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
-                  />
-                </div>
-
-                {/* Potential Payout Display */}
-                {potentialPayout && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-4 p-3 bg-gradient-to-r from-sky-500/20 to-indigo-500/20 rounded-lg border border-sky-500/30"
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <TrendingUp className="w-4 h-4 text-green-400" />
-                      <span className="text-xs text-gray-400">Potential Payout</span>
-                    </div>
-                    <div className="text-lg font-bold text-green-400 mb-1">
-                      {potentialPayout.potentialPayout?.toFixed(2) || '0'} BUSD
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      Profit: +{potentialPayout.potentialProfit?.toFixed(2) || '0'} BUSD | ROI: <span className="text-yellow-400 font-bold">{potentialPayout.roi || '0'}%</span>
-                    </div>
-                  </motion.div>
-                )}
               </div>
             </motion.div>
           </AnimatePresence>
@@ -231,15 +90,10 @@ export function QuickPlay() {
         {/* Action Buttons */}
         <div className="grid grid-cols-3 gap-4">
           <button
-            onClick={() => calculatePayout('no')}
-            disabled={!betAmount || loadingPayout}
-            className="h-16 rounded-2xl border-2 border-red-500/30 bg-red-500/10 flex items-center justify-center text-red-400 font-bold transition-all hover:scale-105 hover:bg-red-500/20 hover:shadow-[0_0_30px_rgba(239,68,68,0.3)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => handleVote('no')}
+            className="h-16 rounded-2xl border-2 border-red-500/30 bg-red-500/10 flex items-center justify-center text-red-400 font-bold transition-all hover:scale-105 hover:bg-red-500/20 hover:shadow-[0_0_30px_rgba(239,68,68,0.3)] active:scale-95"
           >
-            {loadingPayout && selectedChoice === 'no' ? (
-              <div className="w-6 h-6 border-2 border-red-500/30 border-t-red-400 rounded-full animate-spin" />
-            ) : (
-              <ThumbsDown className="w-6 h-6" />
-            )}
+            <ThumbsDown className="w-6 h-6" />
           </button>
 
           <button
@@ -250,15 +104,10 @@ export function QuickPlay() {
           </button>
 
           <button
-            onClick={() => calculatePayout('yes')}
-            disabled={!betAmount || loadingPayout}
-            className="h-16 rounded-2xl border-2 border-green-500/30 bg-green-500/10 flex items-center justify-center text-green-400 font-bold transition-all hover:scale-105 hover:bg-green-500/20 hover:shadow-[0_0_30px_rgba(34,197,94,0.3)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => handleVote('yes')}
+            className="h-16 rounded-2xl border-2 border-green-500/30 bg-green-500/10 flex items-center justify-center text-green-400 font-bold transition-all hover:scale-105 hover:bg-green-500/20 hover:shadow-[0_0_30px_rgba(34,197,94,0.3)] active:scale-95"
           >
-            {loadingPayout && selectedChoice === 'yes' ? (
-              <div className="w-6 h-6 border-2 border-green-500/30 border-t-green-400 rounded-full animate-spin" />
-            ) : (
-              <ThumbsUp className="w-6 h-6" />
-            )}
+            <ThumbsUp className="w-6 h-6" />
           </button>
         </div>
 
