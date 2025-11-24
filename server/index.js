@@ -3627,21 +3627,21 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         // Set resolution time (duration from now)
         const resolutionTime = Math.floor(Date.now() / 1000) + (durationMinutes * 60);
         
-        // Quick play markets use minimal liquidity (0.1 BNB split equally)
-        const totalBnb = ethers.utils.parseEther('0.1');
-        const bnbPerSide = totalBnb.div(2);
+        // Quick play markets use minimal PRED liquidity (500 PRED split equally)
+        const totalPred = ethers.utils.parseEther('500');
+        const predPerSide = totalPred.div(2);
         
-        console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min)`);
+        console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min, 500 PRED liquidity)`);
         
         const tx = await predictionMarketContract.createMarket(
             title,
             `Quick Play: ${title}`,
             resolutionTime,
-            bnbPerSide,
-            bnbPerSide,
             ethers.BigNumber.from(0),
             ethers.BigNumber.from(0),
-            { value: totalBnb, gasLimit: 600000 }
+            predPerSide,
+            predPerSide,
+            { gasLimit: 600000 }
         );
         
         const receipt = await tx.wait();
