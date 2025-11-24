@@ -3316,23 +3316,36 @@ app.post('/api/get-source-link', async (req, res) => {
 
 // === ADMIN ENDPOINTS ===
 
-function isAdmin(req) {
-    const adminSecret = req.headers['x-admin-secret'];
-    const configuredAdminSecret = process.env.ADMIN_SECRET;
-    
-    if (!configuredAdminSecret) {
-        console.warn('⚠️ ADMIN_SECRET not configured - admin endpoints disabled');
-        return false;
-    }
-    
-    return adminSecret === configuredAdminSecret;
-}
-
-function requireAdmin(req, res, next) {
-    if (!isAdmin(req)) {
+async function requireAdmin(req, res, next) {
+    try {
+        // Check for admin secret header first
+        const adminSecret = req.headers['x-admin-secret'];
+        const configuredAdminSecret = process.env.ADMIN_SECRET;
+        
+        if (configuredAdminSecret && adminSecret === configuredAdminSecret) {
+            return next();
+        }
+        
+        // Try Firebase token
+        const authHeader = req.headers['authorization'];
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        
+        const token = authHeader.substring(7);
+        try {
+            const decodedToken = await admin.auth().verifyIdToken(token);
+            // Attach user info to request for logging
+            req.user = decodedToken;
+            return next();
+        } catch (tokenError) {
+            console.warn('🚨 Firebase token verification failed:', tokenError.message);
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+    } catch (error) {
+        console.error('Admin auth error:', error);
         return res.status(401).json({ error: 'Unauthorized' });
     }
-    next();
 }
 
 app.post('/api/admin/disputed-markets', requireAdmin, async (req, res) => {
