@@ -4,15 +4,23 @@
 
 Predora is a TikTok-style prediction market platform with instant Quick Play markets and custodial wallets. Users can create and bet on predictions in seconds.
 
+**KEY DESIGN (Nov 24, 2025):**
+- **Quick Play Markets** = Firestore-only (mocked), no-loss, BUSD-only betting
+- **Standard Markets** = On-chain (BSC), real PRED/BNB betting
+- Hybrid architecture: Quick Play for fast/casual, Standard for real predictions
+
 ## Current Working Features (Nov 24, 2025)
 
 ### ✅ Quick Play Markets
 - **Endpoint**: `POST /api/admin/create-quick-play-market`
-- **Status**: Fully operational (Firestore-backed)
+- **Status**: Fully operational (Firestore-only, no-loss)
+- **Market Type**: `isMock: true`, `isNoLoss: true`, `isOnChain: false`
 - **Market Creation**: 
-  - Title + Duration → Creates instantly
-  - Liquidity: 0.005 BNB YES + 0.005 BNB NO pools
+  - Title + Duration → Creates instantly in Firestore
+  - Mock liquidity: 0.005 BNB YES + 0.005 BNB NO (for display)
+  - No blockchain transactions (always Firestore)
   - No auth required (public endpoint)
+- **Betting**: BUSD only (users get 500 BUSD starting balance + faucet)
 - **Frontend Display**: 
   - Navigate to Quick Play screen (click "Quick Plays" card on home)
   - Markets display as swipeable cards
