@@ -204,10 +204,10 @@ export function QuickPlay() {
                       <span className="text-xs text-gray-400">Potential Payout</span>
                     </div>
                     <div className="text-lg font-bold text-green-400 mb-1">
-                      {potentialPayout.potentialPayout?.toFixed(2)} BUSD
+                      {potentialPayout.potentialPayout?.toFixed(2) || '0'} BUSD
                     </div>
                     <div className="text-xs text-gray-400">
-                      +{potentialPayout.potentialProfit?.toFixed(2)} BUSD ({potentialPayout.roi}% ROI)
+                      Profit: +{potentialPayout.potentialProfit?.toFixed(2) || '0'} BUSD | ROI: <span className="text-yellow-400 font-bold">{potentialPayout.roi || '0'}%</span>
                     </div>
                   </motion.div>
                 )}
