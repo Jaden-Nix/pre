@@ -2051,6 +2051,23 @@
                                     • $10,000+: Very stable odds
                                 </p>
                             </div>
+                            
+                            <!-- Pool Preview (Smart Calculation) -->
+                            <div id="pool-preview" class="p-3 bg-gradient-to-r from-sky-500/10 to-purple-500/10 border border-sky-400/30 rounded-lg">
+                                <p class="text-xs font-medium text-sky-300 mb-2">💡 Pool Preview</p>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="bg-black/30 p-2 rounded">
+                                        <p class="text-xs text-gray-400">YES Pool</p>
+                                        <p id="preview-yes-pool" class="text-sm font-bold text-green-400">-- PRED</p>
+                                    </div>
+                                    <div class="bg-black/30 p-2 rounded">
+                                        <p class="text-xs text-gray-400">NO Pool</p>
+                                        <p id="preview-no-pool" class="text-sm font-bold text-red-400">-- PRED</p>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2">Updates automatically as you change odds & liquidity</p>
+                            </div>
+                            
                             <p class="text-xs text-green-400">💰 100% refund at $100 volume from 10+ stakers</p>
                         </div>
 
@@ -11517,31 +11534,73 @@
         // =====================================================================
 
         /**
+         * 💡 Updates pool preview in real-time as odds/liquidity change
+         */
+        function updatePoolPreview() {
+            const yesPercent = parseFloat(dom.marketYesInput?.value) || 0;
+            const noPercent = parseFloat(dom.marketNoInput?.value) || 0;
+            const liquidityAmount = parseFloat(dom.marketLiquidityInput?.value) || 0;
+            
+            const previewYesPool = document.getElementById('preview-yes-pool');
+            const previewNoPool = document.getElementById('preview-no-pool');
+            
+            if (!previewYesPool || !previewNoPool) return;
+            
+            if (yesPercent > 0 && noPercent > 0 && liquidityAmount > 0) {
+                // Calculate pools proportional to odds
+                const yesPoolAmount = (yesPercent / 100) * liquidityAmount;
+                const noPoolAmount = (noPercent / 100) * liquidityAmount;
+                const asset = dom.marketLiquidityAsset?.value || 'PRED';
+                
+                previewYesPool.innerText = `${yesPoolAmount.toFixed(4)} ${asset}`;
+                previewNoPool.innerText = `${noPoolAmount.toFixed(4)} ${asset}`;
+                previewYesPool.classList.remove('text-gray-400');
+                previewNoPool.classList.remove('text-gray-400');
+            } else {
+                previewYesPool.innerText = '-- PRED';
+                previewNoPool.innerText = '-- PRED';
+                previewYesPool.classList.add('text-gray-400');
+                previewNoPool.classList.add('text-gray-400');
+            }
+        }
+
+        /**
          * Wires up the listeners for the Create Market screen (odds calculation, etc.).
          */
         function setupCreateMarketListeners() {
-            // This is your existing listener for the YES box
+            // Listener for YES odds input
             dom.marketYesInput.addEventListener('input', () => {
                 const yes = parseFloat(dom.marketYesInput.value);
                 if (yes >= 0 && yes <= 100) {
-                    dom.marketNoInput.value = (100 - yes).toFixed(1); // Use toFixed for decimals
+                    dom.marketNoInput.value = (100 - yes).toFixed(1);
                 } else if (dom.marketYesInput.value === "") {
                     dom.marketNoInput.value = "";
                 }
                 updatePreview();
+                updatePoolPreview();  // ✅ Update pool preview
             });
 
-            // ---- ADD THIS NEW LISTENER FOR THE NO BOX ----
+            // Listener for NO odds input
             dom.marketNoInput.addEventListener('input', () => {
                 const no = parseFloat(dom.marketNoInput.value);
                 if (no >= 0 && no <= 100) {
-                    dom.marketYesInput.value = (100 - no).toFixed(1); // Use toFixed for decimals
+                    dom.marketYesInput.value = (100 - no).toFixed(1);
                 } else if (dom.marketNoInput.value === "") {
                     dom.marketYesInput.value = "";
                 }
                 updatePreview();
+                updatePoolPreview();  // ✅ Update pool preview
             });
-            // ---- END OF NEW BLOCK ----
+
+            // Listener for liquidity input
+            dom.marketLiquidityInput.addEventListener('input', () => {
+                updatePoolPreview();  // ✅ Update pool preview when liquidity changes
+            });
+
+            // Listener for liquidity asset change
+            dom.marketLiquidityAsset.addEventListener('change', () => {
+                updatePoolPreview();  // ✅ Update pool preview when asset changes
+            });
 
             document.getElementById('market-title-input').addEventListener('input', updatePreview);
         }
