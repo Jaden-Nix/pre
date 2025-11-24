@@ -773,7 +773,7 @@ app.post('/api/market/create-onchain', async (req, res) => {
             
             const docRef = await firestore
                 .collection('artifacts')
-                .doc(process.env.APP_ID)
+                .doc(APP_ID)
                 .collection('public')
                 .doc('data')
                 .collection('standard_markets')
