@@ -11390,7 +11390,11 @@
                         totalXp += getRandomXP(10);
 
                         // Safety check: Does this market have AMM pools?
-                        if (!marketSnap.exists() || !marketSnap.data().yesPool) {
+                        // Check for either yesPool (standard) or yesPoolBusd (Quick Play)
+                        const marketData = marketSnap.exists() ? marketSnap.data() : null;
+                        const hasRealPools = marketData && (marketData.yesPool || marketData.yesPoolBusd);
+                        
+                        if (!hasRealPools) {
                             // This is a MOCK market or an OLD market.
                             // Use AMM calculation with market's actual YES/NO percentages
                             const market = marketSnap.exists() ? marketSnap.data() : null;
@@ -11458,8 +11462,9 @@
                             // Proper AMM Payout Calculation
                             const market = marketSnap.data();
                             const marketRef = marketSnap.ref;
-                            let yesPool = market.yesPool;
-                            let noPool = market.noPool;
+                            // Support both yesPool (standard) and yesPoolBusd (Quick Play)
+                            let yesPool = market.yesPool || market.yesPoolBusd || 0;
+                            let noPool = market.noPool || market.noPoolBusd || 0;
                             const k = yesPool * noPool; // Constant product
                             
                             // 1. Calculate user's share percentage BEFORE their stake
