@@ -16,7 +16,7 @@ const wallet = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
 // PredictionMarketV2 contract bytecode and ABI
 const contractABI = [
     'constructor(address _predTokenAddress)',
-    'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
+    'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime) external payable returns (uint256)',
     'function placeBet(uint256 _marketId, bool _pick, uint8 _currency, uint256 _amount) external payable',
     'function placeBatchBets(uint256[] _marketIds, bool[] _picks, uint256[] _amounts, uint8[] _currencies) external payable',
     'function resolveMarket(uint256 _marketId, bool _outcome, string _evidenceHash) external',
