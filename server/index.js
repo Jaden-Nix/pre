@@ -3074,10 +3074,19 @@ Generate 5 quick, fun YES/NO prediction questions about uncertain events in the 
             
             // Store in Firestore with onChainMarketId (if available)
             const quickPlayData = {
+                title: item.question,
                 question: item.question,
                 expiresAt: item.expiresAt,
-                createdAt: new Date().toISOString(),
-                isActive: true
+                createdAt: admin.firestore.Timestamp.now(),
+                isActive: true,
+                yesPoolBusd: 50,  // Initial mock BUSD liquidity
+                noPoolBusd: 50,   // Initial mock BUSD liquidity
+                yesVotes: 0,
+                noVotes: 0,
+                totalVolumeBusd: 0,
+                yesPercent: 50,
+                noPercent: 50,
+                status: 'active'
             };
             
             // Add on-chain fields if market was created
@@ -3086,7 +3095,6 @@ Generate 5 quick, fun YES/NO prediction questions about uncertain events in the 
                 quickPlayData.onChainTxHash = onChainTxHash;
                 quickPlayData.yesPool = 0; // User bets only, initial liquidity tracked separately on-chain
                 quickPlayData.noPool = 0;
-                quickPlayData.totalVolume = 0;
             }
             
             await db.collection(collectionPath).add(quickPlayData);

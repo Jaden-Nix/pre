@@ -33,22 +33,34 @@ export function QuickPlay() {
   const [loadingPayout, setLoadingPayout] = useState(false);
 
   useEffect(() => {
-    // Fetch quick plays from Firestore - try both paths
+    // Fetch quick plays from Firestore
     const tryFetchQuickPlays = async () => {
       try {
-        // Try from artifacts path (server-side stored) - use APP_ID from env
         const appId = process.env.NEXT_PUBLIC_APP_ID || 'predora-hackathon';
-        const q = query(
-          collection(db, `artifacts/${appId}/public/data/quick_plays`),
-          orderBy('createdAt', 'desc')
-        );
+        const collectionPath = `artifacts/${appId}/public/data/quick_plays`;
+        
+        // Try without orderBy first to see if data exists
+        const q = query(collection(db, collectionPath));
         
         const unsubscribe = onSnapshot(q, (snapshot) => {
           const data = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
           })) as QuickPlayMarket[];
-          setMarkets(data);
+          
+          console.log(`✅ Loaded ${data.length} Quick Play markets`);
+          
+          // Sort client-side instead to avoid orderBy issues
+          const sorted = data.sort((a, b) => {
+            const timeA = (a.createdAt as any)?.toMillis?.() || new Date(a.createdAt as any).getTime() || 0;
+            const timeB = (b.createdAt as any)?.toMillis?.() || new Date(b.createdAt as any).getTime() || 0;
+            return timeB - timeA;
+          });
+          
+          setMarkets(sorted);
+          setLoading(false);
+        }, (error) => {
+          console.error('❌ Firestore listener error:', error);
           setLoading(false);
         });
         
