@@ -6286,8 +6286,107 @@
             }
         }
         
+        /**
+         * Check BUSD faucet cooldown
+         */
+        async function checkBusdFaucetCooldown() {
+            const claimBtn = document.getElementById('claim-busd-btn');
+            if (!claimBtn || !userProfile || !currentUserId) return;
+            
+            try {
+                // Check cooldown from Firestore
+                const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(currentUserId);
+                const userDoc = await userRef.get();
+                
+                if (userDoc.exists) {
+                    const lastClaim = userDoc.data().lastBusdClaim;
+                    if (lastClaim) {
+                        const now = Date.now();
+                        const hoursSinceLastClaim = (now - lastClaim) / (1000 * 60 * 60);
+                        if (hoursSinceLastClaim < 24) {
+                            const hoursLeft = Math.ceil(24 - hoursSinceLastClaim);
+                            claimBtn.disabled = true;
+                            claimBtn.innerHTML = `⏰ Cooldown (${hoursLeft}h)`;
+                            return;
+                        }
+                    }
+                }
+                
+                // Can claim
+                claimBtn.disabled = false;
+                claimBtn.innerHTML = '💰 Claim 100 BUSD';
+            } catch (error) {
+                console.warn('Could not check BUSD faucet cooldown:', error);
+            }
+        }
+        
+        /**
+         * Claim BUSD from faucet
+         */
+        window.claimBusdFaucet = async () => {
+            if (!currentUserId) {
+                showToast('Please sign in first', 'warning');
+                return;
+            }
+            
+            const claimBtn = document.getElementById('claim-busd-btn');
+            if (!claimBtn) return;
+            
+            claimBtn.disabled = true;
+            claimBtn.innerHTML = '⏳ Claiming...';
+            
+            try {
+                const firebaseUser = auth.currentUser;
+                if (!firebaseUser) {
+                    showToast('Authentication expired. Please sign in again.', 'error');
+                    return;
+                }
+                
+                const idToken = await firebaseUser.getIdToken();
+                const response = await fetch('/api/faucet/claim-busd', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUserId,
+                        idToken: idToken
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update BUSD balance in profile
+                    userProfile.busdBalance = (userProfile.busdBalance || 500) + data.amount;
+                    showToast(`🎉 Claimed ${data.amount} BUSD! Balance: ${userProfile.busdBalance.toFixed(2)}`, 'success');
+                    
+                    // Refresh UI
+                    if (dom.mockBalance) updateProfileUI(userProfile);
+                    if (typeof populateAssetSelector === 'function') populateAssetSelector();
+                    
+                    // Start cooldown
+                    claimBtn.disabled = true;
+                    claimBtn.innerHTML = '⏰ Cooldown (24h)';
+                    
+                    // Refresh balances
+                    await refreshAllBalances();
+                } else if (response.status === 429) {
+                    claimBtn.innerHTML = '⏰ On Cooldown';
+                    claimBtn.disabled = true;
+                    showToast(data.message || 'Faucet on cooldown. Try again in 24 hours.', 'warning');
+                } else {
+                    throw new Error(data.error || 'Failed to claim BUSD');
+                }
+            } catch (error) {
+                console.error('BUSD faucet claim error:', error);
+                showToast('Failed to claim BUSD: ' + (error?.message || 'Unknown error'), 'error');
+                claimBtn.disabled = false;
+                claimBtn.innerHTML = '💰 Claim 100 BUSD';
+            }
+        };
+        
         // Call checkFaucetCooldown when user profile loads
         window.checkFaucetCooldown = checkFaucetCooldown;
+        window.checkBusdFaucetCooldown = checkBusdFaucetCooldown;
         
         // Expose admin functions globally
         window.authenticateAdmin = authenticateAdmin;
@@ -8745,6 +8844,11 @@
                     checkFaucetCooldown();
                 }
                 
+                // Check BUSD faucet cooldown status
+                if (typeof checkBusdFaucetCooldown === 'function') {
+                    checkBusdFaucetCooldown();
+                }
+                
                 // Fetch actual rank from leaderboard
                 fetchUserRank(currentUserId).then(rank => {
                     dom.profileRankBadge.innerText = `Rank: #${rank || 'N/A'}`;
@@ -9015,6 +9119,23 @@
                     </div>
                     
                     <p class="text-xs text-center text-gray-500">$PRED tokens are used for betting on markets. Value: $600/token</p>
+                </div>
+
+                <!-- BUSD Token Faucet -->
+                <div class="ui-panel p-4 space-y-4">
+                    <h3 class="text-lg font-semibold gradient-text">💰 BUSD Token Faucet (Quick Play)</h3>
+                    <p class="text-sm text-gray-400">Claim free BUSD tokens for Quick Play testing. One claim every 24 hours.</p>
+                    
+                    <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                        <span class="text-sm text-gray-400">Your BUSD Balance:</span>
+                        <span class="text-sm font-semibold text-purple-400">${(userProfile.busdBalance || 500).toFixed(2)} BUSD</span>
+                    </div>
+                    
+                    <button id="claim-busd-btn" onclick="claimBusdFaucet()" class="btn bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 w-full">
+                        💰 Claim 100 BUSD
+                    </button>
+                    
+                    <p class="text-xs text-center text-gray-500">BUSD tokens are used exclusively for Quick Play betting. One claim per day.</p>
                 </div>
 
                 ${isCustodial ? `

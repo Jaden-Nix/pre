@@ -1408,6 +1408,86 @@ app.post('/api/faucet/claim-pred', async (req, res) => {
     }
 });
 
+// 🪙 BUSD Token Faucet - FIRESTORE ONLY (Quick Play tokens)
+app.post('/api/faucet/claim-busd', async (req, res) => {
+    const { userId, idToken } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    if (!idToken) {
+        return res.status(401).json({ error: 'Authentication token is required' });
+    }
+    
+    try {
+        // ✅ SECURITY: Verify Firebase ID token to authenticate the caller
+        let decodedToken;
+        try {
+            decodedToken = await admin.auth().verifyIdToken(idToken);
+        } catch (tokenError) {
+            console.warn('🚨 Invalid Firebase token:', tokenError.message);
+            return res.status(401).json({ error: 'Invalid or expired authentication token' });
+        }
+        
+        const authenticatedUid = decodedToken.uid;
+        
+        if (!db) {
+            return res.status(503).json({ error: 'Database unavailable' });
+        }
+        
+        // ✅ SERVER-SIDE COOLDOWN CHECK (24 hours)
+        const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
+        const userDoc = await userRef.get();
+        
+        if (userDoc.exists) {
+            const lastClaim = userDoc.data().lastBusdClaim;
+            if (lastClaim) {
+                const now = Date.now();
+                const hoursSinceLastClaim = (now - lastClaim) / (1000 * 60 * 60);
+                if (hoursSinceLastClaim < 24) {
+                    const hoursLeft = Math.ceil(24 - hoursSinceLastClaim);
+                    console.warn(`⏱️ BUSD Faucet cooldown: User ${userId} tried to claim after only ${hoursSinceLastClaim.toFixed(1)} hours`);
+                    return res.status(429).json({ 
+                        error: 'Faucet on cooldown',
+                        message: `You can claim again in ${hoursLeft} hour${hoursLeft === 1 ? '' : 's'}`,
+                        timeLeft: hoursLeft * 3600
+                    });
+                }
+            }
+        }
+        
+        // Claim 100 BUSD
+        const busdAmount = 100;
+        
+        // Add BUSD to user balance
+        const addResult = await addBusdBalance(userId, busdAmount);
+        if (!addResult) {
+            return res.status(500).json({ error: 'Failed to add BUSD balance' });
+        }
+        
+        // Update claim timestamp
+        try {
+            const timestamp = Date.now();
+            await userRef.update({
+                lastBusdClaim: timestamp
+            });
+            console.log(`✅ BUSD Faucet: Claimed ${busdAmount} BUSD by ${userId} at ${new Date(timestamp).toISOString()}`);
+        } catch (dbError) {
+            console.warn(`⚠️  Could not update claim timestamp: ${dbError.message}`);
+        }
+        
+        res.status(200).json({ 
+            success: true, 
+            amount: busdAmount,
+            message: `Successfully claimed ${busdAmount} BUSD tokens!`
+        });
+    } catch (error) {
+        console.error('Error claiming BUSD from faucet:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/custodial-wallet/balance', async (req, res) => {
     const { userId } = req.body;
     
