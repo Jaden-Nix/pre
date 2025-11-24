@@ -6,23 +6,25 @@ Predora is a TikTok-style prediction market platform with instant Quick Play mar
 
 ## Recent Fixes (Nov 24, 2025 - Latest)
 
-### 🔧 Critical Fixes Applied
-1. **Fixed QuickPlay.tsx Firestore Query**
-   - Removed `orderBy` clause that was causing document fetch failures
-   - Implemented client-side sorting for market chronological order
-   - Markets now load reliably from Firestore
+### 🛡️ NO-LOSS MARKETS IMPLEMENTED (Nov 24, Latest)
+1. **Hybrid AMM + Yield Model**
+   - No-loss markets create ON-CHAIN via PredictionMarketV2 (real AMM trading)
+   - Forces BUSD for display, converts to PRED for on-chain creation
+   - Marked as `marketType: 'fixed-pot'` with `isFixedPot: true`
+   - Stores yield protocol info (Aave integration ready for future)
 
-2. **Fixed Quick Play Market Creation**
-   - Markets now initialize with required BUSD liquidity pools:
-     - `yesPoolBusd: 50` (YES side liquidity)
-     - `noPoolBusd: 50` (NO side liquidity)
-   - All fields properly set: `yesVotes`, `noVotes`, `totalVolumeBusd`, `yesPercent`, `noPercent`
-   - `createdAt` now uses Firestore Timestamp instead of ISO string
+2. **Entry Price Tracking System**
+   - When users trade, their bet is recorded with:
+     - `entryTimestamp`: When they placed the bet
+     - `entryPrice`: The odds they got (e.g., 70/30 split)
+     - `entryYesPercent` & `entryNoPercent`: Full pool breakdown at entry
+   - Enables fair yield distribution based on entry prices
 
-3. **Enhanced ROI Display**
-   - ROI prominently displayed in Quick Play payout cards (yellow, bold)
-   - Recent Activity tab shows betting history with payout calculations
-   - Format: "Profit: +X.XX BUSD | ROI: XX%"
+3. **Implementation Details**
+   - Frontend: `app.html` - Lines 12165-12250 (no-loss market creation)
+   - Frontend: `app.html` - Lines 10482-10489 & 10776-10783 (entry price tracking on bets)
+   - Backend: `server/index.js` - Line 741 (accept isNoLossMarket flag)
+   - Backend: `server/index.js` - Lines 1017-1022 (store no-loss fields in Firestore)
 
 ## Current Working Features (Nov 24, 2025)
 
