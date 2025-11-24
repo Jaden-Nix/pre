@@ -11462,9 +11462,27 @@
                             // Proper AMM Payout Calculation
                             const market = marketSnap.data();
                             const marketRef = marketSnap.ref;
-                            // Support both yesPool (standard) and yesPoolBusd (Quick Play)
-                            let yesPool = market.yesPool || market.yesPoolBusd || 0;
-                            let noPool = market.noPool || market.noPoolBusd || 0;
+                            
+                            // For Quick Play markets, derive pools from current percentages
+                            // This ensures accuracy even when odds are extremely skewed
+                            const usePercentages = market.yesPercent !== undefined && market.noPercent !== undefined;
+                            let yesPool, noPool;
+                            
+                            if (usePercentages && market.yesPercent !== 50 && market.noPercent !== 50) {
+                                // Market has been updated with new percentages - derive pools from them
+                                // Use a large base pool ($10,000) for better precision with extreme odds
+                                const basePool = 10000;
+                                yesPool = (market.yesPercent / 100) * basePool;
+                                noPool = (market.noPercent / 100) * basePool;
+                            } else {
+                                // Use stored pools if they exist
+                                yesPool = market.yesPool || market.yesPoolBusd || 50;
+                                noPool = market.noPool || market.noPoolBusd || 50;
+                            }
+                            
+                            // Ensure pools are never zero
+                            yesPool = Math.max(yesPool, 0.01);
+                            noPool = Math.max(noPool, 0.01);
                             const k = yesPool * noPool; // Constant product
                             
                             // 1. Calculate user's share percentage BEFORE their stake
