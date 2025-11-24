@@ -3619,10 +3619,19 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         const deployerWallet = new ethers.Wallet(DEPLOY_PRIVATE_KEY, provider);
         
         const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
+        const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+        
         const contractABI = [
             'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
         ];
+        
+        const erc20Abi = [
+            'function approve(address spender, uint256 amount) external returns (bool)',
+            'function allowance(address owner, address spender) external view returns (uint256)'
+        ];
+        
         const predictionMarketContract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
+        const predTokenContract = new ethers.Contract(predTokenAddress, erc20Abi, deployerWallet);
         
         // Set resolution time (duration from now)
         const resolutionTime = Math.floor(Date.now() / 1000) + (durationMinutes * 60);
@@ -3632,6 +3641,18 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         const predPerSide = totalPred.div(2);
         
         console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min, 500 PRED liquidity)`);
+        
+        // Check current allowance
+        const currentAllowance = await predTokenContract.allowance(deployerWallet.address, contractAddress);
+        console.log(`📋 Current PRED allowance: ${ethers.utils.formatEther(currentAllowance)} PRED`);
+        
+        // If allowance is insufficient, approve more
+        if (currentAllowance.lt(totalPred)) {
+            console.log(`🔐 Approving PRED contract to spend ${ethers.utils.formatEther(totalPred)} PRED...`);
+            const approveTx = await predTokenContract.approve(contractAddress, ethers.constants.MaxUint256);
+            await approveTx.wait();
+            console.log(`✅ PRED approval confirmed`);
+        }
         
         const tx = await predictionMarketContract.createMarket(
             title,
