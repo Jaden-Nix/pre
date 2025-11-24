@@ -791,7 +791,7 @@ app.post('/api/market/create-onchain', async (req, res) => {
         // Initialize contracts
         const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
         const contractABI = [
-            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime) external returns (uint256)',
+            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime) external payable returns (uint256)',
             'event MarketCreated(uint256 indexed marketId, string title, address indexed creator)'
         ];
         
@@ -850,8 +850,9 @@ app.post('/api/market/create-onchain', async (req, res) => {
         const marketCreatedEvent = receipt.events?.find(e => e.event === 'MarketCreated');
         const onChainMarketId = marketCreatedEvent?.args?.marketId?.toNumber();
         
-        if (onChainMarketId === undefined && onChainMarketId !== 0) {
-            console.error('❌ Failed to extract market ID');
+        if (onChainMarketId == null || typeof onChainMarketId !== 'number') {
+            console.error('❌ Failed to extract market ID from event');
+            console.error('   MarketCreated event:', marketCreatedEvent);
             return res.status(500).json({ error: 'Failed to extract market ID from blockchain transaction' });
         }
         
