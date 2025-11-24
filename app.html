@@ -11378,10 +11378,17 @@
                         // Safety check: Does this market have AMM pools?
                         if (!marketSnap.exists() || !marketSnap.data().yesPool) {
                             // This is a MOCK market or an OLD market.
-                            // Use AMM calculation with assumed 50/50 initial pools
-                            const initialPoolSize = 10; // $10 per side (equal pools)
-                            let yesPool = initialPoolSize;
-                            let noPool = initialPoolSize;
+                            // Use AMM calculation with market's actual YES/NO percentages
+                            const market = marketSnap.exists() ? marketSnap.data() : null;
+                            
+                            // Get market percentages or default to 50/50
+                            const yesPercent = market?.yesPercent || 50;
+                            const noPercent = market?.noPercent || 50;
+                            
+                            // Derive pool sizes from percentages (assume total pool = $100)
+                            const totalPoolUsd = 100;
+                            let yesPool = (yesPercent / 100) * totalPoolUsd;
+                            let noPool = (noPercent / 100) * totalPoolUsd;
                             const k = yesPool * noPool; // Constant product
                             
                             let potentialPayoutUsd = 0;
