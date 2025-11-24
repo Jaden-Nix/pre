@@ -10237,6 +10237,12 @@
                 console.log(`   Total Return: ${potentialReturn.toFixed(returnDecimals)} ${asset} (~$${potentialReturnUsd.toFixed(2)})`);
                 console.log(`   ROI: ${roi.toFixed(1)}%`);
                 
+                // Update calc-stake display with potential return (for Quick Play payout display)
+                const calcStakeEl = document.getElementById('calc-stake');
+                if (calcStakeEl) {
+                    calcStakeEl.innerText = `$${potentialReturnUsd.toFixed(2)}`;
+                }
+                
             } catch (error) {
                 console.error('❌ Error calculating AMM impact:', error);
                 const ammPanel = document.getElementById('amm-impact-panel');
