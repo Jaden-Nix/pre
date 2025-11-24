@@ -3639,7 +3639,6 @@ async function requestBnbFromFaucet(address) {
 // ⛓️ Create Quick Play Market On-Chain (guaranteed on-chain)
 app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) => {
     const { title, durationMinutes, yesPercent, noPercent } = req.body;
-    const { serverTimestamp } = require('firebase-admin').firestore;
     
     if (!title || !durationMinutes || yesPercent === undefined || noPercent === undefined) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -3746,7 +3745,7 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
             totalStakeVolume: 0,
             isResolved: false,
             isMock: false,
-            createdAt: serverTimestamp(),
+            createdAt: admin.firestore.Timestamp.now(),
             onChainMarketId: onChainMarketId,
             onChainTxHash: txHash,
             isOnChain: true
