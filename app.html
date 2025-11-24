@@ -12173,21 +12173,58 @@
                 
                 showLoadingOverlay(true, "Creating no-loss market...");
                 
-                // Mock no-loss market creation
-                setTimeout(() => {
-                    showLoadingOverlay(false);
-                    showToast(`🛡️ No-Loss market created! Deposit will be locked in ${yieldProtocolFinal}.`, "success");
-                    
-                    // Clear the form
-                    document.getElementById('market-title-input').value = '';
-                    document.getElementById('market-insight-input').value = '';
-                    dom.marketYesInput.value = '';
-                    dom.marketNoInput.value = '';
-                    document.getElementById('staking-deadline-input').value = '';
-                    document.getElementById('market-resolution-date').value = '';
-                    dom.marketLiquidityInput.value = '';
-                    
-                    showScreen('home-screen');
+                // Mock no-loss market creation with Firestore persistence
+                setTimeout(async () => {
+                    try {
+                        // Get Firestore instance
+                        const { addDoc, collection, serverTimestamp } = window.firebase.firestore;
+                        const firestore = window.firebase.firestore();
+                        
+                        // Create market document for no-loss market
+                        const marketData = {
+                            title,
+                            description: insight || "No description",
+                            category,
+                            resolutionDate: new Date(resolutionDate),
+                            createdAt: serverTimestamp(),
+                            creator: userWalletAddress,
+                            creatorUID: auth.currentUser.uid,
+                            marketType: 'fixed-pot',
+                            yieldProtocol: yieldProtocolFinal,
+                            liquidityAmount,
+                            liquidityAsset,
+                            liquidityAmountUSD: liquidityAmountInUsd,
+                            status: 'active',
+                            marketStructure,
+                            totalVolume: liquidityAmountInUsd,
+                            yesShares: liquidityAmountInUsd / 2,
+                            noShares: liquidityAmountInUsd / 2,
+                            onChainMarketId: null,
+                            txHash: null
+                        };
+                        
+                        // Add to Firestore
+                        const docRef = await addDoc(collection(firestore, 'standard_markets'), marketData);
+                        console.log('💾 No-loss market saved to Firestore:', docRef.id);
+                        
+                        showLoadingOverlay(false);
+                        showToast(`🛡️ No-Loss market created! Deposit will be locked in ${yieldProtocolFinal}.`, "success");
+                        
+                        // Clear the form
+                        document.getElementById('market-title-input').value = '';
+                        document.getElementById('market-insight-input').value = '';
+                        dom.marketYesInput.value = '';
+                        dom.marketNoInput.value = '';
+                        document.getElementById('staking-deadline-input').value = '';
+                        document.getElementById('market-resolution-date').value = '';
+                        dom.marketLiquidityInput.value = '';
+                        
+                        showScreen('home-screen');
+                    } catch (error) {
+                        console.error('❌ Error saving no-loss market to Firestore:', error);
+                        showLoadingOverlay(false);
+                        showToast(`Error saving market: ${error.message}`, "error");
+                    }
                 }, 1500);
                 
                 return;
