@@ -3657,12 +3657,13 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
         
         const contractABI = [
-            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime) external returns (uint256)',
+            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
         ];
         
         const erc20Abi = [
             'function approve(address spender, uint256 amount) external returns (bool)',
-            'function allowance(address owner, address spender) external view returns (uint256)'
+            'function allowance(address owner, address spender) external view returns (uint256)',
+            'function balanceOf(address account) external view returns (uint256)'
         ];
         
         const predictionMarketContract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
@@ -3673,9 +3674,17 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min)`);
         console.log(`   🎲 Resolution time: ${new Date(resolutionTime * 1000).toISOString()}`);
         
-        // Check BNB balance for gas
+        // Quick Play liquidity: 0.01 BNB + 6 PRED split 50/50
+        const bnbValue = ethers.utils.parseEther('0.005');  // YES pool
+        const bnbValueNo = ethers.utils.parseEther('0.005');  // NO pool
+        const predValue = ethers.utils.parseEther('3');  // YES pool
+        const predValueNo = ethers.utils.parseEther('3');  // NO pool
+        const totalBnbNeeded = ethers.utils.parseEther('0.01');
+        const totalPredNeeded = ethers.utils.parseEther('6');
+        
+        // Check BNB balance for gas + liquidity
         let deployerBalance = await provider.getBalance(deployerWallet.address);
-        const estimatedGasCost = ethers.utils.parseEther('0.01');  // Estimate for market creation
+        const estimatedGasCost = ethers.utils.parseEther('0.02');  // Gas + liquidity buffer
         
         if (deployerBalance.lt(estimatedGasCost)) {
             console.log(`⚠️ Deployer BNB low (${ethers.utils.formatEther(deployerBalance)} BNB). Requesting from faucet...`);
@@ -3688,14 +3697,30 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
             console.log(`💰 Updated deployer balance: ${ethers.utils.formatEther(deployerBalance)} BNB`);
         }
         
-        // Call createMarket with 3 parameters (as the deployed contract requires)
-        // Send 0.001 BNB as value for initial liquidity
-        const bnbValue = ethers.utils.parseEther('0.001');
+        // Check PRED balance and approve if needed
+        const predBalance = await predTokenContract.balanceOf(deployerWallet.address);
+        if (predBalance.lt(totalPredNeeded)) {
+            throw new Error(`Insufficient PRED balance. Have ${ethers.utils.formatEther(predBalance)}, need ${ethers.utils.formatEther(totalPredNeeded)}`);
+        }
+        
+        const currentAllowance = await predTokenContract.allowance(deployerWallet.address, contractAddress);
+        if (currentAllowance.lt(totalPredNeeded)) {
+            console.log(`📝 Approving ${ethers.utils.formatEther(totalPredNeeded)} PRED for market contract...`);
+            const approveTx = await predTokenContract.approve(contractAddress, ethers.constants.MaxUint256);
+            await approveTx.wait();
+            console.log(`✅ PRED approval confirmed`);
+        }
+        
+        // Call createMarket with all 7 required parameters
         const tx = await predictionMarketContract.createMarket(
             title,
             `Quick Play: ${title}`,
             resolutionTime,
-            { value: bnbValue, gasLimit: 300000 }
+            bnbValue,      // initialYesBnb
+            bnbValueNo,    // initialNoBnb
+            predValue,     // initialYesPred
+            predValueNo,   // initialNoPred
+            { value: totalBnbNeeded, gasLimit: 500000 }
         );
         
         const receipt = await tx.wait();
