@@ -3627,8 +3627,8 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         // Set resolution time (duration from now)
         const resolutionTime = Math.floor(Date.now() / 1000) + (durationMinutes * 60);
         
-        // Quick play markets use minimal liquidity (1 BNB split equally)
-        const totalBnb = ethers.utils.parseEther('1');
+        // Quick play markets use minimal liquidity (0.1 BNB split equally)
+        const totalBnb = ethers.utils.parseEther('0.1');
         const bnbPerSide = totalBnb.div(2);
         
         console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min)`);
