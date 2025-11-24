@@ -717,6 +717,13 @@ app.post('/api/profile/sync-wallet-address', async (req, res) => {
 app.post('/api/market/create-onchain', async (req, res) => {
     const { title, description, category, endDate, liquidityPRED, marketStructure, marketType, initialOdds, options, walletAddress } = req.body;
     
+    console.log(`📊 Market creation request received:`, {
+        title: title?.substring(0, 50),
+        marketType,
+        category,
+        liquidity: liquidityPRED
+    });
+    
     // Accept both liquidityBNB (legacy) and liquidityPRED (new PRED-based)
     const liquidityAmount = parseFloat(liquidityPRED || req.body.liquidityBNB);
     
@@ -727,6 +734,7 @@ app.post('/api/market/create-onchain', async (req, res) => {
     // Validate market type
     const isFixedPot = marketType === 'fixed-pot';
     const isTraditional = marketType === 'traditional';
+    console.log(`🎯 Market type check:`, { marketType, isFixedPot, isTraditional });
     if (!isFixedPot && !isTraditional) {
         return res.status(400).json({ error: 'Invalid market type. Must be "fixed-pot" or "traditional"' });
     }
