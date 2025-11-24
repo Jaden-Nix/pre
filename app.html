@@ -6357,18 +6357,21 @@
                 if (data.success) {
                     // Update BUSD balance in profile
                     userProfile.busdBalance = (userProfile.busdBalance || 500) + data.amount;
+                    
+                    // Update ONLY the BUSD balance display and button (don't re-render whole panel)
+                    const busdBalanceEl = document.querySelector('.text-purple-400');
+                    if (busdBalanceEl && busdBalanceEl.textContent.includes('BUSD')) {
+                        busdBalanceEl.textContent = `${userProfile.busdBalance.toFixed(2)} BUSD`;
+                    }
+                    
                     showToast(`🎉 Claimed ${data.amount} BUSD! Balance: ${userProfile.busdBalance.toFixed(2)}`, 'success');
                     
-                    // Refresh UI
-                    if (dom.mockBalance) updateProfileUI(userProfile);
-                    if (typeof populateAssetSelector === 'function') populateAssetSelector();
-                    
-                    // Start cooldown
+                    // Update BUSD faucet button only
                     claimBtn.disabled = true;
                     claimBtn.innerHTML = '⏰ Cooldown (24h)';
                     
-                    // Refresh balances
-                    await refreshAllBalances();
+                    // Update asset selector (no re-render)
+                    if (typeof populateAssetSelector === 'function') populateAssetSelector();
                 } else if (response.status === 429) {
                     claimBtn.innerHTML = '⏰ On Cooldown';
                     claimBtn.disabled = true;
