@@ -12161,13 +12161,17 @@
 
             // === HANDLE NO-LOSS MARKETS (FIXED-POT) - MOCKED FOR NOW ===
             if (isFixedPotFinal) {
+                // Force BUSD for no-loss markets
+                const noLossLiquidityAsset = 'BUSD';
+                const noLossLiquidityAmountUsd = liquidityAmount * getMockPrice(noLossLiquidityAsset);
+                
                 console.log('🛡️ Creating NO-LOSS market (MOCKED - NOT on-chain):', {
                     title,
                     description: insight || "No description",
                     category,
                     resolutionDate,
-                    liquidityAmount,
-                    liquidityAsset,
+                    liquidityAmount: noLossLiquidityAmountUsd,
+                    liquidityAsset: noLossLiquidityAsset,
                     yieldProtocol: yieldProtocolFinal
                 });
                 
@@ -12184,6 +12188,7 @@
                         const { addDoc, collection, serverTimestamp } = window.firebase.firestore;
                         
                         // Create market document for no-loss market
+                        // NOTE: No-loss markets don't have yes/no odds (fixed-pot with principal protection)
                         const marketData = {
                             title,
                             description: insight || "No description",
@@ -12194,14 +12199,14 @@
                             creatorUID: auth.currentUser.uid,
                             marketType: 'fixed-pot',
                             yieldProtocol: yieldProtocolFinal,
-                            liquidityAmount,
-                            liquidityAsset,
-                            liquidityAmountUSD: liquidityAmountInUsd,
+                            liquidityAmount: noLossLiquidityAmountUsd,
+                            liquidityAsset: noLossLiquidityAsset,
+                            liquidityAmountUSD: noLossLiquidityAmountUsd,
                             status: 'active',
                             marketStructure,
-                            totalVolume: liquidityAmountInUsd,
-                            yesShares: liquidityAmountInUsd / 2,
-                            noShares: liquidityAmountInUsd / 2,
+                            totalVolume: noLossLiquidityAmountUsd,
+                            yesShares: null,
+                            noShares: null,
                             onChainMarketId: null,
                             txHash: null,
                             isResolved: false
