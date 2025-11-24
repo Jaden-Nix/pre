@@ -3866,25 +3866,29 @@ app.post('/api/admin/create-quick-play-market', async (req, res) => {
             throw new Error('Firebase Admin not initialized');
         }
         
-        // Use custom percentages from admin or default to 50/50
-        const yesPoolValue = 0.005;
-        const noPoolValue = 0.005;
+        // Initialize with mock BUSD liquidity pools (starting amount per side)
+        const initialBusdLiquidity = 50;  // 50 BUSD per side
         
         const quickPlayData = {
             title,
             duration: `${durationMinutes}m`,
-            yesPool: yesPoolValue,  // BNB
-            noPool: noPoolValue,    // BNB
-            yesPercent: finalYesPercent, // Use custom percentage from admin
-            noPercent: finalNoPercent,   // Use custom percentage from admin
+            yesPool: 0.005,  // BNB
+            noPool: 0.005,   // BNB
+            yesPoolBusd: initialBusdLiquidity,  // Mock BUSD pool for YES
+            noPoolBusd: initialBusdLiquidity,   // Mock BUSD pool for NO
+            yesPercent: finalYesPercent,
+            noPercent: finalNoPercent,
             totalStakeVolume: 0,
+            totalVolumeBusd: 0,
             isResolved: false,
             isMock: false,
             createdAt: admin.firestore.Timestamp.now(),
             isOnChain: isOnChain,
             currency: 'BNB',
-            supportedBettingTokens: ['BNB', 'PRED'],
-            resolutionTime: resolutionTime
+            supportedBettingTokens: ['BNB', 'PRED', 'BUSD'],
+            resolutionTime: resolutionTime,
+            yesVotes: 0,
+            noVotes: 0
         };
         
         // Only add these if market was created on-chain
@@ -3934,28 +3938,30 @@ app.post('/api/quick-play/calculate-payout', async (req, res) => {
         }
         
         const market = quickPlaySnap.data();
-        const yesVotes = market.yesVotes || 0;
-        const noVotes = market.noVotes || 0;
-        const totalVotes = yesVotes + noVotes;
         const betAmount = parseFloat(amount);
         
-        // AMM Odds: split based on votes (current pools)
-        const yesOdds = totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 50;
-        const noOdds = totalVotes > 0 ? (noVotes / totalVotes) * 100 : 50;
+        // Use BUSD liquidity pools for real AMM calculation
+        let yesPoolBusd = market.yesPoolBusd || 50;
+        let noPoolBusd = market.noPoolBusd || 50;
         
-        // Use votes as pool representations for AMM calculation
+        // Calculate odds based on current pool balances
+        const totalPoolBusd = yesPoolBusd + noPoolBusd;
+        const yesOdds = (yesPoolBusd / totalPoolBusd) * 100;
+        const noOdds = (noPoolBusd / totalPoolBusd) * 100;
+        
+        // Determine which pool is which based on choice
         let yourPool, oppositePool;
         if (choice.toUpperCase() === 'YES') {
-            yourPool = yesVotes > 0 ? yesVotes : 1;     // Your side pool
-            oppositePool = noVotes > 0 ? noVotes : 1;   // Opposite side pool
+            yourPool = yesPoolBusd;
+            oppositePool = noPoolBusd;
         } else {
-            yourPool = noVotes > 0 ? noVotes : 1;
-            oppositePool = yesVotes > 0 ? yesVotes : 1;
+            yourPool = noPoolBusd;
+            oppositePool = yesPoolBusd;
         }
         
-        // AMM Payout Formula: Bet + (Opposite Pool × Bet / Your Pool)
-        // This rewards betting against the crowd with a share of the larger pool
-        const winnerShare = (oppositePool * betAmount) / yourPool;
+        // Real AMM Payout Formula: Bet + (Opposite Pool × Bet / (Your Pool + Bet))
+        // After user adds bet to their pool, the ratio changes
+        const winnerShare = (oppositePool * betAmount) / (yourPool + betAmount);
         const potentialPayout = betAmount + winnerShare;
         const potentialProfit = potentialPayout - betAmount;
         const roi = ((potentialProfit / betAmount) * 100).toFixed(1);
@@ -3973,7 +3979,9 @@ app.post('/api/quick-play/calculate-payout', async (req, res) => {
             choice: choice.toUpperCase(),
             odds: parseFloat(oddsDecimal.toFixed(4)),
             yesOdds: parseFloat(yesOdds.toFixed(1)),
-            noOdds: parseFloat(noOdds.toFixed(1))
+            noOdds: parseFloat(noOdds.toFixed(1)),
+            yesPoolBusd: parseFloat(yesPoolBusd.toFixed(2)),
+            noPoolBusd: parseFloat(noPoolBusd.toFixed(2))
         });
     } catch (error) {
         console.error('Error calculating quick play payout:', error);
@@ -4020,16 +4028,23 @@ app.post('/api/quick-play/place-bet', async (req, res) => {
         
         await deductBusdBalance(userId, amount);
         
-        const newYesVotes = choice.toUpperCase() === 'YES' ? admin.firestore.FieldValue.increment(1) : admin.firestore.FieldValue.increment(0);
-        const newNoVotes = choice.toUpperCase() === 'NO' ? admin.firestore.FieldValue.increment(1) : admin.firestore.FieldValue.increment(0);
-        
-        await quickPlayRef.update({
+        // Update liquidity pools with bet amount (adds to the pool for the chosen side)
+        const updateData = {
+            totalVolumeBusd: admin.firestore.FieldValue.increment(amount),
             yesVotes: choice.toUpperCase() === 'YES' ? admin.firestore.FieldValue.increment(1) : admin.firestore.FieldValue.increment(0),
-            noVotes: choice.toUpperCase() === 'NO' ? admin.firestore.FieldValue.increment(1) : admin.firestore.FieldValue.increment(0),
-            totalVolume: admin.firestore.FieldValue.increment(amount)
-        });
+            noVotes: choice.toUpperCase() === 'NO' ? admin.firestore.FieldValue.increment(1) : admin.firestore.FieldValue.increment(0)
+        };
         
-        console.log(`💰 Quick Play bet: ${userId} bet ${amount} BUSD on ${choice} for market ${quickPlayId}`);
+        // Add to the appropriate BUSD liquidity pool
+        if (choice.toUpperCase() === 'YES') {
+            updateData.yesPoolBusd = admin.firestore.FieldValue.increment(amount);
+        } else {
+            updateData.noPoolBusd = admin.firestore.FieldValue.increment(amount);
+        }
+        
+        await quickPlayRef.update(updateData);
+        
+        console.log(`💰 Quick Play bet: ${userId} bet ${amount} BUSD on ${choice} for market ${quickPlayId} (Pool updated)`);
         res.status(200).json({ success: true, betId: betDoc.userId + '_' + Date.now() });
     } catch (error) {
         console.error('Error placing quick play bet:', error);
