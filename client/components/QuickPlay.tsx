@@ -36,9 +36,10 @@ export function QuickPlay() {
     // Fetch quick plays from Firestore - try both paths
     const tryFetchQuickPlays = async () => {
       try {
-        // Try from artifacts path (server-side stored)
+        // Try from artifacts path (server-side stored) - use APP_ID from env
+        const appId = process.env.NEXT_PUBLIC_APP_ID || 'predora-hackathon';
         const q = query(
-          collection(db, `artifacts/predora-app/public/data/quick_plays`),
+          collection(db, `artifacts/${appId}/public/data/quick_plays`),
           orderBy('createdAt', 'desc')
         );
         
