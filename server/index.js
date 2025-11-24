@@ -150,6 +150,44 @@ async function syncBnbBalanceFromBlockchain(userId, walletAddress) {
     }
 }
 
+// ✅ Helper function to deduct BUSD balance from Firestore after Quick Play bet
+async function deductBusdBalance(userId, amount) {
+    if (!db || !userId || amount <= 0) return false;
+    try {
+        const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
+        
+        await userRef.set({
+            busdBalance: admin.firestore.FieldValue.increment(-amount),
+            lastBalanceUpdate: Date.now()
+        }, { merge: true });
+        
+        console.log(`💸 BUSD: Deducted ${amount} BUSD from ${userId}`);
+        return true;
+    } catch (error) {
+        console.warn(`⚠️  Could not deduct BUSD balance: ${error.message}`);
+        return false;
+    }
+}
+
+// ✅ Helper function to add BUSD balance to Firestore (for faucet claims)
+async function addBusdBalance(userId, amount) {
+    if (!db || !userId || amount <= 0) return false;
+    try {
+        const userRef = db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection(USER_PROFILE_COLLECTION).doc(userId);
+        
+        await userRef.set({
+            busdBalance: admin.firestore.FieldValue.increment(amount),
+            lastBalanceUpdate: Date.now()
+        }, { merge: true });
+        
+        console.log(`➕ BUSD: Added ${amount} BUSD to ${userId}`);
+        return true;
+    } catch (error) {
+        console.warn(`⚠️  Could not add BUSD balance: ${error.message}`);
+        return false;
+    }
+}
+
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 let openai = null;
 if (OPENAI_API_KEY) {

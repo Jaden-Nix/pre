@@ -5606,6 +5606,7 @@
                 // 1. ALWAYS read from Firestore first (source of truth for balance deductions)
                 let bnb = userProfile.bnbBalance || 0;
                 let pred = userProfile.predBalance || 0;
+                let busd = userProfile.busdBalance || 500;
                 
                 if (currentUserId) {
                     try {
@@ -5618,7 +5619,8 @@
                             // Use Firestore balance (includes bet deductions)
                             bnb = fsData.bnbBalance !== undefined ? fsData.bnbBalance : bnb;
                             pred = fsData.predBalance !== undefined ? fsData.predBalance : pred;
-                            console.log(`✅ Fetched from Firestore: ${bnb} BNB, ${pred} PRED`);
+                            busd = fsData.busdBalance !== undefined ? fsData.busdBalance : busd;
+                            console.log(`✅ Fetched from Firestore: ${bnb} BNB, ${pred} PRED, ${busd} BUSD`);
                         }
                     } catch (fsError) {
                         console.warn('Could not read Firestore balance, using cached values:', fsError);
@@ -5628,6 +5630,7 @@
                 // Update userProfile with Firestore balance
                 userProfile.bnbBalance = bnb;
                 userProfile.predBalance = pred;
+                userProfile.busdBalance = busd;
                 userProfile.walletAddress = walletAddress;
                 
                 // Update UI if visible
@@ -7700,7 +7703,7 @@
                     balance: 0, 
                     predBalance: 0,
                     bnbBalance: 0,
-                    cakeBalance: 0,
+                    busdBalance: 500,
                     createdAt: new Date().toISOString(),
                     streak: 0,
                     avatarUrl: LOGO_URL // Default to  app's logo
@@ -8733,9 +8736,9 @@
                 
                 // Update Platform Balances in Assets tab
                 const mockBnbEl = document.getElementById('mock-bnb');
-                const mockCakeEl = document.getElementById('mock-cake');
+                const mockBusdEl = document.getElementById('mock-busd');
                 if (mockBnbEl) mockBnbEl.textContent = (profile.bnbBalance || 0.2).toFixed(2);
-                if (mockCakeEl) mockCakeEl.textContent = (profile.cakeBalance || 150).toFixed(0);
+                if (mockBusdEl) mockBusdEl.textContent = (profile.busdBalance || 500).toFixed(2);
                 
                 // Check faucet cooldown status
                 if (typeof checkFaucetCooldown === 'function') {
@@ -8892,6 +8895,7 @@
             
             let bnbBalance = 0;
             let predBalance = userProfile.predBalance || 0;
+            let busdBalance = userProfile.busdBalance || 500;
 
             // Fetch real BNB balance from blockchain for custodial wallet
             const walletAddress = userProfile.walletAddress || userWalletAddress;
@@ -8957,6 +8961,20 @@
                             <div class="text-right">
                                 <p class="font-semibold theme-text-primary">${predBalance.toFixed(2)} $PRED</p>
                                 <p class="text-xs theme-text-secondary">$${(predBalance * getMockPrice('PRED')).toFixed(2)} USD</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
+                            <div class="flex items-center">
+                                <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/4687.png" class="w-10 h-10 rounded-full mr-3" alt="BUSD">
+                                <div>
+                                    <p class="font-semibold theme-text-primary">BUSD (Quick Play)</p>
+                                    <p class="text-sm theme-text-secondary">Quick Play Token</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold theme-text-primary" id="mock-busd">${busdBalance.toFixed(2)} BUSD</p>
+                                <p class="text-xs theme-text-secondary">$${(busdBalance * getMockPrice('BUSD')).toFixed(2)} USD</p>
                             </div>
                         </div>
                     </div>
@@ -9601,13 +9619,13 @@
         function populateAssetSelector() {
             const predBal = userProfile.predBalance || 0;
             const bnbBal = userProfile.bnbBalance || 0;
-            const cakeBal = userProfile.cakeBalance || 0;
+            const busdBal = userProfile.busdBalance || 500;
 
             // Create the HTML for the options once
             const optionsHtml = `
                 <option value="PRED">$PRED (Balance: ${predBal.toFixed(2)})</option>
                 <option value="BNB">BNB (Balance: ${bnbBal.toFixed(4)})</option>
-                <option value="CAKE">CAKE (Balance: ${cakeBal.toFixed(2)})</option>
+                <option value="BUSD">BUSD (Balance: ${busdBal.toFixed(2)})</option>
             `;
 
             // 1. Populate the original Market Detail stake select
@@ -11082,7 +11100,7 @@
             let balanceFieldToUpdate = "";
             if (selectedAsset === "PRED") { balanceFieldToUpdate = "predBalance"; }
             else if (selectedAsset === "BNB") { balanceFieldToUpdate = "bnbBalance"; }
-            else if (selectedAsset === "CAKE") { balanceFieldToUpdate = "cakeBalance"; }
+            else if (selectedAsset === "BUSD") { balanceFieldToUpdate = "busdBalance"; }
 
             // 🔗 4. CHECK IF PLEDGES SHOULD GO ON-CHAIN
             // Fetch market data to check for onChainMarketId
@@ -13438,7 +13456,7 @@ ${historyText}`;
          */
         function getMockPrice(asset) {
             if (asset === 'BNB') return 500;
-            if (asset === 'CAKE') return 3.5;
+            if (asset === 'BUSD') return 1;
             if (asset === 'PRED') return 600;
             return 1; // Default
         }
@@ -13448,7 +13466,7 @@ ${historyText}`;
          */
         function getBalanceField(asset) {
             if (asset === 'BNB') return 'bnbBalance';
-            if (asset === 'CAKE') return 'cakeBalance';
+            if (asset === 'BUSD') return 'busdBalance';
             if (asset === 'PRED') return 'predBalance';
             return 'balance'; // Default
         }
