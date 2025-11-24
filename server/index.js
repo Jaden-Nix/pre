@@ -3662,7 +3662,7 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
         
         const contractABI = [
-            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
+            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime) external returns (uint256)',
         ];
         
         const erc20Abi = [
@@ -3675,30 +3675,12 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         
         const resolutionTime = Math.floor(Date.now() / 1000) + (durationMinutes * 60);
         
-        // Minimal BNB for Quick Play (0.001 BNB = ~$0.00025)
-        const liquidityBNB = 0.001;  
-        const liquidityBnbWei = ethers.utils.parseEther(liquidityBNB.toString());
-        const halfLiquidityBnb = liquidityBnbWei.div(2);
-        
-        // Use PRED for both liquidity and gas (minimal amounts)
-        const predLiquidityAmount = ethers.utils.parseEther('0.5');  // 0.5 PRED for liquidity
-        const halfLiquidityPred = predLiquidityAmount.div(2);        // 0.25 PRED each side
-        
         console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min)`);
-        console.log(`   💧 Liquidity: ${liquidityBNB} BNB + 0.5 PRED`);
-        console.log(`   ⛽ Gas: Paid in PRED (via contract)`);
+        console.log(`   🎲 Resolution time: ${new Date(resolutionTime * 1000).toISOString()}`);
         
-        const currentAllowance = await predTokenContract.allowance(deployerWallet.address, contractAddress);
-        if (currentAllowance.lt(predLiquidityAmount)) {
-            console.log(`🔐 Approving PRED contract to spend PRED for liquidity...`);
-            const approveTx = await predTokenContract.approve(contractAddress, ethers.constants.MaxUint256);
-            await approveTx.wait();
-            console.log(`✅ PRED approval confirmed`);
-        }
-        
-        // Check BNB balance - only need minimal for the transaction
+        // Check BNB balance for gas
         let deployerBalance = await provider.getBalance(deployerWallet.address);
-        const estimatedGasCost = ethers.utils.parseEther('0.002');  // Very minimal - just for tx overhead
+        const estimatedGasCost = ethers.utils.parseEther('0.01');  // Estimate for market creation
         
         if (deployerBalance.lt(estimatedGasCost)) {
             console.log(`⚠️ Deployer BNB low (${ethers.utils.formatEther(deployerBalance)} BNB). Requesting from faucet...`);
@@ -3711,15 +3693,12 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
             console.log(`💰 Updated deployer balance: ${ethers.utils.formatEther(deployerBalance)} BNB`);
         }
         
+        // Call createMarket with just 3 parameters as the contract expects
         const tx = await predictionMarketContract.createMarket(
             title,
             `Quick Play: ${title}`,
             resolutionTime,
-            halfLiquidityBnb,
-            halfLiquidityBnb,
-            halfLiquidityPred,
-            halfLiquidityPred,
-            { value: liquidityBnbWei, gasLimit: 300000 }  // Reduced gas limit since PRED is used for gas
+            { gasLimit: 300000 }
         );
         
         const receipt = await tx.wait();
