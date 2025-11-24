@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
+import { Sparkles, CheckCircle, AlertCircle, Shield } from 'lucide-react';
 import { useCreateMarket } from '@/hooks/useCreateMarket';
 import { useCreateMarketContract } from '@/hooks/useContract';
+import { useNoLossMarket } from '@/hooks/useNoLossMarket';
 
 export function CreateMarket() {
   const [prompt, setPrompt] = useState('');
@@ -11,6 +12,7 @@ export function CreateMarket() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [showManualForm, setShowManualForm] = useState(false);
+  const [marketType, setMarketType] = useState<'traditional' | 'noloss'>('traditional');
   
   // Manual form state
   const [manualTitle, setManualTitle] = useState('');
@@ -22,8 +24,14 @@ export function CreateMarket() {
   const [manualValidationError, setManualValidationError] = useState<string | null>(null);
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
   
+  // No-Loss Market state
+  const [noLossDepositAmount, setNoLossDepositAmount] = useState('');
+  const [noLossDepositToken, setNoLossDepositToken] = useState<'USDC' | 'BUSD' | 'USDT'>('USDC');
+  const [noLossSuccess, setNoLossSuccess] = useState<any>(null);
+  
   const { generateMarket, loading, error } = useCreateMarket();
   const { createMarket, isLoading: isCreating, isSuccess, error: contractError } = useCreateMarketContract();
+  const { createNoLossMarket, depositToYield, loading: noLossLoading, error: noLossError } = useNoLossMarket();
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -124,6 +132,71 @@ export function CreateMarket() {
       const errorMsg = err instanceof Error ? err.message : 'Failed to create market';
       setManualValidationError(errorMsg);
       console.error('Error creating manual market:', err);
+    } finally {
+      setIsSubmittingManual(false);
+    }
+  };
+
+  const handleNoLossSubmit = async () => {
+    setManualValidationError(null);
+
+    if (!manualTitle.trim() || !manualDescription.trim() || !manualResolutionDate || !noLossDepositAmount) {
+      setManualValidationError('Please fill all required fields: Title, Description, Resolution Date, and Deposit Amount');
+      return;
+    }
+
+    if (parseFloat(noLossDepositAmount) <= 0) {
+      setManualValidationError('Deposit amount must be greater than 0');
+      return;
+    }
+
+    setIsSubmittingManual(true);
+
+    try {
+      const resolutionDate = new Date(manualResolutionDate);
+      const resolutionTimeInSeconds = Math.floor(resolutionDate.getTime() / 1000);
+
+      if (resolutionTimeInSeconds <= Math.floor(Date.now() / 1000)) {
+        setManualValidationError('Resolution date must be in the future');
+        setIsSubmittingManual(false);
+        return;
+      }
+
+      console.log('Creating no-loss market:', {
+        title: manualTitle,
+        description: manualDescription,
+        resolutionTime: resolutionTimeInSeconds,
+        depositAmount: noLossDepositAmount,
+        token: noLossDepositToken,
+      });
+
+      // Mock create no-loss market
+      const result = await createNoLossMarket(
+        manualTitle,
+        manualDescription,
+        BigInt(resolutionTimeInSeconds),
+        noLossDepositAmount,
+        noLossDepositToken
+      );
+
+      // Also mock deposit to yield
+      await depositToYield(noLossDepositAmount, noLossDepositToken);
+
+      setNoLossSuccess(result);
+
+      // Reset form on success
+      setTimeout(() => {
+        setManualTitle('');
+        setManualDescription('');
+        setManualResolutionDate('');
+        setNoLossDepositAmount('');
+        setShowManualForm(false);
+        setNoLossSuccess(null);
+      }, 2000);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to create no-loss market';
+      setManualValidationError(errorMsg);
+      console.error('Error creating no-loss market:', err);
     } finally {
       setIsSubmittingManual(false);
     }
@@ -258,18 +331,32 @@ export function CreateMarket() {
 
       {/* Manual Option */}
       {!showManualForm ? (
-        <div className="text-center mt-8">
-          <p className="text-gray-500 text-sm mb-4">Or create manually</p>
-          <button 
-            onClick={() => setShowManualForm(true)}
-            className="px-6 py-3 bg-white/5 border border-white/10 text-white font-medium rounded-xl hover:bg-white/10 transition-colors"
-          >
-            Manual Creation
-          </button>
+        <div className="text-center mt-8 space-y-4">
+          <p className="text-gray-500 text-sm">Or create manually</p>
+          <div className="flex gap-3 justify-center">
+            <button 
+              onClick={() => { setShowManualForm(true); setMarketType('traditional'); }}
+              className="px-6 py-3 bg-white/5 border border-white/10 text-white font-medium rounded-xl hover:bg-white/10 transition-colors"
+            >
+              Traditional Market
+            </button>
+            <button 
+              onClick={() => { setShowManualForm(true); setMarketType('noloss'); }}
+              className="px-6 py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-medium rounded-xl hover:bg-emerald-500/20 transition-colors flex items-center gap-2"
+            >
+              <Shield className="w-4 h-4" />
+              No-Loss Market (Beta)
+            </button>
+          </div>
         </div>
       ) : (
         <div className="glass-card p-8 rounded-2xl mt-8">
-          <h2 className="text-2xl font-bold mb-6">Create Market Manually</h2>
+          <h2 className="text-2xl font-bold mb-2">
+            {marketType === 'noloss' ? '🛡️ Create No-Loss Market' : 'Create Market Manually'}
+          </h2>
+          {marketType === 'noloss' && (
+            <p className="text-emerald-400 text-sm mb-6">Principal is always protected. You only win/lose the yield interest.</p>
+          )}
 
           <div className="space-y-4">
             {/* Title */}
@@ -316,73 +403,137 @@ export function CreateMarket() {
               />
             </div>
 
-            {/* Currency Selection */}
-            <div>
-              <label className="text-sm text-gray-400 block mb-2">Currency</label>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setManualCurrency('BNB')}
-                  className={`flex-1 p-3 rounded-xl border transition-all ${
-                    manualCurrency === 'BNB'
-                      ? 'bg-sky-500/20 border-sky-500 text-sky-400'
-                      : 'bg-black/30 border-white/10 text-gray-400'
-                  }`}
-                >
-                  BNB
-                </button>
-                <button
-                  onClick={() => setManualCurrency('PRED')}
-                  className={`flex-1 p-3 rounded-xl border transition-all ${
-                    manualCurrency === 'PRED'
-                      ? 'bg-purple-500/20 border-purple-500 text-purple-400'
-                      : 'bg-black/30 border-white/10 text-gray-400'
-                  }`}
-                >
-                  $PRED
-                </button>
-              </div>
-            </div>
+            {/* TRADITIONAL MARKET: Currency Selection */}
+            {marketType === 'traditional' && (
+              <>
+                <div>
+                  <label className="text-sm text-gray-400 block mb-2">Currency</label>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setManualCurrency('BNB')}
+                      className={`flex-1 p-3 rounded-xl border transition-all ${
+                        manualCurrency === 'BNB'
+                          ? 'bg-sky-500/20 border-sky-500 text-sky-400'
+                          : 'bg-black/30 border-white/10 text-gray-400'
+                      }`}
+                    >
+                      BNB
+                    </button>
+                    <button
+                      onClick={() => setManualCurrency('PRED')}
+                      className={`flex-1 p-3 rounded-xl border transition-all ${
+                        manualCurrency === 'PRED'
+                          ? 'bg-purple-500/20 border-purple-500 text-purple-400'
+                          : 'bg-black/30 border-white/10 text-gray-400'
+                      }`}
+                    >
+                      $PRED
+                    </button>
+                  </div>
+                </div>
 
-            {/* Liquidity Amount */}
-            <div className="bg-sky-500/10 border border-sky-500/30 rounded-xl p-3 mb-4">
-              <p className="text-xs text-sky-400 flex items-center gap-2">
-                <span>💡</span>
-                Higher liquidity = More stable odds
-              </p>
-            </div>
+                <div className="bg-sky-500/10 border border-sky-500/30 rounded-xl p-3 mb-4">
+                  <p className="text-xs text-sky-400 flex items-center gap-2">
+                    <span>💡</span>
+                    Higher liquidity = More stable odds
+                  </p>
+                </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-gray-400 block mb-2">YES Liquidity</label>
-                <input
-                  type="number"
-                  value={manualLiquidityYes}
-                  onChange={(e) => {
-                    setManualLiquidityYes(e.target.value);
-                    if (manualValidationError) setManualValidationError(null);
-                  }}
-                  placeholder="Amount"
-                  step="0.001"
-                  min="0"
-                  className="w-full p-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-sky-500"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-400 block mb-2">NO Liquidity</label>
-                <input
-                  type="number"
-                  value={manualLiquidityNo}
-                  onChange={(e) => {
-                    setManualLiquidityNo(e.target.value);
-                    if (manualValidationError) setManualValidationError(null);
-                  }}
-                  placeholder="Amount"
-                  step="0.001"
-                  min="0"
-                  className="w-full p-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-sky-500"
-                />
-              </div>
-            </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-2">YES Liquidity</label>
+                    <input
+                      type="number"
+                      value={manualLiquidityYes}
+                      onChange={(e) => {
+                        setManualLiquidityYes(e.target.value);
+                        if (manualValidationError) setManualValidationError(null);
+                      }}
+                      placeholder="Amount"
+                      step="0.001"
+                      min="0"
+                      className="w-full p-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-2">NO Liquidity</label>
+                    <input
+                      type="number"
+                      value={manualLiquidityNo}
+                      onChange={(e) => {
+                        setManualLiquidityNo(e.target.value);
+                        if (manualValidationError) setManualValidationError(null);
+                      }}
+                      placeholder="Amount"
+                      step="0.001"
+                      min="0"
+                      className="w-full p-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* NO-LOSS MARKET: Token & Deposit Amount */}
+            {marketType === 'noloss' && (
+              <>
+                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 mb-4">
+                  <p className="text-xs text-emerald-400 flex items-center gap-2">
+                    <span>🛡️</span>
+                    Your principal is deposited in Aave. Only interest is used for betting.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-400 block mb-2">Deposit Token</label>
+                  <div className="flex gap-2">
+                    {(['USDC', 'BUSD', 'USDT'] as const).map((token) => (
+                      <button
+                        key={token}
+                        onClick={() => setNoLossDepositToken(token)}
+                        className={`flex-1 p-3 rounded-xl border transition-all text-sm ${
+                          noLossDepositToken === token
+                            ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
+                            : 'bg-black/30 border-white/10 text-gray-400'
+                        }`}
+                      >
+                        {token}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-400 block mb-2">Deposit Amount</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={noLossDepositAmount}
+                      onChange={(e) => {
+                        setNoLossDepositAmount(e.target.value);
+                        if (manualValidationError) setManualValidationError(null);
+                      }}
+                      placeholder="e.g., 100"
+                      step="0.01"
+                      min="0"
+                      className="w-full p-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
+                    />
+                    <span className="absolute right-3 top-3 text-gray-500 text-sm">{noLossDepositToken}</span>
+                  </div>
+                </div>
+
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3">
+                  <p className="text-xs text-blue-400">
+                    <span className="font-semibold">Est. APY:</span> 3.45% on Aave
+                    {noLossDepositAmount && (
+                      <span className="block mt-1">
+                        ≈ ${(parseFloat(noLossDepositAmount || '0') * 0.0345 / 365).toFixed(2)}/day in interest
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </>
+            )}
 
             {/* Validation Error */}
             {manualValidationError && (
@@ -410,26 +561,40 @@ export function CreateMarket() {
               </div>
             )}
 
+            {/* Success Message for No-Loss */}
+            {noLossSuccess && (
+              <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                <p className="text-emerald-400 text-sm">✅ No-Loss market created! Deposit locked in Aave.</p>
+              </div>
+            )}
+
             {/* Buttons */}
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowManualForm(false)}
+                onClick={() => {
+                  setShowManualForm(false);
+                  setNoLossSuccess(null);
+                }}
                 className="flex-1 py-3 bg-gray-600/20 border border-gray-600/30 text-white font-medium rounded-xl hover:bg-gray-600/30 transition-all"
               >
                 Cancel
               </button>
               <button
-                onClick={handleManualSubmit}
-                disabled={isSubmittingManual || isCreating}
-                className="flex-1 py-3 bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-sky-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={marketType === 'noloss' ? handleNoLossSubmit : handleManualSubmit}
+                disabled={isSubmittingManual || isCreating || noLossLoading}
+                className={`flex-1 py-3 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                  marketType === 'noloss'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-lg hover:shadow-emerald-500/30'
+                    : 'bg-gradient-to-r from-sky-500 to-indigo-600 hover:shadow-lg hover:shadow-sky-500/30'
+                }`}
               >
-                {isSubmittingManual || isCreating ? (
+                {isSubmittingManual || isCreating || noLossLoading ? (
                   <span className="flex items-center justify-center gap-2">
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Creating...
                   </span>
                 ) : (
-                  'Create Market'
+                  marketType === 'noloss' ? '🛡️ Create No-Loss Market' : 'Create Market'
                 )}
               </button>
             </div>
