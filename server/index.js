@@ -3943,21 +3943,30 @@ app.post('/api/quick-play/calculate-payout', async (req, res) => {
         const yesOdds = totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 50;
         const noOdds = totalVotes > 0 ? (noVotes / totalVotes) * 100 : 50;
         
-        // Calculate potential payout based on odds
-        // If betting on YES: potential payout = bet / (yesOdds/100)
-        // If betting on NO: potential payout = bet / (noOdds/100)
-        let odds;
+        // Calculate potential payout based on vote distribution
+        // Formula: Payout = Bet + (Losing Pool × Bet / Winning Pool)
+        // This rewards the player's stake with their proportional share of the losing pool
+        let yourSideVotes, oppositeSideVotes;
         if (choice.toUpperCase() === 'YES') {
-            odds = yesOdds / 100;
+            yourSideVotes = yesVotes || 1; // Default to 1 if no votes
+            oppositeSideVotes = noVotes || 1;
         } else {
-            odds = noOdds / 100;
+            yourSideVotes = noVotes || 1;
+            oppositeSideVotes = yesVotes || 1;
         }
         
-        // Payout = bet / odds (if odds are represented as probability)
-        // Or simpler: bet * (1 + (1 - odds)) if odds favor the bet
-        const potentialPayout = odds > 0 ? betAmount / odds : betAmount * 2;
+        // If all votes are on opposite side, you still get 2x return as reward
+        const totalPool = yourSideVotes + oppositeSideVotes;
+        const yourShare = yourSideVotes / totalPool;
+        const oppositeShare = oppositeSideVotes / totalPool;
+        
+        // Payout: Return your stake + proportional share of losing pool
+        // If opposite pool is much larger, you get a bigger return
+        const winnerPool = yourSideVotes;
+        const loserPool = oppositeSideVotes;
+        const potentialPayout = betAmount + (loserPool > 0 ? (betAmount / winnerPool) * loserPool : betAmount);
         const potentialProfit = potentialPayout - betAmount;
-        const roi = odds > 0 ? ((potentialPayout - betAmount) / betAmount * 100).toFixed(1) : 100;
+        const roi = ((potentialPayout - betAmount) / betAmount * 100).toFixed(1);
         
         res.status(200).json({
             success: true,
