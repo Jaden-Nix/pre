@@ -3943,28 +3943,26 @@ app.post('/api/quick-play/calculate-payout', async (req, res) => {
         const yesOdds = totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 50;
         const noOdds = totalVotes > 0 ? (noVotes / totalVotes) * 100 : 50;
         
-        // Calculate potential payout based on vote distribution
-        // Formula: Payout = Bet + (Losing Pool × Bet / Winning Pool)
-        // This rewards the player's stake with their proportional share of the losing pool
-        let yourSideVotes, oppositeSideVotes;
+        // Calculate potential payout based on odds
+        // Better payout = Bet / Odds (in decimal form)
+        // Example: If YES is 99% odds, payout = 5 / 0.99 = 5.05 BUSD
+        // Example: If NO is 1% odds, payout = 5 / 0.01 = 500 BUSD
+        
+        let oddsDecimal;
         if (choice.toUpperCase() === 'YES') {
-            yourSideVotes = yesVotes || 1; // Default to 1 if no votes
-            oppositeSideVotes = noVotes || 1;
+            oddsDecimal = yesOdds / 100; // Convert percentage to decimal
         } else {
-            yourSideVotes = noVotes || 1;
-            oppositeSideVotes = yesVotes || 1;
+            oddsDecimal = noOdds / 100;
         }
         
-        // If all votes are on opposite side, you still get 2x return as reward
-        const totalPool = yourSideVotes + oppositeSideVotes;
-        const yourShare = yourSideVotes / totalPool;
-        const oppositeShare = oppositeSideVotes / totalPool;
+        // If no odds are available (no votes yet), default to 1:1
+        if (oddsDecimal === 0) {
+            oddsDecimal = 0.5; // 50-50 split for first bets
+        }
         
-        // Payout: Return your stake + proportional share of losing pool
-        // If opposite pool is much larger, you get a bigger return
-        const winnerPool = yourSideVotes;
-        const loserPool = oppositeSideVotes;
-        const potentialPayout = betAmount + (loserPool > 0 ? (betAmount / winnerPool) * loserPool : betAmount);
+        // Payout = Stake / Odds
+        // This gives better payouts for unpopular choices
+        const potentialPayout = betAmount / oddsDecimal;
         const potentialProfit = potentialPayout - betAmount;
         const roi = ((potentialPayout - betAmount) / betAmount * 100).toFixed(1);
         
@@ -3975,7 +3973,7 @@ app.post('/api/quick-play/calculate-payout', async (req, res) => {
             potentialProfit: parseFloat(potentialProfit.toFixed(2)),
             roi: roi,
             choice: choice.toUpperCase(),
-            odds: parseFloat(odds.toFixed(4)),
+            odds: parseFloat(oddsDecimal.toFixed(4)),
             yesOdds: parseFloat(yesOdds.toFixed(1)),
             noOdds: parseFloat(noOdds.toFixed(1))
         });
