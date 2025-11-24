@@ -9588,11 +9588,9 @@
              * [CORRECTED VERSION FOR CHARTING]
              */
             window.viewMarketDetail = async (marketId) => {
-                const { doc, getDoc, onSnapshot, getFirestore } = window.firebase.firestore;
+                const { doc, getDoc, onSnapshot } = window.firebase.firestore;
                 
                 try {
-                    // ✅ Get Firestore instance
-                    const db = getFirestore();
                     currentMarketId = marketId;
                     const marketRef = doc(db, 'artifacts', 'predora-hackathon', 'public', 'data', 'standard_markets', marketId);
                     const docSnap = await getDoc(marketRef);
