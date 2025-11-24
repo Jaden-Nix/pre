@@ -3633,10 +3633,10 @@ async function requestBnbFromFaucet(address) {
 
 // ⛓️ Create Quick Play Market On-Chain (guaranteed on-chain)
 app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) => {
-    const { title, durationMinutes, yesPercent, noPercent } = req.body;
+    const { title, durationMinutes } = req.body;
     
-    if (!title || !durationMinutes || yesPercent === undefined || noPercent === undefined) {
-        return res.status(400).json({ error: 'Missing required fields' });
+    if (!title || !durationMinutes) {
+        return res.status(400).json({ error: 'Missing required fields (title, durationMinutes)' });
     }
     
     try {
@@ -3738,11 +3738,11 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         
         const quickPlayData = {
             title,
-            duration: `${durationMinutes}h`,
-            yesPercent,
-            noPercent,
-            yesPool: 50000 * (yesPercent / 100),
-            noPool: 50000 * (noPercent / 100),
+            duration: `${durationMinutes}m`,
+            yesPool: 0.005,  // BNB
+            noPool: 0.005,   // BNB
+            predYesPool: 3,   // PRED
+            predNoPool: 3,    // PRED
             totalStakeVolume: 0,
             isResolved: false,
             isMock: false,
