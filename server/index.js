@@ -712,15 +712,23 @@ app.post('/api/profile/sync-wallet-address', async (req, res) => {
     }
 });
 
-// 🎯 On-Chain Market Creation - Creates markets using PRED from user's balance
+// 🎯 Market Creation - Creates both No-Loss (Firestore) and Standard (On-Chain) markets
+// marketType: 'fixed-pot' = No-Loss (Firestore-only), 'traditional' = Standard (On-Chain)
 app.post('/api/market/create-onchain', async (req, res) => {
-    const { title, description, category, endDate, liquidityPRED, marketStructure, initialOdds, options, walletAddress } = req.body;
+    const { title, description, category, endDate, liquidityPRED, marketStructure, marketType, initialOdds, options, walletAddress } = req.body;
     
     // Accept both liquidityBNB (legacy) and liquidityPRED (new PRED-based)
     const liquidityAmount = parseFloat(liquidityPRED || req.body.liquidityBNB);
     
     if (!title || !description || !category || !endDate || !liquidityAmount || isNaN(liquidityAmount)) {
         return res.status(400).json({ error: 'Missing required fields or invalid liquidity amount' });
+    }
+    
+    // Validate market type
+    const isFixedPot = marketType === 'fixed-pot';
+    const isTraditional = marketType === 'traditional';
+    if (!isFixedPot && !isTraditional) {
+        return res.status(400).json({ error: 'Invalid market type. Must be "fixed-pot" or "traditional"' });
     }
     
     // Get idToken from Authorization header
@@ -737,6 +745,51 @@ app.post('/api/market/create-onchain', async (req, res) => {
         
         // Convert endDate to Unix timestamp
         const resolutionTime = Math.floor(new Date(endDate).getTime() / 1000);
+        
+        // 🎯 FIXED-POT (NO-LOSS) MARKETS - Firestore only, skip blockchain
+        if (isFixedPot) {
+            console.log(`🛡️ Creating No-Loss (Fixed-Pot) market: "${title}" (Firestore-only)`);
+            const firestore = admin.firestore();
+            const marketData = {
+                title,
+                description,
+                category,
+                createdAt: admin.firestore.Timestamp.now(),
+                resolutionTime,
+                isResolved: false,
+                isMock: true,  // ✅ Firestore-only
+                isNoLoss: true,  // ✅ No-loss type
+                isOnChain: false,  // ✅ Never on-chain
+                marketStructure,
+                liquidityPRED: liquidityAmount,
+                creator: userId,
+                initialOdds,
+                options,
+                walletAddress,
+                yesPool: liquidityAmount / 2,
+                noPool: liquidityAmount / 2,
+                totalStakeVolume: 0
+            };
+            
+            const docRef = await firestore
+                .collection('artifacts')
+                .doc(process.env.APP_ID)
+                .collection('public')
+                .doc('data')
+                .collection('standard_markets')
+                .add(marketData);
+            
+            return res.status(200).json({
+                success: true,
+                marketId: docRef.id,
+                onChainMarketId: null,
+                txHash: null,
+                message: '✅ No-Loss market created (Firestore, mocked payouts)'
+            });
+        }
+        
+        // ⛓️ TRADITIONAL (ON-CHAIN) MARKETS - Create on blockchain
+        console.log(`⛓️ Creating Standard (On-Chain) market: "${title}"`);
         
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
         const DEPLOY_PRIVATE_KEY = process.env.DEPLOY_PRIVATE_KEY;

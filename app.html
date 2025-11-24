@@ -1978,13 +1978,13 @@
                         <input type="hidden" id="market-type-input" value="fixed-pot">
                         <div class="grid grid-cols-2 gap-2">
                             <button id="btn-market-fixed-pot" onclick="selectMarketType('fixed-pot')" class="btn btn-stake-yes text-sm py-2.5">
-                                Fixed Pot
+                                🛡️ No-Loss (Mocked)
                             </button>
                             <button id="btn-market-traditional" onclick="selectMarketType('traditional')" class="btn btn-secondary text-sm py-2.5">
-                                Traditional
+                                ⛓️ Standard (On-Chain)
                             </button>
                         </div>
-                        <p class="text-xs theme-text-secondary">Fixed Pot = principal safe, Traditional = liquidity pool</p>
+                        <p class="text-xs theme-text-secondary">No-Loss = Firestore, principal returned if wrong | Standard = On-chain, real PRED/BNB betting</p>
                     </div>
 
                     <!-- Binary Odds -->
@@ -12106,6 +12106,7 @@
                         liquidityPRED: liquidityPRED.toString(),
                         walletAddress: userWalletAddress,
                         marketStructure: marketStructure,
+                        marketType: selectedMarketType,  // ✅ Add market type (fixed-pot or traditional)
                         initialOdds: marketStructure === 'binary' ? { yesPercent, noPercent } : null,
                         options: marketStructure === 'multi-option' ? multiOptions : null
                     })
