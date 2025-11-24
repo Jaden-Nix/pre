@@ -137,7 +137,8 @@ export function CreateMarket() {
     }
   };
 
-  const handleNoLossSubmit = async () => {
+  const handleNoLossSubmit = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
     setManualValidationError(null);
 
     if (!manualTitle.trim() || !manualDescription.trim() || !manualResolutionDate || !noLossDepositAmount) {
@@ -162,7 +163,7 @@ export function CreateMarket() {
         return;
       }
 
-      console.log('Creating no-loss market:', {
+      console.log('🛡️ Creating NO-LOSS market (MOCK - NOT on-chain):', {
         title: manualTitle,
         description: manualDescription,
         resolutionTime: resolutionTimeInSeconds,
@@ -170,7 +171,7 @@ export function CreateMarket() {
         token: noLossDepositToken,
       });
 
-      // Mock create no-loss market
+      // Mock create no-loss market (NOT blockchain)
       const result = await createNoLossMarket(
         manualTitle,
         manualDescription,
@@ -579,24 +580,40 @@ export function CreateMarket() {
               >
                 Cancel
               </button>
-              <button
-                onClick={marketType === 'noloss' ? handleNoLossSubmit : handleManualSubmit}
-                disabled={isSubmittingManual || isCreating || noLossLoading}
-                className={`flex-1 py-3 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                  marketType === 'noloss'
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-lg hover:shadow-emerald-500/30'
-                    : 'bg-gradient-to-r from-sky-500 to-indigo-600 hover:shadow-lg hover:shadow-sky-500/30'
-                }`}
-              >
-                {isSubmittingManual || isCreating || noLossLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Creating...
-                  </span>
-                ) : (
-                  marketType === 'noloss' ? '🛡️ Create No-Loss Market' : 'Create Market'
-                )}
-              </button>
+              {marketType === 'noloss' ? (
+                <button
+                  onClick={(e) => handleNoLossSubmit(e)}
+                  disabled={isSubmittingManual || noLossLoading}
+                  className="flex-1 py-3 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-lg hover:shadow-emerald-500/30"
+                >
+                  {isSubmittingManual || noLossLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Creating...
+                    </span>
+                  ) : (
+                    '🛡️ Create No-Loss Market'
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleManualSubmit();
+                  }}
+                  disabled={isSubmittingManual || isCreating}
+                  className="flex-1 py-3 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-sky-500 to-indigo-600 hover:shadow-lg hover:shadow-sky-500/30"
+                >
+                  {isSubmittingManual || isCreating ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Creating...
+                    </span>
+                  ) : (
+                    'Create Market'
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
