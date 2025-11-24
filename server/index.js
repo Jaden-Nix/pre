@@ -4052,6 +4052,80 @@ app.post('/api/quick-play/place-bet', async (req, res) => {
     }
 });
 
+// ✅ GET USER'S QUICK PLAY BETS - For profile recent activity
+app.post('/api/quick-play/user-bets', async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    const { userId } = req.body;
+    if (!userId) {
+        return res.status(400).json({ error: 'Missing userId' });
+    }
+    
+    try {
+        const allBets = [];
+        const collectionPath = `artifacts/${APP_ID}/public/data/quick_plays`;
+        const quickPlaysSnapshot = await db.collection(collectionPath).get();
+        
+        for (const quickPlayDoc of quickPlaysSnapshot.docs) {
+            const marketData = quickPlayDoc.data();
+            const betsSnapshot = await quickPlayDoc.ref.collection('bets').where('userId', '==', userId).get();
+            
+            betsSnapshot.forEach(betDoc => {
+                const bet = betDoc.data();
+                allBets.push({
+                    id: `${quickPlayDoc.id}-${betDoc.id}`,
+                    marketTitle: marketData.title || 'Unknown Market',
+                    choice: bet.choice,
+                    amount: bet.amount,
+                    timestamp: bet.timestamp,
+                    status: bet.status || 'active',
+                    marketId: quickPlayDoc.id,
+                    yesPoolBusd: marketData.yesPoolBusd || 50,
+                    noPoolBusd: marketData.noPoolBusd || 50
+                });
+            });
+        }
+        
+        // Calculate potential payouts for active bets
+        const betsWithPayouts = allBets.map(bet => {
+            if (bet.status === 'active') {
+                const yesPoolBusd = bet.yesPoolBusd;
+                const noPoolBusd = bet.noPoolBusd;
+                const totalPoolBusd = yesPoolBusd + noPoolBusd;
+                
+                let yourPool, oppositePool;
+                if (bet.choice === 'YES') {
+                    yourPool = yesPoolBusd;
+                    oppositePool = noPoolBusd;
+                } else {
+                    yourPool = noPoolBusd;
+                    oppositePool = yesPoolBusd;
+                }
+                
+                const winnerShare = (oppositePool * bet.amount) / (yourPool + bet.amount);
+                const potentialPayout = bet.amount + winnerShare;
+                const potentialProfit = potentialPayout - bet.amount;
+                const roi = ((potentialProfit / bet.amount) * 100).toFixed(1);
+                
+                return {
+                    ...bet,
+                    potentialPayout: parseFloat(potentialPayout.toFixed(2)),
+                    potentialProfit: parseFloat(potentialProfit.toFixed(2)),
+                    roi: roi
+                };
+            }
+            return bet;
+        });
+        
+        res.status(200).json({ success: true, bets: betsWithPayouts });
+    } catch (error) {
+        console.error('Error fetching user quick play bets:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ✅ RESOLVE QUICK PLAY WITH PAYOUTS - Calculate and distribute winnings
 app.post('/api/admin/resolve-quick-play', requireAdmin, async (req, res) => {
     

@@ -11,6 +11,18 @@ interface WalletInfo {
   predBalance?: number;
 }
 
+interface BetActivity {
+  id: string;
+  marketTitle: string;
+  choice: string;
+  amount: number;
+  timestamp: number;
+  status: 'active' | 'won' | 'lost' | 'pending';
+  potentialPayout?: number;
+  potentialProfit?: number;
+  roi?: string;
+}
+
 export function UserProfile() {
   const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,6 +30,7 @@ export function UserProfile() {
   const [copied, setCopied] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [betActivity, setBetActivity] = useState<BetActivity[]>([]);
 
   useEffect(() => {
     if (!auth) {
@@ -29,6 +42,7 @@ export function UserProfile() {
       if (user) {
         setUserId(user.uid);
         await fetchWalletInfo(user.uid);
+        await fetchUserBets(user.uid);
       } else {
         setLoading(false);
       }
@@ -132,6 +146,24 @@ export function UserProfile() {
       console.error('Error fetching wallet info:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserBets = async (uid: string) => {
+    try {
+      const response = await fetch('/api/quick-play/user-bets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: uid })
+      });
+      
+      const data = await response.json();
+      if (data.success && data.bets) {
+        const sortedBets = data.bets.sort((a: BetActivity, b: BetActivity) => b.timestamp - a.timestamp).slice(0, 5);
+        setBetActivity(sortedBets);
+      }
+    } catch (error) {
+      console.warn('Could not fetch user bets:', error);
     }
   };
 
@@ -340,17 +372,38 @@ export function UserProfile() {
       <div className="glass-card p-6 rounded-2xl">
         <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
         <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
-              <div>
-                <p className="font-semibold mb-1">Will BTC hit $100k?</p>
-                <p className="text-sm text-gray-400">Bet: YES • $50</p>
+          {betActivity.length > 0 ? (
+            betActivity.map((bet) => (
+              <div key={bet.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+                <div className="flex-1">
+                  <p className="font-semibold mb-1">{bet.marketTitle}</p>
+                  <p className="text-sm text-gray-400">
+                    Bet: {bet.choice} • {bet.amount} BUSD
+                    {bet.potentialPayout && (
+                      <span className="ml-2 text-green-400">
+                        → {bet.potentialPayout.toFixed(2)} BUSD ({bet.roi}% ROI)
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <span
+                  className={`px-3 py-1 text-xs font-bold rounded-full ${
+                    bet.status === 'active'
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : bet.status === 'won'
+                      ? 'bg-green-500/20 text-green-400'
+                      : bet.status === 'lost'
+                      ? 'bg-red-500/20 text-red-400'
+                      : 'bg-gray-500/20 text-gray-400'
+                  }`}
+                >
+                  {bet.status.charAt(0).toUpperCase() + bet.status.slice(1)}
+                </span>
               </div>
-              <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-bold rounded-full">
-                Active
-              </span>
-            </div>
-          ))}
+            ))
+          ) : (
+            <p className="text-center text-gray-400 py-8">No bets yet. Start betting on Quick Play markets!</p>
+          )}
         </div>
       </div>
     </div>
