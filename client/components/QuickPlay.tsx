@@ -3,16 +3,67 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThumbsUp, ThumbsDown, SkipForward, TrendingUp } from 'lucide-react';
-import { useMarkets } from '@/hooks/useMarkets';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+interface QuickPlayMarket {
+  id: string;
+  question?: string;
+  title?: string;
+  status?: string;
+  createdAt?: string;
+  expiresAt?: string;
+  yesVotes?: number;
+  noVotes?: number;
+  yesPool?: number;
+  noPool?: number;
+  totalVolume?: number;
+  yesPercent?: number;
+  noPercent?: number;
+}
 
 export function QuickPlay() {
-  const { markets, loading } = useMarkets();
+  const [markets, setMarkets] = useState<QuickPlayMarket[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [betAmount, setBetAmount] = useState('10');
   const [selectedChoice, setSelectedChoice] = useState<'yes' | 'no' | null>(null);
   const [potentialPayout, setPotentialPayout] = useState<any>(null);
   const [loadingPayout, setLoadingPayout] = useState(false);
+
+  useEffect(() => {
+    // Fetch quick plays from Firestore - try both paths
+    const tryFetchQuickPlays = async () => {
+      try {
+        // Try from artifacts path (server-side stored)
+        const q = query(
+          collection(db, `artifacts/predora-app/public/data/quick_plays`),
+          orderBy('createdAt', 'desc')
+        );
+        
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          const data = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as QuickPlayMarket[];
+          setMarkets(data);
+          setLoading(false);
+        });
+        
+        return unsubscribe;
+      } catch (error) {
+        console.warn('Could not fetch quick plays:', error);
+        setLoading(false);
+        return () => {};
+      }
+    };
+
+    const unsubscribePromise = tryFetchQuickPlays();
+    return () => {
+      unsubscribePromise.then(unsub => unsub?.());
+    };
+  }, []);
 
   const handleVote = (vote: 'yes' | 'no' | 'skip') => {
     setDirection(vote === 'yes' ? 1 : vote === 'no' ? -1 : 0);
@@ -50,6 +101,13 @@ export function QuickPlay() {
   };
 
   const currentMarket = markets[currentIndex];
+  
+  // Calculate odds from votes
+  const yesVotes = currentMarket?.yesVotes || 0;
+  const noVotes = currentMarket?.noVotes || 0;
+  const totalVotes = yesVotes + noVotes;
+  const yesOdds = totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 50;
+  const noOdds = totalVotes > 0 ? (noVotes / totalVotes) * 100 : 50;
 
   if (loading) {
     return (
@@ -89,29 +147,31 @@ export function QuickPlay() {
             >
               <div>
                 <div className="inline-block px-3 py-1 bg-sky-500/20 text-sky-400 text-xs font-bold rounded-full mb-6">
-                  {currentMarket.category}
+                  Quick Play
                 </div>
                 
                 <h2 className="text-3xl font-bold leading-tight mb-4">
-                  {currentMarket.title}
+                  {currentMarket.question || currentMarket.title || 'Loading...'}
                 </h2>
                 
-                <p className="text-gray-400 text-sm">Resolves {new Date(currentMarket.resolutionDate).toLocaleDateString()}</p>
+                {currentMarket.status && (
+                  <p className="text-gray-400 text-sm">Status: {currentMarket.status}</p>
+                )}
               </div>
 
               <div className="space-y-4">
                 <div className="flex justify-between text-sm font-bold text-gray-400 uppercase">
-                  <span>Yes {currentMarket.yesOdds}%</span>
-                  <span>No {currentMarket.noOdds}%</span>
+                  <span>Yes {yesOdds.toFixed(1)}%</span>
+                  <span>No {noOdds.toFixed(1)}%</span>
                 </div>
                 <div className="h-2 bg-gray-800 rounded-full overflow-hidden flex">
                   <div 
                     className="bg-green-500 shadow-[0_0_10px_#22c55e]" 
-                    style={{ width: `${currentMarket.yesOdds}%` }}
+                    style={{ width: `${yesOdds}%` }}
                   />
                   <div 
                     className="bg-red-500" 
-                    style={{ width: `${currentMarket.noOdds}%` }}
+                    style={{ width: `${noOdds}%` }}
                   />
                 </div>
 
