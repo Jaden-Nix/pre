@@ -2247,18 +2247,77 @@ app.post('/api/get-market-odds', async (req, res) => {
         }
         
         // 🔍 CHECK: If marketId is NOT numeric, it's a Firestore ID (Firestore-only market)
-        // Firestore-only markets (No-Loss, Quick Play) should not query blockchain
+        // Read from Firestore instead of blockchain
         if (isNaN(marketId)) {
-            console.log(`🛡️ Firestore-only market detected (marketId: ${marketId}), skipping blockchain query`);
-            return res.json({
-                success: true,
-                yesPercent: 50,
-                noPercent: 50,
-                yesPool: 0,
-                noPool: 0,
-                firestore_only: true,
-                currency: currency || 'BNB'
-            });
+            console.log(`🛡️ Firestore-only market detected (marketId: ${marketId}), reading pools from Firestore`);
+            try {
+                const firestore = admin.firestore();
+                const marketRef = firestore
+                    .collection('artifacts')
+                    .doc(APP_ID)
+                    .collection('public')
+                    .doc('data')
+                    .collection('standard_markets')
+                    .doc(marketId);
+                
+                const marketSnap = await marketRef.get();
+                if (!marketSnap.exists()) {
+                    console.warn(`⚠️ Market not found in Firestore: ${marketId}`);
+                    return res.json({
+                        success: true,
+                        yesPercent: 50,
+                        noPercent: 50,
+                        yesPool: 0,
+                        noPool: 0,
+                        firestore_only: true,
+                        currency: currency || 'BNB'
+                    });
+                }
+                
+                const marketData = marketSnap.data();
+                const yesPool = parseFloat(marketData.yesPool) || 0;
+                const noPool = parseFloat(marketData.noPool) || 0;
+                
+                const totalPool = yesPool + noPool;
+                if (totalPool === 0) {
+                    console.log(`📊 Firestore Market ${marketId} - empty pools, returning 50/50`);
+                    return res.json({
+                        success: true,
+                        yesPercent: 50,
+                        noPercent: 50,
+                        yesPool: 0,
+                        noPool: 0,
+                        firestore_only: true,
+                        currency: currency || 'BNB'
+                    });
+                }
+                
+                const yesPercent = (yesPool / totalPool) * 100;
+                const noPercent = (noPool / totalPool) * 100;
+                
+                console.log(`📊 Firestore AMM Odds (${currency}): YES ${yesPercent.toFixed(1)}% | NO ${noPercent.toFixed(1)}% (Pools: YES ${yesPool.toFixed(4)} | NO ${noPool.toFixed(4)})`);
+                
+                return res.json({
+                    success: true,
+                    yesPercent: yesPercent,
+                    noPercent: noPercent,
+                    yesPool: yesPool,
+                    noPool: noPool,
+                    firestore_only: true,
+                    currency: currency || 'BNB'
+                });
+            } catch (firestoreError) {
+                console.error(`❌ Error reading Firestore market ${marketId}:`, firestoreError.message);
+                return res.json({
+                    success: true,
+                    yesPercent: 50,
+                    noPercent: 50,
+                    yesPool: 0,
+                    noPool: 0,
+                    firestore_only: true,
+                    currency: currency || 'BNB'
+                });
+            }
         }
         
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
@@ -2354,21 +2413,91 @@ app.post('/api/calculate-amm-payout', async (req, res) => {
         }
         
         // 🔍 CHECK: If marketId is NOT numeric, it's a Firestore ID (Firestore-only market)
+        // Calculate payout based on Firestore pools (dynamic AMM)
         if (isNaN(marketId)) {
-            console.log(`🛡️ Firestore-only market detected (marketId: ${marketId}), using fallback payout estimation`);
-            const inputAmount = parseFloat(amount);
-            const estimatedPayout = inputAmount * 2; // Standard 2x payout for Firestore markets
-            
-            return res.json({
-                success: true,
-                inputAmount,
-                payoutAmount: estimatedPayout,
-                roi: 100,
-                currency,
-                pick: pick ? 'YES' : 'NO',
-                firestore_only: true,
-                message: 'Firestore-only market (No-Loss/Quick Play)'
-            });
+            console.log(`🛡️ Firestore-only market detected (marketId: ${marketId}), calculating payout from Firestore pools`);
+            try {
+                const firestore = admin.firestore();
+                const marketRef = firestore
+                    .collection('artifacts')
+                    .doc(APP_ID)
+                    .collection('public')
+                    .doc('data')
+                    .collection('standard_markets')
+                    .doc(marketId);
+                
+                const marketSnap = await marketRef.get();
+                if (!marketSnap.exists()) {
+                    console.warn(`⚠️ Market not found in Firestore: ${marketId}`);
+                    const inputAmount = parseFloat(amount);
+                    const estimatedPayout = inputAmount * 2;
+                    return res.json({
+                        success: true,
+                        inputAmount,
+                        payoutAmount: estimatedPayout,
+                        roi: 100,
+                        currency,
+                        pick: pick ? 'YES' : 'NO',
+                        firestore_only: true,
+                        fallback: true
+                    });
+                }
+                
+                const marketData = marketSnap.data();
+                let yesPool = parseFloat(marketData.yesPool) || 0;
+                let noPool = parseFloat(marketData.noPool) || 0;
+                
+                // Initialize pools if empty
+                if (yesPool === 0 && noPool === 0) {
+                    yesPool = 1000;
+                    noPool = 1000;
+                }
+                
+                // Constant product formula: k = x * y
+                const k = yesPool * noPool;
+                const inputAmount = parseFloat(amount);
+                
+                let payoutAmount;
+                if (pick) {
+                    // Betting YES
+                    const newYesPool = yesPool + inputAmount;
+                    const newNoPool = k / newYesPool;
+                    payoutAmount = noPool - newNoPool;
+                } else {
+                    // Betting NO
+                    const newNoPool = noPool + inputAmount;
+                    const newYesPool = k / newNoPool;
+                    payoutAmount = yesPool - newYesPool;
+                }
+                
+                const roi = ((payoutAmount - inputAmount) / inputAmount) * 100;
+                
+                console.log(`📊 Firestore AMM Payout (${currency}): Input ${inputAmount} | Payout ${payoutAmount.toFixed(4)} | ROI ${roi.toFixed(1)}%`);
+                
+                return res.json({
+                    success: true,
+                    inputAmount,
+                    payoutAmount: Math.max(payoutAmount, inputAmount * 0.1), // Never let payout go below 10% of input
+                    roi: Math.max(roi, -90),
+                    currency,
+                    pick: pick ? 'YES' : 'NO',
+                    firestore_only: true
+                });
+            } catch (firestoreError) {
+                console.error(`❌ Error calculating Firestore payout for ${marketId}:`, firestoreError.message);
+                const inputAmount = parseFloat(amount);
+                const estimatedPayout = inputAmount * 2;
+                return res.json({
+                    success: true,
+                    inputAmount,
+                    payoutAmount: estimatedPayout,
+                    roi: 100,
+                    currency,
+                    pick: pick ? 'YES' : 'NO',
+                    firestore_only: true,
+                    fallback: true
+                });
+            }
         }
         
         const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');

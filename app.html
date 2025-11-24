@@ -9641,25 +9641,15 @@
                     populateAssetSelector();
                     showScreen('market-detail-screen');
                     
-                    // ✅ SKIP AMM UPDATES FOR FIRESTORE-ONLY MARKETS (No-Loss, Quick Play)
-                    // Only call AMM updates for on-chain markets
-                    const isFirestoreOnly = currentMarket.isMock || currentMarket.isNoLoss || !currentMarket.isOnChain;
-                    if (isFirestoreOnly) {
-                        console.log(`🛡️ Firestore-only market (No-Loss/Quick Play) - using fixed odds from Firestore`);
-                    } else if (currentMarket.onChainMarketId) {
-                        console.log(`🚀 Starting AMM odds auto-update for on-chain market ID: ${currentMarket.onChainMarketId}`);
-                        // Detect which currency the market is using (BNB or PRED)
-                        detectMarketCurrency(currentMarket.onChainMarketId).then(detectedCurrency => {
-                            // Ensure we have a valid currency (fallback to BNB if undefined)
-                            const safeCurrency = detectedCurrency || 'BNB';
-                            window.startAMMOddsAutoUpdate(currentMarket.onChainMarketId, safeCurrency);
-                        }).catch(err => {
-                            // If detection fails completely, default to BNB and log error
-                            console.error('⚠️ Currency detection failed:', err);
-                            window.startAMMOddsAutoUpdate(currentMarket.onChainMarketId, 'BNB');
-                        });
+                    // ✅ UPDATE AMM ODDS - Works for BOTH Firestore-only AND on-chain markets
+                    // For Firestore-only: reads pools from Firestore doc
+                    // For on-chain: reads pools from smart contract
+                    const marketId = currentMarket.onChainMarketId || marketId;
+                    if (marketId) {
+                        console.log(`🚀 Starting AMM odds auto-update (works for both Firestore & blockchain markets)`);
+                        window.startAMMOddsAutoUpdate(marketId);
                     } else {
-                        console.log('⚠️ Could not start AMM odds update - no on-chain market ID found');
+                        console.log('⚠️ Could not start AMM odds update - no market ID found');
                     }
 
                     // Setup yield calculator for no-loss markets
