@@ -11282,6 +11282,10 @@
                     // Store in Firestore for UI tracking (NOT deducting balance - already paid with wallet BNB)
                     for (const pledge of onChainPledges) {
                         const pledgeRef = doc(collection(db, 'artifacts', APP_ID, 'public', 'data', PLEDGES_COLLECTION));
+                        // Calculate potential return for display
+                        const stakeInUsd = pledge.amount * getMockPrice('BUSD');
+                        const potentialReturnUsd = stakeInUsd * 2; // 2x for display (actual payout depends on AMM)
+                        
                         await setDoc(pledgeRef, {
                             marketId: pledge.id,
                             onChainMarketId: pledge.onChainMarketId,
@@ -11290,9 +11294,13 @@
                             pick: pledge.pick,
                             amount: pledge.amount,
                             asset: 'BNB', // On-chain always uses BNB
+                            amountUsd: stakeInUsd,
+                            potentialReturn: potentialReturnUsd,
                             txHash: receipt.transactionHash,
                             isOnChain: true,
                             isResolved: false,
+                            payout: 0,
+                            isWinner: null,
                             createdAt: new Date().toISOString(),
                             isQuickPlay: true
                         });
@@ -11391,10 +11399,13 @@
                             const yesPercent = market?.yesPercent || 50;
                             const noPercent = market?.noPercent || 50;
                             
-                            // Derive pool sizes from percentages (assume total pool = $100)
-                            const totalPoolUsd = 100;
+                            // Derive pool sizes from percentages (assume total pool = $1000 for better precision)
+                            const totalPoolUsd = 1000;
                             let yesPool = (yesPercent / 100) * totalPoolUsd;
                             let noPool = (noPercent / 100) * totalPoolUsd;
+                            // Ensure pools are never zero (minimum 0.01)
+                            yesPool = Math.max(yesPool, 0.01);
+                            noPool = Math.max(noPool, 0.01);
                             const k = yesPool * noPool; // Constant product
                             
                             let potentialPayoutUsd = 0;
