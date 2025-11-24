@@ -3674,42 +3674,33 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min)`);
         console.log(`   🎲 Resolution time: ${new Date(resolutionTime * 1000).toISOString()}`);
         
-        // Quick Play liquidity: 0.01 BNB + 6 PRED split 50/50
+        // Quick Play liquidity: 0.01 BNB only (PRED optional for now)
         const bnbValue = ethers.utils.parseEther('0.005');  // YES pool
         const bnbValueNo = ethers.utils.parseEther('0.005');  // NO pool
-        const predValue = ethers.utils.parseEther('3');  // YES pool
-        const predValueNo = ethers.utils.parseEther('3');  // NO pool
+        const predValue = ethers.utils.parseEther('0');  // YES pool (no PRED for quick plays)
+        const predValueNo = ethers.utils.parseEther('0');  // NO pool (no PRED for quick plays)
         const totalBnbNeeded = ethers.utils.parseEther('0.01');
-        const totalPredNeeded = ethers.utils.parseEther('6');
+        const totalPredNeeded = ethers.utils.parseEther('0');
         
         // Check BNB balance for gas + liquidity
         let deployerBalance = await provider.getBalance(deployerWallet.address);
         const estimatedGasCost = ethers.utils.parseEther('0.02');  // Gas + liquidity buffer
         
+        console.log(`💰 Deployer BNB balance: ${ethers.utils.formatEther(deployerBalance)} BNB (need ${ethers.utils.formatEther(estimatedGasCost)} BNB)`);
+        
         if (deployerBalance.lt(estimatedGasCost)) {
-            console.log(`⚠️ Deployer BNB low (${ethers.utils.formatEther(deployerBalance)} BNB). Requesting from faucet...`);
+            console.log(`⚠️ Deployer BNB low. Requesting from faucet...`);
             await requestBnbFromFaucet(deployerWallet.address);
             
             // Wait for faucet to process
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 3000));
             
             deployerBalance = await provider.getBalance(deployerWallet.address);
             console.log(`💰 Updated deployer balance: ${ethers.utils.formatEther(deployerBalance)} BNB`);
         }
         
-        // Check PRED balance and approve if needed
-        const predBalance = await predTokenContract.balanceOf(deployerWallet.address);
-        if (predBalance.lt(totalPredNeeded)) {
-            throw new Error(`Insufficient PRED balance. Have ${ethers.utils.formatEther(predBalance)}, need ${ethers.utils.formatEther(totalPredNeeded)}`);
-        }
-        
-        const currentAllowance = await predTokenContract.allowance(deployerWallet.address, contractAddress);
-        if (currentAllowance.lt(totalPredNeeded)) {
-            console.log(`📝 Approving ${ethers.utils.formatEther(totalPredNeeded)} PRED for market contract...`);
-            const approveTx = await predTokenContract.approve(contractAddress, ethers.constants.MaxUint256);
-            await approveTx.wait();
-            console.log(`✅ PRED approval confirmed`);
-        }
+        // Note: Quick Play markets use BNB only for now, no PRED liquidity needed
+        console.log(`📋 Quick Play liquidity: ${ethers.utils.formatEther(bnbValue)} BNB YES + ${ethers.utils.formatEther(bnbValueNo)} BNB NO (no PRED)`);
         
         // Call createMarket with all 7 required parameters
         const tx = await predictionMarketContract.createMarket(
@@ -3741,15 +3732,14 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
             duration: `${durationMinutes}m`,
             yesPool: 0.005,  // BNB
             noPool: 0.005,   // BNB
-            predYesPool: 3,   // PRED
-            predNoPool: 3,    // PRED
             totalStakeVolume: 0,
             isResolved: false,
             isMock: false,
             createdAt: admin.firestore.Timestamp.now(),
             onChainMarketId: onChainMarketId,
             onChainTxHash: txHash,
-            isOnChain: true
+            isOnChain: true,
+            currency: 'BNB'
         };
         
         const docRef = await db.collection(`artifacts/${APP_ID}/public/data/quick_play_markets`).add(quickPlayData);
