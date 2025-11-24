@@ -757,6 +757,22 @@ app.post('/api/market/create-onchain', async (req, res) => {
         // 🎯 FIXED-POT (NO-LOSS) MARKETS - Firestore only, skip blockchain
         if (isFixedPot) {
             console.log(`🛡️ Creating No-Loss (Fixed-Pot) market: "${title}" (Firestore-only)`);
+            
+            // Calculate pools based on user-specified odds
+            let yesPool = liquidityAmount / 2;
+            let noPool = liquidityAmount / 2;
+            
+            if (initialOdds && initialOdds.yesPercent && initialOdds.noPercent) {
+                // User specified odds - create asymmetric pools to match them
+                const yesPercent = parseFloat(initialOdds.yesPercent);
+                const noPercent = parseFloat(initialOdds.noPercent);
+                yesPool = (yesPercent / 100) * liquidityAmount;
+                noPool = (noPercent / 100) * liquidityAmount;
+                console.log(`💰 Pools created to match user odds: YES ${yesPercent}% (${yesPool.toFixed(4)} PRED) | NO ${noPercent}% (${noPool.toFixed(4)} PRED)`);
+            } else {
+                console.log(`💰 No initial odds specified, defaulting to 50/50 pools`);
+            }
+            
             const firestore = admin.firestore();
             const marketData = {
                 title,
@@ -774,8 +790,10 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 initialOdds,
                 options,
                 walletAddress,
-                yesPool: liquidityAmount / 2,
-                noPool: liquidityAmount / 2,
+                yesPool: yesPool,
+                noPool: noPool,
+                yesPercent: initialOdds?.yesPercent || 50,
+                noPercent: initialOdds?.noPercent || 50,
                 totalStakeVolume: 0
             };
             
