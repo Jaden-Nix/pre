@@ -12111,13 +12111,20 @@
                     throw new Error(result.error || 'Failed to create on-chain market');
                 }
 
-                console.log('✅ Market created on-chain!');
+                console.log('✅ Market created!');
                 console.log(`   Firestore ID: ${result.marketId}`);
                 console.log(`   On-chain ID: ${result.onChainMarketId}`);
                 console.log(`   TX: ${result.txHash}`);
                 
                 showLoadingOverlay(false);
-                showToast(`Market created on-chain! TX: ${result.txHash.slice(0, 10)}...`, "success");
+                
+                // Different message for Firestore-only vs on-chain markets
+                if (result.txHash) {
+                    showToast(`Market created on-chain! TX: ${result.txHash.slice(0, 10)}...`, "success");
+                } else {
+                    showToast(`Market created! (Firestore)`, "success");
+                }
+                
                 showScreen('home-screen');
 
                 // Clear the form
