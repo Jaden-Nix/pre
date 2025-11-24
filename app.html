@@ -5603,31 +5603,32 @@
             }
             
             try {
-                // Fetch both BNB and PRED from blockchain (for both custodial and external wallets)
-                const bnb = await getRealBNBBalance();
-                const pred = await getRealCAKEBalance();
+                // 1. ALWAYS read from Firestore first (source of truth for balance deductions)
+                let bnb = userProfile.bnbBalance || 0;
+                let pred = userProfile.predBalance || 0;
                 
-                console.log(`✅ Fetched: ${bnb} BNB, ${pred} PRED (from blockchain)`);
+                if (currentUserId) {
+                    try {
+                        const { doc, getDoc } = window.firebase.firestore;
+                        const profileRef = doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId);
+                        const profileSnap = await getDoc(profileRef);
+                        
+                        if (profileSnap.exists()) {
+                            const fsData = profileSnap.data();
+                            // Use Firestore balance (includes bet deductions)
+                            bnb = fsData.bnbBalance !== undefined ? fsData.bnbBalance : bnb;
+                            pred = fsData.predBalance !== undefined ? fsData.predBalance : pred;
+                            console.log(`✅ Fetched from Firestore: ${bnb} BNB, ${pred} PRED`);
+                        }
+                    } catch (fsError) {
+                        console.warn('Could not read Firestore balance, using cached values:', fsError);
+                    }
+                }
                 
-                // Update userProfile
+                // Update userProfile with Firestore balance
                 userProfile.bnbBalance = bnb;
                 userProfile.predBalance = pred;
                 userProfile.walletAddress = walletAddress;
-                
-                // Update Firestore with balances only (NOT wallet address - backend controls that)
-                if (currentUserId) {
-                    try {
-                        const { doc, updateDoc } = window.firebase.firestore;
-                        await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', USER_PROFILE_COLLECTION, currentUserId), {
-                            bnbBalance: bnb,
-                            predBalance: pred,
-                            // DO NOT update walletAddress here - it's managed by backend after bets
-                            lastBalanceUpdate: Date.now()
-                        });
-                    } catch (firestoreError) {
-                        console.warn('Could not update Firestore with balances:', firestoreError);
-                    }
-                }
                 
                 // Update UI if visible
                 if (userProfile && dom.mockBalance) {
