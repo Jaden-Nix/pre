@@ -791,7 +791,7 @@ app.post('/api/market/create-onchain', async (req, res) => {
         // Initialize contracts
         const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
         const contractABI = [
-            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime) external payable returns (uint256)',
+            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
             'event MarketCreated(uint256 indexed marketId, string title, address indexed creator)'
         ];
         
@@ -823,15 +823,24 @@ app.post('/api/market/create-onchain', async (req, res) => {
         const currentTime = Math.floor(Date.now() / 1000);
         console.log(`✅ Time check: current=${currentTime}, resolution=${resolutionTime}, future=${resolutionTime > currentTime}`);
         
+        // For PRED-based markets: split PRED liquidity evenly between YES and NO pools, minimal BNB for gas
+        const bnbValueYes = ethers.utils.parseEther('0.0001');  // Minimal BNB for YES pool
+        const bnbValueNo = ethers.utils.parseEther('0.0001');   // Minimal BNB for NO pool
+        const totalBnbValue = ethers.utils.parseEther('0.002');  // Total BNB to send
+        const predValueYes = halfLiquidityPred;  // Half PRED for YES pool
+        const predValueNo = halfLiquidityPred;   // Half PRED for NO pool
+        
         let tx;
         try {
-            // Send BNB value for initial liquidity
-            const bnbValue = ethers.utils.parseEther('0.001');
             tx = await predictionMarketContract.createMarket(
                 title, 
                 description, 
                 resolutionTime,
-                { value: bnbValue, gasLimit: 600000 }
+                bnbValueYes,      // initialYesBnb
+                bnbValueNo,        // initialNoBnb
+                predValueYes,      // initialYesPred
+                predValueNo,       // initialNoPred
+                { value: totalBnbValue, gasLimit: 600000 }
             );
         } catch (createError) {
             console.error(`❌ Smart contract call failed:`, createError.message);
