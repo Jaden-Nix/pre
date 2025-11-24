@@ -2875,12 +2875,13 @@ Generate 5 quick, fun YES/NO prediction questions about uncertain events in the 
                     const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB'; // Updated to correct V2 address
                     const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0'; // Updated PRED token address
                     
-                    // Small initial liquidity for Quick Play (0.01 BNB + 6 PRED = ~$12)
-                    const liquidityBNB = 0.01;
+                    // Minimal BNB for Quick Play liquidity (0.005 BNB) + 1 PRED gas fee (platform token)
+                    const liquidityBNB = 0.005;
                     const liquidityBnbWei = ethers.utils.parseEther(liquidityBNB.toString());
                     const halfLiquidityBnb = liquidityBnbWei.div(2);
                     const predLiquidityAmount = ethers.utils.parseEther((liquidityBNB * 600).toString());
                     const halfLiquidityPred = predLiquidityAmount.div(2);
+                    const predGasFee = ethers.utils.parseEther('1');
                     
                     // Approve PRED token spending
                     if (predLiquidityAmount.gt(0)) {
@@ -3636,26 +3637,41 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         // Set resolution time (duration from now)
         const resolutionTime = Math.floor(Date.now() / 1000) + (durationMinutes * 60);
         
-        // Quick play markets use minimal liquidity (0.01 BNB + 6 PRED like auto-generated ones)
-        const liquidityBNB = 0.01;
+        // Quick play markets use minimal BNB for liquidity + PRED for gas
+        const liquidityBNB = 0.005;  // Reduced BNB since we're using PRED for gas
         const liquidityBnbWei = ethers.utils.parseEther(liquidityBNB.toString());
         const halfLiquidityBnb = liquidityBnbWei.div(2);
         
         const predLiquidityAmount = ethers.utils.parseEther((liquidityBNB * 600).toString());
         const halfLiquidityPred = predLiquidityAmount.div(2);
         
-        console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min, 0.01 BNB + 6 PRED liquidity)`);
+        // PRED used as platform gas fee (instead of BNB)
+        const predGasFee = ethers.utils.parseEther('1');  // 1 PRED for gas
+        const totalPredNeeded = predLiquidityAmount.add(predGasFee);
         
-        // Check current allowance
+        console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min)`);
+        console.log(`   💧 Liquidity: 0.005 BNB + 3 PRED`);
+        console.log(`   ⛽ Gas Fee: 1 PRED (platform token)`);
+        
+        // Check current allowance for both liquidity + gas
         const currentAllowance = await predTokenContract.allowance(deployerWallet.address, contractAddress);
         console.log(`📋 Current PRED allowance: ${ethers.utils.formatEther(currentAllowance)} PRED`);
         
-        // If allowance is insufficient, approve more
+        // If allowance is insufficient, approve more (for liquidity only, gas fee is deducted off-chain)
         if (currentAllowance.lt(predLiquidityAmount)) {
             console.log(`🔐 Approving PRED contract to spend ${ethers.utils.formatEther(predLiquidityAmount)} PRED...`);
             const approveTx = await predTokenContract.approve(contractAddress, ethers.constants.MaxUint256);
             await approveTx.wait();
             console.log(`✅ PRED approval confirmed`);
+        }
+        
+        // Deduct PRED gas fee from deployer's balance (platform token for gas)
+        console.log(`💳 Deducting ${ethers.utils.formatEther(predGasFee)} PRED as gas fee...`);
+        const deployerBalance = await provider.getBalance(deployerWallet.address);
+        const estimatedGasCost = liquidityBnbWei.mul(2);  // Rough estimate: 2x the liquidity for gas
+        if (deployerBalance.lt(estimatedGasCost)) {
+            console.error(`❌ Insufficient deployer BNB (need ~${ethers.utils.formatEther(estimatedGasCost)} for liquidity + gas, have ${ethers.utils.formatEther(deployerBalance)})`);
+            return res.status(400).json({ error: 'Insufficient BNB for market creation' });
         }
         
         const tx = await predictionMarketContract.createMarket(
