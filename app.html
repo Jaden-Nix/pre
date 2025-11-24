@@ -10763,10 +10763,17 @@
             currentQuickPlayIndex = index % data.length;
             const market = data[currentQuickPlayIndex];
 
+            // Add fallback values for missing fields
+            if (!market.yesPercent) market.yesPercent = 50;
+            if (!market.noPercent) market.noPercent = 50;
+            if (!market.duration) market.duration = '10m';
+
             // Store market data on the card's dataset for later
             cardEl.dataset.id = market.id;
             cardEl.dataset.title = market.title;
             cardEl.dataset.ismock = market.isMock || false; 
+
+            console.log('📺 Rendering Quick Play card:', { id: market.id, title: market.title, yesPercent: market.yesPercent, noPercent: market.noPercent });
 
             // Render the card HTML
             cardEl.innerHTML = `
@@ -10788,7 +10795,7 @@
 
     <div class="badge badge-timer flex items-center space-x-1.5">
         <span class="w-1.5 h-1.5 bg-sky-400 rounded-full live-dot"></span>
-        <span>${market.duration}</span>
+        <span>${market.duration || '10m'}</span>
     </div>
 
     <button onclick="viewQuickPlayDetails(event)" class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-sky-400 transition-colors rounded-full">
@@ -10798,11 +10805,11 @@
                     <h2 class="text-2xl font-bold text-white text-center mb-6">${market.title}</h2>
                     <div class="flex justify-around mb-5">
                         <div class="text-center">
-                            <div class="text-4xl font-bold text-green-400">${market.yesPercent.toFixed(1)}%</div>
+                            <div class="text-4xl font-bold text-green-400">${(market.yesPercent || 50).toFixed(1)}%</div>
                             <div class="text-sm text-gray-300">YES</div>
                         </div>
                         <div class="text-center">
-                            <div class="text-4xl font-bold text-red-400">${market.noPercent.toFixed(1)}%</div>
+                            <div class="text-4xl font-bold text-red-400">${(market.noPercent || 50).toFixed(1)}%</div>
                             <div class="text-sm text-gray-300">NO</div>
                         </div>
                     </div>
