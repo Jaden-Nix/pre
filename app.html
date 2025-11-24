@@ -11263,24 +11263,46 @@
 
                         } else {
                             // --- THIS IS A REAL AMM QUICK PLAY ---
-                            // 11. AMM MATH
+                            // Proper AMM Payout Calculation
                             const market = marketSnap.data();
-                            const marketRef = marketSnap.ref; // Get the ref from the snapshot
+                            const marketRef = marketSnap.ref;
                             let yesPool = market.yesPool;
                             let noPool = market.noPool;
-                            const k = yesPool * noPool;
-                            let potentialPayoutUsd = 0; // "Shares"
+                            const k = yesPool * noPool; // Constant product
+                            
+                            // 1. Calculate user's share percentage BEFORE their stake
+                            const totalPoolBefore = yesPool + noPool;
+                            let userSharePercent = 0;
+                            let potentialPayoutUsd = 0;
 
                             if (item.pick === 'YES') {
+                                // User adds to YES pool
                                 const newYesPool = yesPool + amountInUsdPerPledge;
                                 const newNoPool = k / newYesPool;
-                                potentialPayoutUsd = noPool - newNoPool;
+                                
+                                // User's share of YES side = their stake / new YES pool
+                                userSharePercent = (amountInUsdPerPledge / newYesPool) * 100;
+                                
+                                // If they win: they get their share of the COMBINED pool
+                                // potentialPayout = (stake + losingPool)
+                                // Simpler: stake + amount from price movement
+                                const priceMovement = yesPool - newYesPool + (newNoPool - noPool);
+                                potentialPayoutUsd = amountInUsdPerPledge + (newNoPool * userSharePercent / 100);
+                                
                                 yesPool = newYesPool;
                                 noPool = newNoPool;
                             } else { // pick === 'NO'
+                                // User adds to NO pool
                                 const newNoPool = noPool + amountInUsdPerPledge;
                                 const newYesPool = k / newNoPool;
-                                potentialPayoutUsd = yesPool - newYesPool;
+                                
+                                // User's share of NO side = their stake / new NO pool
+                                userSharePercent = (amountInUsdPerPledge / newNoPool) * 100;
+                                
+                                // If they win: they get their share of the COMBINED pool
+                                const priceMovement = noPool - newNoPool + (newYesPool - yesPool);
+                                potentialPayoutUsd = amountInUsdPerPledge + (newYesPool * userSharePercent / 100);
+                                
                                 yesPool = newYesPool;
                                 noPool = newNoPool;
                             }
@@ -11308,7 +11330,8 @@
                                 amount: item.amount,
                                 asset: selectedAsset,
                                 amountUsd: amountInUsdPerPledge,
-                                potentialReturn: potentialPayoutUsd, // AMM "Shares"
+                                potentialReturn: potentialPayoutUsd, // Correct AMM payout
+                                userSharePercent: userSharePercent,
                                 txHash: txHash,
                                 isResolved: false,
                                 isWinner: null,

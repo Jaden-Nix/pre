@@ -2209,15 +2209,26 @@ app.post('/api/calculate-amm-payout', async (req, res) => {
             });
         }
         
-        // AMM formula: outputShares = inputAmount * oppositePool / (samePool + inputAmount)
-        // This follows the constant product formula: x * y = k
+        // Correct AMM prediction market payout calculation
+        // When user wins: they get their share of the combined pool
+        // Share % = amount / (pool + amount)
+        // Payout = amount + (oppositePool * amount / (samePool + amount))
         let payout;
+        const k = poolYes.mul(poolNo);
+        
         if (pick === true || pick === 'true' || pick === 'YES') {
-            // Buying YES: spend from pool, get shares from NO pool
-            payout = amountWei.mul(poolNo).div(poolYes.add(amountWei));
+            // User bets YES
+            const newYesPool = poolYes.add(amountWei);
+            const newNoPool = k.div(newYesPool);
+            // Payout = amount + (newNoPool * amount / newYesPool)
+            // Simplified: amount + their share of opposing pool
+            payout = amountWei.add(newNoPool.mul(amountWei).div(newYesPool));
         } else {
-            // Buying NO: spend from pool, get shares from YES pool
-            payout = amountWei.mul(poolYes).div(poolNo.add(amountWei));
+            // User bets NO
+            const newNoPool = poolNo.add(amountWei);
+            const newYesPool = k.div(newNoPool);
+            // Payout = amount + (newYesPool * amount / newNoPool)
+            payout = amountWei.add(newYesPool.mul(amountWei).div(newNoPool));
         }
         
         // Convert back to human-readable format
