@@ -735,7 +735,7 @@ app.post('/api/profile/sync-wallet-address', async (req, res) => {
 
 // 🎯 On-Chain Market Creation - Creates markets using PRED from user's balance
 app.post('/api/market/create-onchain', async (req, res) => {
-    const { title, description, category, endDate, liquidityPRED, marketStructure, initialOdds, options, walletAddress } = req.body;
+    const { title, description, category, endDate, liquidityPRED, marketStructure, initialOdds, options, walletAddress, isNoLossMarket, yieldProtocol, liquidityAssetUSD, liquidityAmountUSD } = req.body;
     
     // Accept both liquidityBNB (legacy) and liquidityPRED (new PRED-based)
     const liquidityAmount = parseFloat(liquidityPRED || req.body.liquidityBNB);
@@ -1011,17 +1011,20 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 initialLiquidityPred: liquidityAmount,
                 initialLiquidityPredUsd: initialLiquidityPredUsd,
                 initialLiquidityTotalUsd: initialLiquidityPredUsd,
-                isFixedPot: false,
-                yieldProtocol: null,
+                isFixedPot: isNoLossMarket ? true : false,
+                marketType: isNoLossMarket ? 'fixed-pot' : 'traditional',
+                yieldProtocol: yieldProtocol || null,
                 protocolApy: 0,
-                totalPrincipalUsd: 0,
+                totalPrincipalUsd: liquidityAmountUSD || 0,
+                liquidityAssetUSD: liquidityAssetUSD || 'PRED',
                 lastAccrualAt: admin.firestore.FieldValue.serverTimestamp(),
                 accruedYieldUsd: 0,
                 disputes: [],
                 resolutionSource: null,
                 adminEvents: [],
                 refundVolumeGoal: 100,
-                refundStakerGoal: 10
+                refundStakerGoal: 10,
+                userTrades: []
             };
             
             if (marketStructure === 'binary') {

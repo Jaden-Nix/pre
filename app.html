@@ -10475,6 +10475,16 @@
                             onChainBet: true
                         };
 
+                        // 🛡️ FOR NO-LOSS MARKETS: Track entry price and timestamp for yield distribution
+                        if (currentMarket.isFixedPot || currentMarket.marketType === 'fixed-pot') {
+                            pledgeData.isNoLossBet = true;
+                            pledgeData.entryYesPercent = currentMarket.yesPercent;
+                            pledgeData.entryNoPercent = currentMarket.noPercent;
+                            pledgeData.entryTimestamp = Date.now();
+                            pledgeData.entryPrice = pick === 'YES' ? currentMarket.yesPercent : currentMarket.noPercent;
+                            console.log(`🛡️ No-loss bet recorded: Entry price ${pledgeData.entryPrice}% at ${new Date().toISOString()}`);
+                        }
+
                         if (isMultiOption && optionLabel) {
                             pledgeData.optionLabel = optionLabel;
                         }
@@ -10759,6 +10769,16 @@
                         createdAt: new Date().toISOString(),
                         marketStructure: market.marketStructure || 'binary'
                     };
+
+                    // 🛡️ FOR NO-LOSS MARKETS: Track entry price and timestamp for yield distribution
+                    if (market.isFixedPot || market.marketType === 'fixed-pot') {
+                        pledgeData.isNoLossBet = true;
+                        pledgeData.entryYesPercent = market.yesPercent;
+                        pledgeData.entryNoPercent = market.noPercent;
+                        pledgeData.entryTimestamp = Date.now();
+                        pledgeData.entryPrice = pick === 'YES' ? market.yesPercent : market.noPercent;
+                        console.log(`🛡️ No-loss bet recorded (custodial): Entry price ${pledgeData.entryPrice}% at ${new Date().toISOString()}`);
+                    }
 
                     // Add option label for multi-option markets
                     if (isMultiOption && optionLabel) {
