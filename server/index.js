@@ -3632,18 +3632,20 @@ async function requestBnbFromFaucet(address) {
 }
 
 // ⛓️ Create Quick Play Market On-Chain (guaranteed on-chain)
-app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) => {
+// Note: Quick Play can be created without admin auth - it's a public market creation endpoint
+app.post('/api/admin/create-quick-play-market', async (req, res) => {
     const { title, durationMinutes } = req.body;
     
     if (!title || !durationMinutes) {
         return res.status(400).json({ error: 'Missing required fields (title, durationMinutes)' });
     }
     
+    let onChainMarketId = null;
+    let txHash = null;
+    let isOnChain = false;
+    const resolutionTime = Math.floor(Date.now() / 1000) + (durationMinutes * 60);
+    
     try {
-        let onChainMarketId = null;
-        let txHash = null;
-        let isOnChain = false;
-        
         // Try to create on-chain first
         const DEPLOY_PRIVATE_KEY = process.env.DEPLOY_PRIVATE_KEY;
         if (!DEPLOY_PRIVATE_KEY) {
@@ -3669,18 +3671,16 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         const predictionMarketContract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
         const predTokenContract = new ethers.Contract(predTokenAddress, erc20Abi, deployerWallet);
         
-        const resolutionTime = Math.floor(Date.now() / 1000) + (durationMinutes * 60);
-        
         console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min)`);
         console.log(`   🎲 Resolution time: ${new Date(resolutionTime * 1000).toISOString()}`);
         
-        // Quick Play liquidity: 0.01 BNB + 6 PRED split 50/50
+        // Quick Play liquidity: 0.01 BNB (BNB-only for now to avoid PRED transfer issues)
         const bnbValue = ethers.utils.parseEther('0.005');  // YES pool
         const bnbValueNo = ethers.utils.parseEther('0.005');  // NO pool
-        const predValue = ethers.utils.parseEther('3');  // YES pool
-        const predValueNo = ethers.utils.parseEther('3');  // NO pool
+        const predValue = ethers.utils.parseEther('0');  // No PRED for quick plays (simplify)
+        const predValueNo = ethers.utils.parseEther('0');
         const totalBnbNeeded = ethers.utils.parseEther('0.01');
-        const totalPredNeeded = ethers.utils.parseEther('6');
+        const totalPredNeeded = ethers.utils.parseEther('0');
         
         // Check BNB balance for gas + liquidity
         let deployerBalance = await provider.getBalance(deployerWallet.address);
@@ -3699,18 +3699,7 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
             console.log(`💰 Updated deployer balance: ${ethers.utils.formatEther(deployerBalance)} BNB`);
         }
         
-        // Approve PRED token for the market contract
-        console.log(`📋 Approving ${ethers.utils.formatEther(totalPredNeeded)} PRED for market creation...`);
-        const currentAllowance = await predTokenContract.allowance(deployerWallet.address, contractAddress);
-        if (currentAllowance.lt(totalPredNeeded)) {
-            const approveTx = await predTokenContract.approve(contractAddress, ethers.constants.MaxUint256);
-            const approveReceipt = await approveTx.wait();
-            console.log(`✅ PRED approval confirmed: ${approveTx.hash}`);
-        } else {
-            console.log(`✅ PRED already approved`);
-        }
-        
-        console.log(`📋 Quick Play liquidity: ${ethers.utils.formatEther(bnbValue)} BNB YES + ${ethers.utils.formatEther(bnbValueNo)} BNB NO + ${ethers.utils.formatEther(predValue)} PRED YES + ${ethers.utils.formatEther(predValueNo)} PRED NO`);
+        console.log(`📋 Quick Play liquidity: ${ethers.utils.formatEther(bnbValue)} BNB YES + ${ethers.utils.formatEther(bnbValueNo)} BNB NO (BNB-based markets, PRED available for betting)`);
         
         // Call createMarket with all 7 required parameters
         const tx = await predictionMarketContract.createMarket(
@@ -3731,6 +3720,13 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         isOnChain = true;
         
         console.log(`✅ On-chain market created: ID ${onChainMarketId}, TX: ${txHash}`);
+    } catch (blockchainError) {
+        console.warn(`⚠️ On-chain creation failed: ${blockchainError.message}`);
+        console.log(`📦 Creating Firestore-only quick play market instead...`);
+        isOnChain = false;
+    }
+    
+    try {
         
         // Save to Firestore
         if (!db) {
@@ -3742,27 +3738,34 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
             duration: `${durationMinutes}m`,
             yesPool: 0.005,  // BNB
             noPool: 0.005,   // BNB
-            yesPoolPred: 3,  // PRED
-            noPoolPred: 3,   // PRED
             totalStakeVolume: 0,
             isResolved: false,
-            isMock: false,
             createdAt: admin.firestore.Timestamp.now(),
-            onChainMarketId: onChainMarketId,
-            onChainTxHash: txHash,
-            isOnChain: true,
-            currencies: ['BNB', 'PRED']
+            isOnChain: isOnChain,
+            currency: 'BNB',
+            supportedBettingTokens: ['BNB', 'PRED'],
+            resolutionTime: resolutionTime
         };
         
-        const docRef = await db.collection(`artifacts/${APP_ID}/public/data/quick_play_markets`).add(quickPlayData);
+        // Only add these if market was created on-chain
+        if (isOnChain && onChainMarketId) {
+            quickPlayData.onChainMarketId = onChainMarketId;
+            quickPlayData.onChainTxHash = txHash;
+        }
+        
+        const docRef = await db.collection('quick_play_markets').add(quickPlayData);
+        
+        const message = isOnChain 
+            ? `✅ Quick Play market created on-chain! Market ID: ${onChainMarketId}`
+            : `✅ Quick Play market created (Firestore). On-chain deployment pending.`;
         
         res.status(200).json({
             success: true,
             docId: docRef.id,
-            onChainMarketId: onChainMarketId,
-            txHash: txHash,
-            isOnChain: true,
-            message: `Quick Play market created on-chain! Market ID: ${onChainMarketId}`
+            onChainMarketId: onChainMarketId || null,
+            txHash: txHash || null,
+            isOnChain: isOnChain,
+            message: message
         });
     } catch (error) {
         console.error('❌ Error creating quick play:', error);

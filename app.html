@@ -12562,24 +12562,20 @@ ${historyText}`;
 
             const title = dom.adminQpTitle.value;
             const duration = dom.adminQpDuration.value;
-            const yesPercent = parseFloat(dom.adminQpYes.value);
-            const noPercent = parseFloat(dom.adminQpNo.value);
 
             // Validate
-            if (!title || !duration || isNaN(yesPercent) || isNaN(noPercent) || Math.abs(yesPercent + noPercent - 100) > 0.001) {
-                showToast("Please fill out all fields correctly. Odds must sum to 100.");
+            if (!title || !duration) {
+                showToast("Please fill out all fields. Title and duration required.");
                 return;
             }
 
             showLoadingOverlay(true, "⛓️ Creating market on-chain...");
 
             try {
-                // 1. GET ADMIN TOKEN FOR API CALL
-                const user = auth.currentUser;
-                if (!user) {
-                    throw new Error('Not authenticated');
+                // 1. GET ADMIN SECRET FOR API CALL
+                if (!adminSecret) {
+                    throw new Error('Admin credentials not available. Please re-authenticate.');
                 }
-                const adminToken = await user.getIdToken();
 
                 // 2. CREATE MARKET ON-CHAIN FIRST
                 console.log('🎯 Calling backend to create on-chain quick play market...');
@@ -12587,13 +12583,11 @@ ${historyText}`;
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${adminToken}`
+                        'x-admin-secret': adminSecret
                     },
                     body: JSON.stringify({
                         title,
-                        durationMinutes: parseInt(duration),
-                        yesPercent,
-                        noPercent
+                        durationMinutes: parseInt(duration)
                     })
                 });
 
