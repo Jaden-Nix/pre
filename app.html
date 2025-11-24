@@ -12176,9 +12176,12 @@
                 // Mock no-loss market creation with Firestore persistence
                 setTimeout(async () => {
                     try {
-                        // Get Firestore instance
+                        // Use the global Firestore instance (db) and functions that are already loaded
+                        const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'predora-hackathon';
+                        const STANDARD_MARKETS_COLLECTION = 'standard_markets';
+                        
+                        // Get Firestore functions from the global scope (already imported in the app)
                         const { addDoc, collection, serverTimestamp } = window.firebase.firestore;
-                        const firestore = window.firebase.firestore();
                         
                         // Create market document for no-loss market
                         const marketData = {
@@ -12203,8 +12206,10 @@
                             txHash: null
                         };
                         
-                        // Add to Firestore
-                        const docRef = await addDoc(collection(firestore, 'standard_markets'), marketData);
+                        // Add to Firestore using the same path as traditional markets
+                        // db is a global variable initialized during Firebase setup
+                        const marketRef = collection(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION);
+                        const docRef = await addDoc(marketRef, marketData);
                         console.log('💾 No-loss market saved to Firestore:', docRef.id);
                         
                         showLoadingOverlay(false);
