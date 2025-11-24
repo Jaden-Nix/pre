@@ -807,29 +807,22 @@ app.post('/api/market/create-onchain', async (req, res) => {
         
         const predTokenContract = new ethers.Contract(PRED_TOKEN_ADDRESS, erc20Abi, deployerWallet);
         
-        // Approve market contract to spend PRED (contract will pull via transferFrom)
-        console.log(`📋 Approving market contract to spend ${liquidityAmount} PRED...`);
-        const approveTx = await predTokenContract.approve(contractAddress, liquidityPredWei);
-        await approveTx.wait();
-        console.log(`✅ Approval successful`);
-        
-        // Create market with PRED
-        const predictionMarketContract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
-        
-        console.log(`📋 Creating market with parameters:`);
+        // For PRED-based markets: Don't send PRED in createMarket call
+        // Keep pools at 0 - users will provide liquidity through betting
+        // BNB is only used for gas fees, not liquidity
+        console.log(`📋 Creating market with BNB for gas only, PRED for betting later...`);
         console.log(`   Title: "${title}"`);
-        console.log(`   Half liquidity per side: ${ethers.utils.formatEther(halfLiquidityPred)} PRED`);
+        console.log(`   PRED liquidity (for staking/betting): ${ethers.utils.formatEther(halfLiquidityPred)} per side`);
         
         const currentTime = Math.floor(Date.now() / 1000);
         console.log(`✅ Time check: current=${currentTime}, resolution=${resolutionTime}, future=${resolutionTime > currentTime}`);
         
-        // For PRED-based markets: use both BNB and PRED liquidity
-        // Send minimal BNB (0.002 per side = 0.004 total) + PRED amounts
-        const bnbValueYes = ethers.utils.parseEther('0.002');  // Minimal BNB for YES pool
-        const bnbValueNo = ethers.utils.parseEther('0.002');   // Minimal BNB for NO pool
-        const totalBnbValue = ethers.utils.parseEther('0.01');  // Total BNB to send (covers both pools + gas)
-        const predValueYes = halfLiquidityPred;  // Half PRED for YES pool
-        const predValueNo = halfLiquidityPred;   // Half PRED for NO pool
+        // Create market with NO initial pools - just gas
+        const bnbValueYes = ethers.utils.parseEther('0');  // No BNB pools
+        const bnbValueNo = ethers.utils.parseEther('0');   // No BNB pools
+        const totalBnbValue = ethers.utils.parseEther('0.01');  // Only gas
+        const predValueYes = ethers.utils.parseEther('0');  // No PRED sent in call
+        const predValueNo = ethers.utils.parseEther('0');   // No PRED sent in call
         
         let tx;
         try {
