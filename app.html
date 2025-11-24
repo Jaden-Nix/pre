@@ -2524,21 +2524,21 @@
                     <h3 class="text-base font-semibold text-white">Confirm All Pledges</h3>
 
                     <div class="space-y-2">
-                        <label for="pledge-all-asset" class="text-sm font-medium text-gray-300">Asset to use:</label>
-                        <select id="pledge-all-asset" class="ui-select">
-                            <option value="PRED">$PRED</option>
-                            <option value="BNB">BNB</option>
-                            <option value="CAKE">CAKE</option>
-                        </select>
+                        <label class="text-sm font-medium text-gray-300">Asset:</label>
+                        <input type="hidden" id="pledge-all-asset" value="BUSD">
+                        <div class="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                            <p class="text-sm font-semibold text-purple-400">💰 BUSD (Quick Play Only)</p>
+                            <p class="text-xs text-gray-400 mt-1">All Quick Play bets use BUSD</p>
+                        </div>
                     </div>
 
                     <div class="space-y-2">
                         <label class="text-sm font-medium text-gray-300">Quick Set (Optional)</label>
                         <p class="text-xs text-gray-400">Set all pledge amounts at once.</p>
                         <div class="flex justify-start space-x-2">
-                            <button onclick="setPledgeAll(1, 'PRED')" class="btn-quick-tap">$1</button>
-                            <button onclick="setPledgeAll(5, 'PRED')" class="btn-quick-tap">$5</button>
-                            <button onclick="setPledgeAll(10, 'PRED')" class="btn-quick-tap">$10</button>
+                            <button onclick="setPledgeAll(1, 'BUSD')" class="btn-quick-tap">$1</button>
+                            <button onclick="setPledgeAll(5, 'BUSD')" class="btn-quick-tap">$5</button>
+                            <button onclick="setPledgeAll(10, 'BUSD')" class="btn-quick-tap">$10</button>
                         </div>
                     </div>
 
@@ -11200,7 +11200,6 @@
 
             if (pledgePoolItems.length === 0) return;
 
-            const selectedAsset = dom.pledgeAllAsset.value;
             let totalStakeAmount = 0;
             let pledgesToProcess = [];
 
@@ -11220,11 +11219,9 @@
                 return;
             }
 
-            // 3. Get the correct balance field name
-            let balanceFieldToUpdate = "";
-            if (selectedAsset === "PRED") { balanceFieldToUpdate = "predBalance"; }
-            else if (selectedAsset === "BNB") { balanceFieldToUpdate = "bnbBalance"; }
-            else if (selectedAsset === "BUSD") { balanceFieldToUpdate = "busdBalance"; }
+            // 3. FORCE BUSD for Quick Play betting (no other assets allowed)
+            const selectedAsset = "BUSD"; // Always BUSD for Quick Play
+            let balanceFieldToUpdate = "busdBalance";
 
             // 🔗 4. CHECK IF PLEDGES SHOULD GO ON-CHAIN
             // Fetch market data to check for onChainMarketId
