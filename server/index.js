@@ -3636,19 +3636,23 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         // Set resolution time (duration from now)
         const resolutionTime = Math.floor(Date.now() / 1000) + (durationMinutes * 60);
         
-        // Quick play markets use minimal PRED liquidity (500 PRED split equally)
-        const totalPred = ethers.utils.parseEther('500');
-        const predPerSide = totalPred.div(2);
+        // Quick play markets use minimal liquidity (0.01 BNB + 6 PRED like auto-generated ones)
+        const liquidityBNB = 0.01;
+        const liquidityBnbWei = ethers.utils.parseEther(liquidityBNB.toString());
+        const halfLiquidityBnb = liquidityBnbWei.div(2);
         
-        console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min, 500 PRED liquidity)`);
+        const predLiquidityAmount = ethers.utils.parseEther((liquidityBNB * 600).toString());
+        const halfLiquidityPred = predLiquidityAmount.div(2);
+        
+        console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min, 0.01 BNB + 6 PRED liquidity)`);
         
         // Check current allowance
         const currentAllowance = await predTokenContract.allowance(deployerWallet.address, contractAddress);
         console.log(`📋 Current PRED allowance: ${ethers.utils.formatEther(currentAllowance)} PRED`);
         
         // If allowance is insufficient, approve more
-        if (currentAllowance.lt(totalPred)) {
-            console.log(`🔐 Approving PRED contract to spend ${ethers.utils.formatEther(totalPred)} PRED...`);
+        if (currentAllowance.lt(predLiquidityAmount)) {
+            console.log(`🔐 Approving PRED contract to spend ${ethers.utils.formatEther(predLiquidityAmount)} PRED...`);
             const approveTx = await predTokenContract.approve(contractAddress, ethers.constants.MaxUint256);
             await approveTx.wait();
             console.log(`✅ PRED approval confirmed`);
@@ -3658,11 +3662,11 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
             title,
             `Quick Play: ${title}`,
             resolutionTime,
-            ethers.BigNumber.from(0),
-            ethers.BigNumber.from(0),
-            predPerSide,
-            predPerSide,
-            { gasLimit: 600000 }
+            halfLiquidityBnb,
+            halfLiquidityBnb,
+            halfLiquidityPred,
+            halfLiquidityPred,
+            { value: liquidityBnbWei, gasLimit: 600000 }
         );
         
         const receipt = await tx.wait();
