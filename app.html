@@ -9589,12 +9589,12 @@
              */
             window.viewMarketDetail = async (marketId) => {
                 const { doc, getDoc, onSnapshot, getFirestore } = window.firebase.firestore;
-                currentMarketId = marketId;
-
+                
                 try {
                     // ✅ Get Firestore instance
                     const db = getFirestore();
-                    const marketRef = doc(db, 'artifacts', APP_ID, 'public', 'data', STANDARD_MARKETS_COLLECTION, marketId);
+                    currentMarketId = marketId;
+                    const marketRef = doc(db, 'artifacts', 'predora-hackathon', 'public', 'data', 'standard_markets', marketId);
                     const docSnap = await getDoc(marketRef);
                     if (!docSnap.exists()) {
                         showToast("Error: Market not found.", "error");
