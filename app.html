@@ -11378,9 +11378,9 @@
                         // Safety check: Does this market have AMM pools?
                         if (!marketSnap.exists() || !marketSnap.data().yesPool) {
                             // This is a MOCK market or an OLD market.
-                            // We will use the old 60/40 fixed-odds logic for this one.
-                            const odds = 60; 
-                            const potentialReturn = (amountInUsdPerPledge / (odds / 100));
+                            // Calculate potential return assuming 50/50 odds and equal pools
+                            // At 50/50, if you win, you get your stake + equal share of losing pool ≈ 2x stake
+                            const potentialReturn = amountInUsdPerPledge * 2;
 
                             const pledgeRef = doc(pledgeCollection);
                             transaction.set(pledgeRef, {
