@@ -3893,7 +3893,7 @@ app.post('/api/admin/create-quick-play-market', async (req, res) => {
             quickPlayData.onChainTxHash = txHash;
         }
         
-        const docRef = await db.collection(`artifacts/${APP_ID}/public/data/quick_play_markets`).add(quickPlayData);
+        const docRef = await db.collection(`artifacts/${APP_ID}/public/data/quick_plays`).add(quickPlayData);
         
         const message = isOnChain 
             ? `✅ Quick Play market created on-chain! Market ID: ${onChainMarketId}`
