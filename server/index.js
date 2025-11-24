@@ -3961,14 +3961,20 @@ app.post('/api/quick-play/calculate-payout', async (req, res) => {
         const market = quickPlaySnap.data();
         const betAmount = parseFloat(amount);
         
+        // Log raw market data for debugging
+        console.log(`📋 Market data: yesPoolBusd=${market.yesPoolBusd} (type: ${typeof market.yesPoolBusd}), noPoolBusd=${market.noPoolBusd} (type: ${typeof market.noPoolBusd})`);
+        
         // Use BUSD liquidity pools for real AMM calculation
         let yesPoolBusd = market.yesPoolBusd || 50;
         let noPoolBusd = market.noPoolBusd || 50;
+        
+        console.log(`🔍 After defaults: yesPoolBusd=${yesPoolBusd}, noPoolBusd=${noPoolBusd}`);
         
         // Ensure pools are valid numbers
         yesPoolBusd = parseFloat(yesPoolBusd) || 50;
         noPoolBusd = parseFloat(noPoolBusd) || 50;
         
+        console.log(`✅ After parseFloat: yesPoolBusd=${yesPoolBusd}, noPoolBusd=${noPoolBusd}`);
         console.log(`💰 Payout calc for ${choice} on ${quickPlayId}: YES pool=${yesPoolBusd}, NO pool=${noPoolBusd}, bet=${betAmount}`);
         
         // Calculate odds based on current pool balances
