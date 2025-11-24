@@ -3913,6 +3913,63 @@ app.post('/api/admin/create-quick-play-market', async (req, res) => {
     }
 });
 
+// ✅ PLACE QUICK PLAY BET - Store user bets with BUSD amounts
+app.post('/api/quick-play/place-bet', async (req, res) => {
+    if (!db) {
+        return res.status(503).json({ error: 'Firebase Admin not initialized' });
+    }
+    
+    const { userId, quickPlayId, choice, amount, idToken } = req.body;
+    
+    if (!userId || !quickPlayId || !choice || amount <= 0) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    try {
+        if (idToken) {
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            if (decodedToken.uid !== userId) {
+                return res.status(403).json({ error: 'Unauthorized' });
+            }
+        }
+        
+        const quickPlayRef = db.collection(`artifacts/${APP_ID}/public/data/quick_plays`).doc(quickPlayId);
+        const quickPlaySnap = await quickPlayRef.get();
+        
+        if (!quickPlaySnap.exists) {
+            return res.status(404).json({ error: 'Quick play not found' });
+        }
+        
+        const betDoc = {
+            userId,
+            choice: choice.toUpperCase(),
+            amount: parseFloat(amount),
+            timestamp: Date.now(),
+            status: 'active'
+        };
+        
+        await quickPlayRef.collection('bets').add(betDoc);
+        
+        await deductBusdBalance(userId, amount);
+        
+        const newYesVotes = choice.toUpperCase() === 'YES' ? admin.firestore.FieldValue.increment(1) : admin.firestore.FieldValue.increment(0);
+        const newNoVotes = choice.toUpperCase() === 'NO' ? admin.firestore.FieldValue.increment(1) : admin.firestore.FieldValue.increment(0);
+        
+        await quickPlayRef.update({
+            yesVotes: choice.toUpperCase() === 'YES' ? admin.firestore.FieldValue.increment(1) : admin.firestore.FieldValue.increment(0),
+            noVotes: choice.toUpperCase() === 'NO' ? admin.firestore.FieldValue.increment(1) : admin.firestore.FieldValue.increment(0),
+            totalVolume: admin.firestore.FieldValue.increment(amount)
+        });
+        
+        console.log(`💰 Quick Play bet: ${userId} bet ${amount} BUSD on ${choice} for market ${quickPlayId}`);
+        res.status(200).json({ success: true, betId: betDoc.userId + '_' + Date.now() });
+    } catch (error) {
+        console.error('Error placing quick play bet:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ✅ RESOLVE QUICK PLAY WITH PAYOUTS - Calculate and distribute winnings
 app.post('/api/admin/resolve-quick-play', requireAdmin, async (req, res) => {
     
     if (!db) {
@@ -3923,14 +3980,77 @@ app.post('/api/admin/resolve-quick-play', requireAdmin, async (req, res) => {
     
     try {
         const quickPlayRef = db.collection(`artifacts/${APP_ID}/public/data/quick_plays`).doc(quickPlayId);
-        await quickPlayRef.update({
-            status: 'resolved',
-            outcome,
-            resolvedAt: new Date().toISOString(),
-            resolvedBy: 'admin'
+        const quickPlaySnap = await quickPlayRef.get();
+        
+        if (!quickPlaySnap.exists) {
+            return res.status(404).json({ error: 'Quick play not found' });
+        }
+        
+        const quickPlayData = quickPlaySnap.data();
+        
+        // Get all bets for this quick play
+        const betsSnapshot = await quickPlayRef.collection('bets').where('status', '==', 'active').get();
+        const bets = [];
+        let totalBets = 0;
+        let winningBets = 0;
+        
+        betsSnapshot.forEach(doc => {
+            const bet = doc.data();
+            bets.push({ id: doc.id, ...bet });
+            totalBets += bet.amount;
+            if (bet.choice === outcome.toUpperCase()) {
+                winningBets += bet.amount;
+            }
         });
         
-        res.status(200).json({ success: true });
+        const winOutcome = outcome.toUpperCase();
+        const losingBets = totalBets - winningBets;
+        
+        console.log(`🎯 Resolving Quick Play ${quickPlayId}: ${bets.length} bets, ${winningBets} BUSD won, ${losingBets} BUSD lost`);
+        
+        // Distribute payouts to winners
+        const paidOutUsers = {};
+        for (const bet of bets) {
+            if (bet.choice === winOutcome) {
+                // Winner gets: original bet + (share of losing pool)
+                const winnerShare = losingBets > 0 ? (bet.amount / winningBets) * losingBets : 0;
+                const totalPayout = bet.amount + winnerShare;
+                
+                if (!paidOutUsers[bet.userId]) {
+                    paidOutUsers[bet.userId] = 0;
+                }
+                paidOutUsers[bet.userId] += totalPayout;
+                
+                // Mark bet as paid
+                await quickPlayRef.collection('bets').doc(bet.id).update({ status: 'paid', payout: totalPayout });
+            } else {
+                // Loser gets nothing, mark as lost
+                await quickPlayRef.collection('bets').doc(bet.id).update({ status: 'lost' });
+            }
+        }
+        
+        // Add payouts to user BUSD balances
+        for (const [userId, payout] of Object.entries(paidOutUsers)) {
+            await addBusdBalance(userId, payout);
+            console.log(`✅ Paid ${payout} BUSD to ${userId} for Quick Play win`);
+        }
+        
+        // Mark quick play as resolved
+        await quickPlayRef.update({
+            status: 'resolved',
+            outcome: winOutcome,
+            resolvedAt: new Date().toISOString(),
+            resolvedBy: 'admin',
+            totalBetsSettled: bets.length,
+            totalPayoutDistributed: Object.values(paidOutUsers).reduce((a, b) => a + b, 0)
+        });
+        
+        res.status(200).json({ 
+            success: true, 
+            message: `Resolved with ${bets.length} bets settled`,
+            totalPayoutDistributed: Object.values(paidOutUsers).reduce((a, b) => a + b, 0),
+            winnersCount: Object.keys(paidOutUsers).length
+        });
     } catch (error) {
         console.error('Error resolving quick play:', error);
         res.status(500).json({ error: error.message });
