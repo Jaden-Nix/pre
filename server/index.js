@@ -3674,13 +3674,13 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
         console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min)`);
         console.log(`   🎲 Resolution time: ${new Date(resolutionTime * 1000).toISOString()}`);
         
-        // Quick Play liquidity: 0.01 BNB only (PRED optional for now)
+        // Quick Play liquidity: 0.01 BNB + 6 PRED split 50/50
         const bnbValue = ethers.utils.parseEther('0.005');  // YES pool
         const bnbValueNo = ethers.utils.parseEther('0.005');  // NO pool
-        const predValue = ethers.utils.parseEther('0');  // YES pool (no PRED for quick plays)
-        const predValueNo = ethers.utils.parseEther('0');  // NO pool (no PRED for quick plays)
+        const predValue = ethers.utils.parseEther('3');  // YES pool
+        const predValueNo = ethers.utils.parseEther('3');  // NO pool
         const totalBnbNeeded = ethers.utils.parseEther('0.01');
-        const totalPredNeeded = ethers.utils.parseEther('0');
+        const totalPredNeeded = ethers.utils.parseEther('6');
         
         // Check BNB balance for gas + liquidity
         let deployerBalance = await provider.getBalance(deployerWallet.address);
@@ -3699,8 +3699,18 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
             console.log(`💰 Updated deployer balance: ${ethers.utils.formatEther(deployerBalance)} BNB`);
         }
         
-        // Note: Quick Play markets use BNB only for now, no PRED liquidity needed
-        console.log(`📋 Quick Play liquidity: ${ethers.utils.formatEther(bnbValue)} BNB YES + ${ethers.utils.formatEther(bnbValueNo)} BNB NO (no PRED)`);
+        // Approve PRED token for the market contract
+        console.log(`📋 Approving ${ethers.utils.formatEther(totalPredNeeded)} PRED for market creation...`);
+        const currentAllowance = await predTokenContract.allowance(deployerWallet.address, contractAddress);
+        if (currentAllowance.lt(totalPredNeeded)) {
+            const approveTx = await predTokenContract.approve(contractAddress, ethers.constants.MaxUint256);
+            const approveReceipt = await approveTx.wait();
+            console.log(`✅ PRED approval confirmed: ${approveTx.hash}`);
+        } else {
+            console.log(`✅ PRED already approved`);
+        }
+        
+        console.log(`📋 Quick Play liquidity: ${ethers.utils.formatEther(bnbValue)} BNB YES + ${ethers.utils.formatEther(bnbValueNo)} BNB NO + ${ethers.utils.formatEther(predValue)} PRED YES + ${ethers.utils.formatEther(predValueNo)} PRED NO`);
         
         // Call createMarket with all 7 required parameters
         const tx = await predictionMarketContract.createMarket(
@@ -3732,6 +3742,8 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
             duration: `${durationMinutes}m`,
             yesPool: 0.005,  // BNB
             noPool: 0.005,   // BNB
+            yesPoolPred: 3,  // PRED
+            noPoolPred: 3,   // PRED
             totalStakeVolume: 0,
             isResolved: false,
             isMock: false,
@@ -3739,7 +3751,7 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
             onChainMarketId: onChainMarketId,
             onChainTxHash: txHash,
             isOnChain: true,
-            currency: 'BNB'
+            currencies: ['BNB', 'PRED']
         };
         
         const docRef = await db.collection(`artifacts/${APP_ID}/public/data/quick_play_markets`).add(quickPlayData);
