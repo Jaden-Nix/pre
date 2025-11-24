@@ -12588,8 +12588,10 @@ ${historyText}`;
         async function adminPublishQuickPlay() {
             const title = dom.adminQpTitle.value;
             const duration = dom.adminQpDuration.value;
+            const yesPercent = parseFloat(dom.adminQpYes.value) || 50;
+            const noPercent = parseFloat(dom.adminQpNo.value) || 50;
 
-            console.log('📝 Admin Quick Play form:', { title, duration });
+            console.log('📝 Admin Quick Play form:', { title, duration, yesPercent, noPercent });
 
             // Validate
             if (!title || !duration) {
@@ -12608,7 +12610,9 @@ ${historyText}`;
                     },
                     body: JSON.stringify({
                         title,
-                        durationMinutes: parseInt(duration)
+                        durationMinutes: parseInt(duration),
+                        yesPercent,
+                        noPercent
                     })
                 });
 

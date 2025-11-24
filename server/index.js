@@ -3634,11 +3634,15 @@ async function requestBnbFromFaucet(address) {
 // ⛓️ Create Quick Play Market On-Chain (guaranteed on-chain)
 // Note: Quick Play can be created without admin auth - it's a public market creation endpoint
 app.post('/api/admin/create-quick-play-market', async (req, res) => {
-    const { title, durationMinutes } = req.body;
+    const { title, durationMinutes, yesPercent, noPercent } = req.body;
     
     if (!title || !durationMinutes) {
         return res.status(400).json({ error: 'Missing required fields (title, durationMinutes)' });
     }
+    
+    // Use provided percentages or default to 50/50
+    const finalYesPercent = yesPercent || 50;
+    const finalNoPercent = noPercent || 50;
     
     let onChainMarketId = null;
     let txHash = null;
@@ -3733,20 +3737,17 @@ app.post('/api/admin/create-quick-play-market', async (req, res) => {
             throw new Error('Firebase Admin not initialized');
         }
         
-        // Calculate YES/NO percentages (equal split initially: 50/50)
+        // Use custom percentages from admin or default to 50/50
         const yesPoolValue = 0.005;
         const noPoolValue = 0.005;
-        const totalPoolValue = yesPoolValue + noPoolValue;
-        const yesPercent = (yesPoolValue / totalPoolValue) * 100;
-        const noPercent = (noPoolValue / totalPoolValue) * 100;
         
         const quickPlayData = {
             title,
             duration: `${durationMinutes}m`,
             yesPool: yesPoolValue,  // BNB
             noPool: noPoolValue,    // BNB
-            yesPercent: yesPercent, // Percentage for display
-            noPercent: noPercent,   // Percentage for display
+            yesPercent: finalYesPercent, // Use custom percentage from admin
+            noPercent: finalNoPercent,   // Use custom percentage from admin
             totalStakeVolume: 0,
             isResolved: false,
             isMock: false,
