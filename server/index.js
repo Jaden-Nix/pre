@@ -3639,106 +3639,101 @@ async function requestBnbFromFaucet(address) {
 // ⛓️ Create Quick Play Market On-Chain (guaranteed on-chain)
 app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) => {
     const { title, durationMinutes, yesPercent, noPercent } = req.body;
-    const { addDoc, collection, serverTimestamp } = require('firebase-admin').firestore;
+    const { serverTimestamp } = require('firebase-admin').firestore;
     
     if (!title || !durationMinutes || yesPercent === undefined || noPercent === undefined) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
     
-    let onChainMarketId = null;
-    let txHash = null;
-    let isOnChain = false;
-    
-    // Try to create on-chain first
-    const DEPLOY_PRIVATE_KEY = process.env.DEPLOY_PRIVATE_KEY;
-    if (DEPLOY_PRIVATE_KEY) {
-        try {
-            const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-            const deployerWallet = new ethers.Wallet(DEPLOY_PRIVATE_KEY, provider);
-            
-            const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
-            const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
-            
-            const contractABI = [
-                'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
-            ];
-            
-            const erc20Abi = [
-                'function approve(address spender, uint256 amount) external returns (bool)',
-                'function allowance(address owner, address spender) external view returns (uint256)'
-            ];
-            
-            const predictionMarketContract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
-            const predTokenContract = new ethers.Contract(predTokenAddress, erc20Abi, deployerWallet);
-            
-            const resolutionTime = Math.floor(Date.now() / 1000) + (durationMinutes * 60);
-            
-            // Minimal BNB for Quick Play (0.001 BNB = ~$0.00025)
-            const liquidityBNB = 0.001;  
-            const liquidityBnbWei = ethers.utils.parseEther(liquidityBNB.toString());
-            const halfLiquidityBnb = liquidityBnbWei.div(2);
-            
-            // Use PRED for both liquidity and gas (minimal amounts)
-            const predLiquidityAmount = ethers.utils.parseEther('0.5');  // 0.5 PRED for liquidity
-            const halfLiquidityPred = predLiquidityAmount.div(2);        // 0.25 PRED each side
-            
-            console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min)`);
-            console.log(`   💧 Liquidity: ${liquidityBNB} BNB + 0.5 PRED`);
-            console.log(`   ⛽ Gas: Paid in PRED (via contract)`);
-            
-            const currentAllowance = await predTokenContract.allowance(deployerWallet.address, contractAddress);
-            if (currentAllowance.lt(predLiquidityAmount)) {
-                console.log(`🔐 Approving PRED contract to spend PRED for liquidity...`);
-                const approveTx = await predTokenContract.approve(contractAddress, ethers.constants.MaxUint256);
-                await approveTx.wait();
-                console.log(`✅ PRED approval confirmed`);
-            }
-            
-            // Check BNB balance - only need minimal for the transaction
-            let deployerBalance = await provider.getBalance(deployerWallet.address);
-            const estimatedGasCost = ethers.utils.parseEther('0.002');  // Very minimal - just for tx overhead
-            
-            if (deployerBalance.lt(estimatedGasCost)) {
-                console.log(`⚠️ Deployer BNB low (${ethers.utils.formatEther(deployerBalance)} BNB). Requesting from faucet...`);
-                await requestBnbFromFaucet(deployerWallet.address);
-                
-                // Wait for faucet to process
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                deployerBalance = await provider.getBalance(deployerWallet.address);
-                console.log(`💰 Updated deployer balance: ${ethers.utils.formatEther(deployerBalance)} BNB`);
-            }
-            
-            const tx = await predictionMarketContract.createMarket(
-                title,
-                `Quick Play: ${title}`,
-                resolutionTime,
-                halfLiquidityBnb,
-                halfLiquidityBnb,
-                halfLiquidityPred,
-                halfLiquidityPred,
-                { value: liquidityBnbWei, gasLimit: 300000 }  // Reduced gas limit since PRED is used for gas
-            );
-            
-            const receipt = await tx.wait();
-            const marketCreatedEvent = receipt.events?.find(e => e.event === 'MarketCreated');
-            onChainMarketId = marketCreatedEvent?.args?.marketId?.toNumber();
-            txHash = tx.hash;
-            isOnChain = true;
-            
-            console.log(`✅ On-chain market created: ID ${onChainMarketId}, TX: ${txHash}`);
-        } catch (error) {
-            console.error(`❌ On-chain creation failed: ${error.message}`);
-            throw error;
-        }
-    } else {
-        throw new Error('DEPLOY_PRIVATE_KEY not configured');
-    }
-    
-    // Save to Firestore
     try {
+        let onChainMarketId = null;
+        let txHash = null;
+        let isOnChain = false;
+        
+        // Try to create on-chain first
+        const DEPLOY_PRIVATE_KEY = process.env.DEPLOY_PRIVATE_KEY;
+        if (!DEPLOY_PRIVATE_KEY) {
+            throw new Error('DEPLOY_PRIVATE_KEY not configured');
+        }
+        
+        const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+        const deployerWallet = new ethers.Wallet(DEPLOY_PRIVATE_KEY, provider);
+        
+        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
+        const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+        
+        const contractABI = [
+            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
+        ];
+        
+        const erc20Abi = [
+            'function approve(address spender, uint256 amount) external returns (bool)',
+            'function allowance(address owner, address spender) external view returns (uint256)'
+        ];
+        
+        const predictionMarketContract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
+        const predTokenContract = new ethers.Contract(predTokenAddress, erc20Abi, deployerWallet);
+        
+        const resolutionTime = Math.floor(Date.now() / 1000) + (durationMinutes * 60);
+        
+        // Minimal BNB for Quick Play (0.001 BNB = ~$0.00025)
+        const liquidityBNB = 0.001;  
+        const liquidityBnbWei = ethers.utils.parseEther(liquidityBNB.toString());
+        const halfLiquidityBnb = liquidityBnbWei.div(2);
+        
+        // Use PRED for both liquidity and gas (minimal amounts)
+        const predLiquidityAmount = ethers.utils.parseEther('0.5');  // 0.5 PRED for liquidity
+        const halfLiquidityPred = predLiquidityAmount.div(2);        // 0.25 PRED each side
+        
+        console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min)`);
+        console.log(`   💧 Liquidity: ${liquidityBNB} BNB + 0.5 PRED`);
+        console.log(`   ⛽ Gas: Paid in PRED (via contract)`);
+        
+        const currentAllowance = await predTokenContract.allowance(deployerWallet.address, contractAddress);
+        if (currentAllowance.lt(predLiquidityAmount)) {
+            console.log(`🔐 Approving PRED contract to spend PRED for liquidity...`);
+            const approveTx = await predTokenContract.approve(contractAddress, ethers.constants.MaxUint256);
+            await approveTx.wait();
+            console.log(`✅ PRED approval confirmed`);
+        }
+        
+        // Check BNB balance - only need minimal for the transaction
+        let deployerBalance = await provider.getBalance(deployerWallet.address);
+        const estimatedGasCost = ethers.utils.parseEther('0.002');  // Very minimal - just for tx overhead
+        
+        if (deployerBalance.lt(estimatedGasCost)) {
+            console.log(`⚠️ Deployer BNB low (${ethers.utils.formatEther(deployerBalance)} BNB). Requesting from faucet...`);
+            await requestBnbFromFaucet(deployerWallet.address);
+            
+            // Wait for faucet to process
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            deployerBalance = await provider.getBalance(deployerWallet.address);
+            console.log(`💰 Updated deployer balance: ${ethers.utils.formatEther(deployerBalance)} BNB`);
+        }
+        
+        const tx = await predictionMarketContract.createMarket(
+            title,
+            `Quick Play: ${title}`,
+            resolutionTime,
+            halfLiquidityBnb,
+            halfLiquidityBnb,
+            halfLiquidityPred,
+            halfLiquidityPred,
+            { value: liquidityBnbWei, gasLimit: 300000 }  // Reduced gas limit since PRED is used for gas
+        );
+        
+        const receipt = await tx.wait();
+        const marketCreatedEvent = receipt.events?.find(e => e.event === 'MarketCreated');
+        onChainMarketId = marketCreatedEvent?.args?.marketId?.toNumber();
+        txHash = tx.hash;
+        isOnChain = true;
+        
+        console.log(`✅ On-chain market created: ID ${onChainMarketId}, TX: ${txHash}`);
+        
+        // Save to Firestore
         if (!db) {
-            return res.status(503).json({ error: 'Firebase Admin not initialized' });
+            throw new Error('Firebase Admin not initialized');
         }
         
         const quickPlayData = {
@@ -3768,7 +3763,7 @@ app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) =
             message: `Quick Play market created on-chain! Market ID: ${onChainMarketId}`
         });
     } catch (error) {
-        console.error('❌ Error saving quick play:', error);
+        console.error('❌ Error creating quick play:', error);
         res.status(500).json({ error: error.message || 'Failed to create quick play' });
     }
 });
