@@ -807,22 +807,29 @@ app.post('/api/market/create-onchain', async (req, res) => {
         
         const predTokenContract = new ethers.Contract(PRED_TOKEN_ADDRESS, erc20Abi, deployerWallet);
         
-        // For PRED-based markets: Don't send PRED in createMarket call
-        // Keep pools at 0 - users will provide liquidity through betting
-        // BNB is only used for gas fees, not liquidity
-        console.log(`📋 Creating market with BNB for gas only, PRED for betting later...`);
+        console.log(`📋 User providing PRED liquidity for market creation...`);
         console.log(`   Title: "${title}"`);
-        console.log(`   PRED liquidity (for staking/betting): ${ethers.utils.formatEther(halfLiquidityPred)} per side`);
+        console.log(`   Total PRED liquidity requested: ${ethers.utils.formatEther(liquidityPredWei)} PRED`);
+        console.log(`   Split: ${ethers.utils.formatEther(halfLiquidityPred)} PRED per side (YES/NO)`);
         
         const currentTime = Math.floor(Date.now() / 1000);
         console.log(`✅ Time check: current=${currentTime}, resolution=${resolutionTime}, future=${resolutionTime > currentTime}`);
         
-        // Create market with NO initial pools - just gas
+        // Step 1: Transfer PRED from deployer wallet to contract
+        // This ensures contract has the PRED before createMarket is called
+        console.log(`💸 Transferring PRED to contract (${ethers.utils.formatEther(liquidityPredWei)} PRED)...`);
+        const transferTx = await predTokenContract.transfer(contractAddress, liquidityPredWei);
+        await transferTx.wait();
+        console.log(`✅ PRED transferred to contract: ${transferTx.hash}`);
+        
+        // Step 2: Create market with PRED amounts (contract now has the PRED)
         const bnbValueYes = ethers.utils.parseEther('0');  // No BNB pools
         const bnbValueNo = ethers.utils.parseEther('0');   // No BNB pools
         const totalBnbValue = ethers.utils.parseEther('0.01');  // Only gas
-        const predValueYes = ethers.utils.parseEther('0');  // No PRED sent in call
-        const predValueNo = ethers.utils.parseEther('0');   // No PRED sent in call
+        const predValueYes = halfLiquidityPred;  // Half PRED for YES pool
+        const predValueNo = halfLiquidityPred;   // Half PRED for NO pool
+        
+        const predictionMarketContract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
         
         let tx;
         try {
