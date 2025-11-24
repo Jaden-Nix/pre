@@ -11463,21 +11463,21 @@
                             const market = marketSnap.data();
                             const marketRef = marketSnap.ref;
                             
-                            // For Quick Play markets, derive pools from current percentages
-                            // This ensures accuracy even when odds are extremely skewed
-                            const usePercentages = market.yesPercent !== undefined && market.noPercent !== undefined;
-                            let yesPool, noPool;
+                            // Use ACTUAL stored pools (they produce the percentages)
+                            // Don't derive from percentages - use the real pool values
+                            let yesPool = market.yesPool || market.yesPoolBusd || 0;
+                            let noPool = market.noPool || market.noPoolBusd || 0;
                             
-                            if (usePercentages && market.yesPercent !== 50 && market.noPercent !== 50) {
-                                // Market has been updated with new percentages - derive pools from them
-                                // Use a large base pool ($10,000) for better precision with extreme odds
-                                const basePool = 10000;
-                                yesPool = (market.yesPercent / 100) * basePool;
-                                noPool = (market.noPercent / 100) * basePool;
-                            } else {
-                                // Use stored pools if they exist
-                                yesPool = market.yesPool || market.yesPoolBusd || 50;
-                                noPool = market.noPool || market.noPoolBusd || 50;
+                            // If pools don't exist, fall back to deriving from percentages
+                            if (yesPool === 0 && noPool === 0) {
+                                if (market.yesPercent !== undefined && market.noPercent !== undefined) {
+                                    const basePool = 1000;
+                                    yesPool = (market.yesPercent / 100) * basePool;
+                                    noPool = (market.noPercent / 100) * basePool;
+                                } else {
+                                    yesPool = 50;
+                                    noPool = 50;
+                                }
                             }
                             
                             // Ensure pools are never zero
