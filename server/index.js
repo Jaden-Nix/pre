@@ -3733,13 +3733,23 @@ app.post('/api/admin/create-quick-play-market', async (req, res) => {
             throw new Error('Firebase Admin not initialized');
         }
         
+        // Calculate YES/NO percentages (equal split initially: 50/50)
+        const yesPoolValue = 0.005;
+        const noPoolValue = 0.005;
+        const totalPoolValue = yesPoolValue + noPoolValue;
+        const yesPercent = (yesPoolValue / totalPoolValue) * 100;
+        const noPercent = (noPoolValue / totalPoolValue) * 100;
+        
         const quickPlayData = {
             title,
             duration: `${durationMinutes}m`,
-            yesPool: 0.005,  // BNB
-            noPool: 0.005,   // BNB
+            yesPool: yesPoolValue,  // BNB
+            noPool: noPoolValue,    // BNB
+            yesPercent: yesPercent, // Percentage for display
+            noPercent: noPercent,   // Percentage for display
             totalStakeVolume: 0,
             isResolved: false,
+            isMock: false,
             createdAt: admin.firestore.Timestamp.now(),
             isOnChain: isOnChain,
             currency: 'BNB',
