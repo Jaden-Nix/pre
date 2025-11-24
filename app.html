@@ -12575,7 +12575,7 @@ ${historyText}`;
 
             try {
                 // 1. GET ADMIN TOKEN FOR API CALL
-                const user = window.firebase.auth().currentUser;
+                const user = auth.currentUser;
                 if (!user) {
                     throw new Error('Not authenticated');
                 }
