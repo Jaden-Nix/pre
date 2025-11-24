@@ -12558,10 +12558,10 @@ ${historyText}`;
          * First creates it on-chain, then saves to Firestore with onChainMarketId
          */
         async function adminPublishQuickPlay() {
-            const { addDoc, collection, serverTimestamp } = window.firebase.firestore;
-
             const title = dom.adminQpTitle.value;
             const duration = dom.adminQpDuration.value;
+
+            console.log('📝 Admin Quick Play form:', { title, duration });
 
             // Validate
             if (!title || !duration) {
@@ -12569,21 +12569,14 @@ ${historyText}`;
                 return;
             }
 
-            showLoadingOverlay(true, "⛓️ Creating market on-chain...");
+            showLoadingOverlay(true, "⚡ Creating Quick Play market...");
 
             try {
-                // 1. GET ADMIN SECRET FOR API CALL
-                if (!adminSecret) {
-                    throw new Error('Admin credentials not available. Please re-authenticate.');
-                }
-
-                // 2. CREATE MARKET ON-CHAIN FIRST
-                console.log('🎯 Calling backend to create on-chain quick play market...');
-                const blockchainResponse = await fetch('/api/admin/create-quick-play-market', {
+                console.log('🎯 Calling backend to create Quick Play market...');
+                const response = await fetch('/api/admin/create-quick-play-market', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'x-admin-secret': adminSecret
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         title,
@@ -12591,30 +12584,31 @@ ${historyText}`;
                     })
                 });
 
-                if (!blockchainResponse.ok) {
-                    const errorData = await blockchainResponse.json();
-                    throw new Error(`Blockchain creation failed: ${errorData.error}`);
+                console.log('📨 Response status:', response.status);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`Market creation failed: ${errorData.error || response.statusText}`);
                 }
 
-                const blockchainData = await blockchainResponse.json();
-                const isOnChain = blockchainData.isOnChain;
-                const message = blockchainData.message;
+                const data = await response.json();
+                console.log('✅ Market created successfully:', data);
 
-                console.log(`✅ Quick Play created: ${message}`);
-                
                 showLoadingOverlay(false);
-                showToast(`✅ ${message}`);
+                showToast(`✅ Quick Play market created! ${data.isOnChain ? '(On-chain)' : '(Firestore)'}`, 'success', 4000);
+                
                 // Clear the form
                 dom.adminQpTitle.value = '';
                 dom.adminQpDuration.value = '';
                 dom.adminQpYes.value = '';
                 dom.adminQpNo.value = '';
-                document.getElementById('admin-ai-prompt').value = '';
+                const aiPromptEl = document.getElementById('admin-ai-prompt');
+                if (aiPromptEl) aiPromptEl.value = '';
 
             } catch (error) {
                 showLoadingOverlay(false);
                 console.error('❌ Quick Play publish failed:', error);
-                showToast("Quick Play publish failed: " + error.message);
+                showToast("Failed to create market: " + error.message, 'error', 4000);
             }
         }
 
