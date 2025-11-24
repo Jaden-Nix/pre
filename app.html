@@ -12603,31 +12603,13 @@ ${historyText}`;
                 }
 
                 const blockchainData = await blockchainResponse.json();
-                const onChainMarketId = blockchainData.onChainMarketId;
-                const txHash = blockchainData.txHash;
+                const isOnChain = blockchainData.isOnChain;
+                const message = blockchainData.message;
 
-                console.log(`✅ On-chain market created with ID ${onChainMarketId}, TX: ${txHash}`);
-                showLoadingOverlay(true, "💾 Saving to Firestore...");
-
-                // 3. NOW SAVE TO FIRESTORE WITH ON-CHAIN MARKET ID
-                await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', QUICK_PLAY_MARKETS_COLLECTION), {
-                    title,
-                    duration,
-                    yesPercent,
-                    noPercent,
-                    yesPool: 50000 * (yesPercent / 100),
-                    noPool: 50000 * (noPercent / 100),
-                    totalStakeVolume: 0,
-                    isResolved: false,
-                    isMock: false,
-                    createdAt: serverTimestamp(),
-                    // ⛓️ ADD ON-CHAIN REFERENCE
-                    onChainMarketId: onChainMarketId,
-                    onChainTxHash: txHash
-                });
-
+                console.log(`✅ Quick Play created: ${message}`);
+                
                 showLoadingOverlay(false);
-                showToast("✅ Quick Play published on-chain successfully!");
+                showToast(`✅ ${message}`);
                 // Clear the form
                 dom.adminQpTitle.value = '';
                 dom.adminQpDuration.value = '';

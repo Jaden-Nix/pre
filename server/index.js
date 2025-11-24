@@ -3602,109 +3602,168 @@ app.post('/api/admin/quick-plays', requireAdmin, async (req, res) => {
     }
 });
 
-// ⛓️ Create Quick Play Market On-Chain
+// Helper: Request BNB from BSC Testnet faucet
+async function requestBnbFromFaucet(address) {
+    try {
+        console.log(`🪣 Requesting BNB from BSC Testnet faucet for ${address}...`);
+        // Try multiple faucet endpoints
+        const faucetUrls = [
+            `https://testnet.binance.org/faucet-smart`,
+            `https://thefaucet.bnbsmartchain.com/faucet`
+        ];
+        
+        for (const url of faucetUrls) {
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ address }),
+                    timeout: 5000
+                });
+                
+                if (response.ok) {
+                    console.log(`✅ BNB faucet request sent to ${url}`);
+                    return true;
+                }
+            } catch (e) {
+                console.warn(`⚠️ Faucet ${url} unavailable: ${e.message}`);
+            }
+        }
+        return false;
+    } catch (error) {
+        console.error(`❌ Faucet request failed: ${error.message}`);
+        return false;
+    }
+}
+
+// ⛓️ Create Quick Play Market On-Chain (guaranteed on-chain)
 app.post('/api/admin/create-quick-play-market', requireAdmin, async (req, res) => {
     const { title, durationMinutes, yesPercent, noPercent } = req.body;
+    const { addDoc, collection, serverTimestamp } = require('firebase-admin').firestore;
     
     if (!title || !durationMinutes || yesPercent === undefined || noPercent === undefined) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
     
+    let onChainMarketId = null;
+    let txHash = null;
+    let isOnChain = false;
+    
+    // Try to create on-chain first
+    const DEPLOY_PRIVATE_KEY = process.env.DEPLOY_PRIVATE_KEY;
+    if (DEPLOY_PRIVATE_KEY) {
+        try {
+            const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
+            const deployerWallet = new ethers.Wallet(DEPLOY_PRIVATE_KEY, provider);
+            
+            const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
+            const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
+            
+            const contractABI = [
+                'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
+            ];
+            
+            const erc20Abi = [
+                'function approve(address spender, uint256 amount) external returns (bool)',
+                'function allowance(address owner, address spender) external view returns (uint256)'
+            ];
+            
+            const predictionMarketContract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
+            const predTokenContract = new ethers.Contract(predTokenAddress, erc20Abi, deployerWallet);
+            
+            const resolutionTime = Math.floor(Date.now() / 1000) + (durationMinutes * 60);
+            const liquidityBNB = 0.005;
+            const liquidityBnbWei = ethers.utils.parseEther(liquidityBNB.toString());
+            const halfLiquidityBnb = liquidityBnbWei.div(2);
+            const predLiquidityAmount = ethers.utils.parseEther((liquidityBNB * 600).toString());
+            const halfLiquidityPred = predLiquidityAmount.div(2);
+            
+            console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min)`);
+            
+            const currentAllowance = await predTokenContract.allowance(deployerWallet.address, contractAddress);
+            if (currentAllowance.lt(predLiquidityAmount)) {
+                console.log(`🔐 Approving PRED contract...`);
+                const approveTx = await predTokenContract.approve(contractAddress, ethers.constants.MaxUint256);
+                await approveTx.wait();
+            }
+            
+            // Check BNB balance and request from faucet if needed
+            let deployerBalance = await provider.getBalance(deployerWallet.address);
+            const estimatedGasCost = liquidityBnbWei.mul(2);
+            
+            if (deployerBalance.lt(estimatedGasCost)) {
+                console.log(`⚠️ Deployer BNB low (${ethers.utils.formatEther(deployerBalance)} BNB). Requesting from faucet...`);
+                await requestBnbFromFaucet(deployerWallet.address);
+                
+                // Wait a bit for faucet to process
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Check balance again
+                deployerBalance = await provider.getBalance(deployerWallet.address);
+                console.log(`💰 Updated deployer balance: ${ethers.utils.formatEther(deployerBalance)} BNB`);
+            }
+            
+            const tx = await predictionMarketContract.createMarket(
+                title,
+                `Quick Play: ${title}`,
+                resolutionTime,
+                halfLiquidityBnb,
+                halfLiquidityBnb,
+                halfLiquidityPred,
+                halfLiquidityPred,
+                { value: liquidityBnbWei, gasLimit: 600000 }
+            );
+            
+            const receipt = await tx.wait();
+            const marketCreatedEvent = receipt.events?.find(e => e.event === 'MarketCreated');
+            onChainMarketId = marketCreatedEvent?.args?.marketId?.toNumber();
+            txHash = tx.hash;
+            isOnChain = true;
+            
+            console.log(`✅ On-chain market created: ID ${onChainMarketId}, TX: ${txHash}`);
+        } catch (error) {
+            console.error(`❌ On-chain creation failed: ${error.message}`);
+            throw error;
+        }
+    } else {
+        throw new Error('DEPLOY_PRIVATE_KEY not configured');
+    }
+    
+    // Save to Firestore
     try {
-        const DEPLOY_PRIVATE_KEY = process.env.DEPLOY_PRIVATE_KEY;
-        if (!DEPLOY_PRIVATE_KEY) {
-            return res.status(503).json({ error: 'Quick play market creation service unavailable' });
+        if (!db) {
+            return res.status(503).json({ error: 'Firebase Admin not initialized' });
         }
         
-        const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/');
-        const deployerWallet = new ethers.Wallet(DEPLOY_PRIVATE_KEY, provider);
-        
-        const contractAddress = '0xc0c9F3ff25517E7fF83d8be747F544c8595ADEDB';
-        const predTokenAddress = '0x45C229bF14A36aD14885148E62058C98284B2ae0';
-        
-        const contractABI = [
-            'function createMarket(string memory _title, string memory _description, uint256 _resolutionTime, uint256 _initialYesBnb, uint256 _initialNoBnb, uint256 _initialYesPred, uint256 _initialNoPred) external payable returns (uint256)',
-        ];
-        
-        const erc20Abi = [
-            'function approve(address spender, uint256 amount) external returns (bool)',
-            'function allowance(address owner, address spender) external view returns (uint256)'
-        ];
-        
-        const predictionMarketContract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
-        const predTokenContract = new ethers.Contract(predTokenAddress, erc20Abi, deployerWallet);
-        
-        // Set resolution time (duration from now)
-        const resolutionTime = Math.floor(Date.now() / 1000) + (durationMinutes * 60);
-        
-        // Quick play markets use minimal BNB for liquidity + PRED for gas
-        const liquidityBNB = 0.005;  // Reduced BNB since we're using PRED for gas
-        const liquidityBnbWei = ethers.utils.parseEther(liquidityBNB.toString());
-        const halfLiquidityBnb = liquidityBnbWei.div(2);
-        
-        const predLiquidityAmount = ethers.utils.parseEther((liquidityBNB * 600).toString());
-        const halfLiquidityPred = predLiquidityAmount.div(2);
-        
-        // PRED used as platform gas fee (instead of BNB)
-        const predGasFee = ethers.utils.parseEther('1');  // 1 PRED for gas
-        const totalPredNeeded = predLiquidityAmount.add(predGasFee);
-        
-        console.log(`🎯 Creating on-chain quick play: "${title}" (duration: ${durationMinutes}min)`);
-        console.log(`   💧 Liquidity: 0.005 BNB + 3 PRED`);
-        console.log(`   ⛽ Gas Fee: 1 PRED (platform token)`);
-        
-        // Check current allowance for both liquidity + gas
-        const currentAllowance = await predTokenContract.allowance(deployerWallet.address, contractAddress);
-        console.log(`📋 Current PRED allowance: ${ethers.utils.formatEther(currentAllowance)} PRED`);
-        
-        // If allowance is insufficient, approve more (for liquidity only, gas fee is deducted off-chain)
-        if (currentAllowance.lt(predLiquidityAmount)) {
-            console.log(`🔐 Approving PRED contract to spend ${ethers.utils.formatEther(predLiquidityAmount)} PRED...`);
-            const approveTx = await predTokenContract.approve(contractAddress, ethers.constants.MaxUint256);
-            await approveTx.wait();
-            console.log(`✅ PRED approval confirmed`);
-        }
-        
-        // Deduct PRED gas fee from deployer's balance (platform token for gas)
-        console.log(`💳 Deducting ${ethers.utils.formatEther(predGasFee)} PRED as gas fee...`);
-        const deployerBalance = await provider.getBalance(deployerWallet.address);
-        const estimatedGasCost = liquidityBnbWei.mul(2);  // Rough estimate: 2x the liquidity for gas
-        if (deployerBalance.lt(estimatedGasCost)) {
-            console.error(`❌ Insufficient deployer BNB (need ~${ethers.utils.formatEther(estimatedGasCost)} for liquidity + gas, have ${ethers.utils.formatEther(deployerBalance)})`);
-            return res.status(400).json({ error: 'Insufficient BNB for market creation' });
-        }
-        
-        const tx = await predictionMarketContract.createMarket(
+        const quickPlayData = {
             title,
-            `Quick Play: ${title}`,
-            resolutionTime,
-            halfLiquidityBnb,
-            halfLiquidityBnb,
-            halfLiquidityPred,
-            halfLiquidityPred,
-            { value: liquidityBnbWei, gasLimit: 600000 }
-        );
+            duration: `${durationMinutes}h`,
+            yesPercent,
+            noPercent,
+            yesPool: 50000 * (yesPercent / 100),
+            noPool: 50000 * (noPercent / 100),
+            totalStakeVolume: 0,
+            isResolved: false,
+            isMock: false,
+            createdAt: serverTimestamp(),
+            onChainMarketId: onChainMarketId,
+            onChainTxHash: txHash,
+            isOnChain: true
+        };
         
-        const receipt = await tx.wait();
-        
-        // Extract market ID from event
-        const marketCreatedEvent = receipt.events?.find(e => e.event === 'MarketCreated');
-        const onChainMarketId = marketCreatedEvent?.args?.marketId?.toNumber();
-        
-        if (onChainMarketId === undefined) {
-            return res.status(500).json({ error: 'Failed to extract market ID from blockchain' });
-        }
-        
-        console.log(`✅ On-chain quick play market created: ID ${onChainMarketId}`);
+        const docRef = await db.collection(`artifacts/${APP_ID}/public/data/quick_play_markets`).add(quickPlayData);
         
         res.status(200).json({
             success: true,
+            docId: docRef.id,
             onChainMarketId: onChainMarketId,
-            txHash: tx.hash
+            txHash: txHash,
+            isOnChain: true,
+            message: `Quick Play market created on-chain! Market ID: ${onChainMarketId}`
         });
     } catch (error) {
-        console.error('❌ Error creating on-chain quick play market:', error);
-        res.status(500).json({ error: error.message });
+        console.error('❌ Error saving quick play:', error);
+        res.status(500).json({ error: error.message || 'Failed to create quick play' });
     }
 });
 
