@@ -807,11 +807,11 @@ app.post('/api/market/create-onchain', async (req, res) => {
         
         const predTokenContract = new ethers.Contract(PRED_TOKEN_ADDRESS, erc20Abi, deployerWallet);
         
-        // Approve market contract to spend PRED
-        console.log(`📋 Approving market contract to spend ${liquidityAmount} PRED...`);
-        const approveTx = await predTokenContract.approve(contractAddress, liquidityPredWei);
-        await approveTx.wait();
-        console.log(`✅ Approval successful`);
+        // Transfer PRED tokens to the market contract
+        console.log(`📋 Transferring ${liquidityAmount} PRED to market contract...`);
+        const transferTx = await predTokenContract.transfer(contractAddress, liquidityPredWei);
+        await transferTx.wait();
+        console.log(`✅ PRED transfer successful`);
         
         // Create market with PRED
         const predictionMarketContract = new ethers.Contract(contractAddress, contractABI, deployerWallet);
@@ -823,10 +823,10 @@ app.post('/api/market/create-onchain', async (req, res) => {
         const currentTime = Math.floor(Date.now() / 1000);
         console.log(`✅ Time check: current=${currentTime}, resolution=${resolutionTime}, future=${resolutionTime > currentTime}`);
         
-        // For PRED-based markets: split PRED liquidity evenly between YES and NO pools, minimal BNB for gas
-        const bnbValueYes = ethers.utils.parseEther('0.0001');  // Minimal BNB for YES pool
-        const bnbValueNo = ethers.utils.parseEther('0.0001');   // Minimal BNB for NO pool
-        const totalBnbValue = ethers.utils.parseEther('0.002');  // Total BNB to send
+        // For PRED-based markets: split PRED liquidity evenly between YES and NO pools, NO BNB liquidity (only gas)
+        const bnbValueYes = ethers.utils.parseEther('0');  // No BNB for YES pool (PRED-based)
+        const bnbValueNo = ethers.utils.parseEther('0');   // No BNB for NO pool (PRED-based)
+        const totalBnbValue = ethers.utils.parseEther('0.01');  // Only for gas, not liquidity
         const predValueYes = halfLiquidityPred;  // Half PRED for YES pool
         const predValueNo = halfLiquidityPred;   // Half PRED for NO pool
         
@@ -842,8 +842,11 @@ app.post('/api/market/create-onchain', async (req, res) => {
                 predValueNo,       // initialNoPred
                 { value: totalBnbValue, gasLimit: 600000 }
             );
+            console.log(`✅ Market creation tx sent: ${tx.hash}`);
         } catch (createError) {
             console.error(`❌ Smart contract call failed:`, createError.message);
+            console.error(`   Error code:`, createError.code);
+            console.error(`   Error reason:`, createError.reason);
             throw createError;
         }
         
